@@ -701,8 +701,7 @@ td.muted { color: var(--ink-40); }
 </style>
 
 
-<!-- Supabase JS SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Supabase JS SDK (loaded inline, before app script) -->
 
 <style>
 /* ── Config screen ── */
@@ -2317,37 +2316,47 @@ function initDropdowns() {
 async function connectSupabase() {
   const url = document.getElementById('cfg-url').value.trim();
   const key = document.getElementById('cfg-key').value.trim();
-  const errEl = document.getElementById('cfg-error');
-  const btn   = document.getElementById('cfg-connect-btn');
+  const btn = document.getElementById('cfg-connect-btn');
 
-  errEl.style.display = 'none';
+  // Clear previous errors
+  showCfgError('');
+
+  // Validate inputs
   if (!url || !key) { showCfgError('Please enter both URL and anon key.'); return; }
   if (!url.startsWith('https://') || !url.includes('.supabase.co')) {
     showCfgError('URL should look like: https://xxxx.supabase.co'); return;
+  }
+
+  // Check SDK loaded
+  if (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
+    showCfgError('Supabase SDK failed to load. Check your internet connection and refresh the page.');
+    return;
   }
 
   btn.disabled = true;
   btn.textContent = 'Connecting…';
 
   try {
-    // Test connection
     const sb = window.supabase.createClient(url, key);
     const { data, error } = await sb.from('opportunities').select('id').limit(1);
     if (error) throw new Error(error.message);
-
     DB.initSupabase(url, key);
     await launchApp(true);
   } catch(e) {
     btn.disabled = false;
     btn.textContent = 'Connect →';
-    showCfgError('Connection failed: ' + (e.message || 'Check your URL and key, and make sure you ran the SQL schema.'));
+    const msg = e.message || 'Unknown error';
+    showCfgError('Connection failed: ' + msg + ' — Make sure you ran STEP1 + STEP2 SQL scripts in Supabase.');
+    console.error('Supabase connect error:', e);
   }
 }
 
 function showCfgError(msg) {
   const el = document.getElementById('cfg-error');
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
   el.textContent = msg;
   el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function launchDemoMode() {
@@ -2625,6 +2634,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   // (already visible by default)
 });
 
+</script>
+
+<!-- Supabase SDK — loaded last to guarantee availability -->
+<script>
+(function() {
+  // Try jsdelivr first, fallback to unpkg
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  s.onerror = function() {
+    var s2 = document.createElement('script');
+    s2.src = 'https://unpkg.com/@supabase/supabase-js@2';
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s);
+})();
 </script>
 
 </html>
