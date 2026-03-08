@@ -3,16 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EA Sales Intelligence — Carolina Medrado</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EA Sales — Carolina Medrado</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <style>
@@ -2289,345 +2281,35 @@ function toast(msg, type='info') {
   setTimeout(() => t.remove(), 3200);
 }
 
-/* ═══════════════════════════════════════════════════
-   INIT
-═══════════════════════════════════════════════════ */
-function initDropdowns() {
-  const fill = (id, opts) => {
-    const sel = document.getElementById(id);
-    if (!sel) return;
-    const cur = sel.value;
-    opts.forEach(o => {
-      const el = document.createElement('option');
-      el.value = el.textContent = o;
-      sel.appendChild(el);
-    });
-    if (cur) sel.value = cur;
-  };
-  fill('f-stage', LOOKUP.stages);
-  fill('f-projectType', LOOKUP.projectTypes);
-  fill('f-nextStep', LOOKUP.nextSteps);
-  fill('f-probability', LOOKUP.probabilities);
-}
-
-
-/* ═══════════════════════════════════════════════════
-   SUPABASE CONNECTION FLOW
-═══════════════════════════════════════════════════ */
-async function connectSupabase() {
-  const url = document.getElementById('cfg-url').value.trim();
-  const key = document.getElementById('cfg-key').value.trim();
-  const btn = document.getElementById('cfg-connect-btn');
-
-  // Clear previous errors
-  showCfgError('');
-
-  // Validate inputs
-  if (!url || !key) { showCfgError('Please enter both URL and anon key.'); return; }
-  if (!url.startsWith('https://') || !url.includes('.supabase.co')) {
-    showCfgError('URL should look like: https://xxxx.supabase.co'); return;
-  }
-
-  // Check SDK loaded
-  if (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
-    showCfgError('Supabase SDK failed to load. Check your internet connection and refresh the page.');
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = 'Connecting…';
-
-  try {
-    const sb = window.supabase.createClient(url, key);
-    const { data, error } = await sb.from('opportunities').select('id').limit(1);
-    if (error) throw new Error(error.message);
-    DB.initSupabase(url, key);
-    await launchApp(true);
-  } catch(e) {
-    btn.disabled = false;
-    btn.textContent = 'Connect →';
-    const msg = e.message || 'Unknown error';
-    showCfgError('Connection failed: ' + msg + ' — Make sure you ran STEP1 + STEP2 SQL scripts in Supabase.');
-    console.error('Supabase connect error:', e);
-  }
-}
-
-function showCfgError(msg) {
-  const el = document.getElementById('cfg-error');
-  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
-  el.textContent = msg;
-  el.style.display = 'block';
-  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-function launchDemoMode() {
-  DB.initLocal();
-  DB.seedDemoData();
-  launchApp(false);
-}
-
-async function launchApp(fromSupabase) {
-  document.getElementById('configScreen').style.display = 'none';
-
-  // If Supabase, load from DB; if local, use seeded data
-  if (fromSupabase) {
-    showLoading(true);
-    const opps = await DB.getOpportunities();
-    // Mirror to local
-    const data = DB._getRaw();
-    data.opportunities = opps;
-    DB._saveRaw(data);
-    showLoading(false);
-  }
-
-  initDropdowns();
-  renderDashboard();
-  document.getElementById('f-followUpDate').value = new Date().toISOString().split('T')[0];
-  toast(fromSupabase ? '🟢 Connected to Supabase!' : '📋 Running in Demo Mode', fromSupabase ? 'success' : 'info');
-}
-
-function showLoading(on) {
-  let el = document.getElementById('loadingOverlay');
-  if (on && !el) {
-    el = document.createElement('div');
-    el.id = 'loadingOverlay';
-    el.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
-    el.innerHTML = '<div style="text-align:center"><div style="font-family:var(--font-display);font-size:32px;color:var(--gold);letter-spacing:0.06em">LOADING</div><div style="color:var(--ink-40);font-size:13px;margin-top:8px">Syncing from Supabase…</div></div>';
-    document.body.appendChild(el);
-  } else if (!on && el) el.remove();
-}
-
-/* ═══════════════════════════════════════════════════
-   OVERRIDE saveLead to be async (Supabase)
-═══════════════════════════════════════════════════ */
-async function saveLead(e) {
-  e.preventDefault();
-  const isEdit  = !!state.editingId;
-  const existId = document.getElementById('leadId').value;
-
-  // Get existing to preserve _dbId
-  let existing = null;
-  if (isEdit) {
-    const opps = await DB.getOpportunities();
-    existing = opps.find(o => o.id === existId);
-  }
-
-  const opp = {
-    id:            existId || uid(),
-    _dbId:         existing ? existing._dbId : null,
-    firstName:     document.getElementById('f-firstName').value.trim(),
-    lastName:      document.getElementById('f-lastName').value.trim(),
-    email:         document.getElementById('f-email').value.trim(),
-    phone:         document.getElementById('f-phone').value.trim(),
-    address:       document.getElementById('f-address').value.trim(),
-    projectType:   document.getElementById('f-projectType').value,
-    stage:         document.getElementById('f-stage').value,
-    estimate:      Number(document.getElementById('f-estimate').value)||0,
-    probability:   Number(document.getElementById('f-probability').value)||0,
-    nextStep:      document.getElementById('f-nextStep').value,
-    followUpDate:  document.getElementById('f-followUpDate').value,
-    homeCall:      document.getElementById('f-homeCall').value,
-    homeCallDate:  document.getElementById('f-homeCallDate').value,
-    saleMade:      document.getElementById('f-saleMade').value,
-    goldComp:      document.getElementById('f-goldComp').value,
-    notes:         document.getElementById('f-notes').value.trim(),
-    createdAt:     existing ? existing.createdAt : new Date().toISOString().split('T')[0],
-    updatedAt:     new Date().toISOString()
-  };
-
-  await DB.saveOpportunity(opp);
-  closeModal();
-  toast(isEdit ? `Updated ${opp.firstName} ${opp.lastName}` : `Added ${opp.firstName} ${opp.lastName}`, 'success');
-  renderPage(state.currentPage);
-}
-
-/* Override deleteLead to be async */
-async function deleteLead() {
-  if (!state.editingId) return;
-  const opps = await DB.getOpportunities();
-  const opp = opps.find(o => o.id === state.editingId);
-  if (!opp) return;
-  if (!confirm(`Delete ${opp.firstName} ${opp.lastName}? This cannot be undone.`)) return;
-  await DB.deleteOpportunity(state.editingId);
-  closeModal();
-  toast(`Deleted ${opp.firstName} ${opp.lastName}`, 'info');
-  renderPage(state.currentPage);
-}
-
-/* Override renderDashboard, renderPipeline, renderMailing to be async */
-const _origRenderPage = renderPage;
-function renderPage(page) {
-  switch(page) {
-    case 'dashboard': renderDashboardAsync(); break;
-    case 'pipeline':  renderPipelineAsync();  break;
-    case 'mailing':   renderMailingAsync();   break;
-    case 'tests':     break;
-  }
-}
-
-async function renderDashboardAsync() {
-  const opps = await DB.getOpportunities();
-  _renderDashboardWith(opps);
-}
-async function renderPipelineAsync() {
-  const opps = await DB.getOpportunities();
-  _renderPipelineWith(opps);
-}
-async function renderMailingAsync() {
-  const opps = await DB.getOpportunities();
-  _renderMailingWith(opps);
-}
-
-/* ─── Original render functions renamed to accept opps param ─── */
-function _renderDashboardWith(opps) {
-  const kpis  = BL.calcKPIs(opps, state.monthFilter);
-  const today = new Date();
-  document.getElementById('dashDate').textContent =
-    today.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  const goal  = BL.getCurrentMonthGoal();
-  const mrevs = BL.monthlyRevenue(opps);
-  const curM  = mrevs[today.getMonth()];
-  const curRev = curM ? curM.revenue : 0;
-  const pct   = goal ? Math.min(Math.round(curRev/goal*100),100) : 0;
-  document.getElementById('goalValue').textContent = fmt$(goal);
-  document.getElementById('goalFill').style.width  = pct + '%';
-  document.getElementById('goalPct').textContent   = pct + '% of goal';
-  const mfDiv = document.getElementById('monthFilter');
-  const months = [...new Set(opps.map(o=>BL.getMonth(o)).filter(Boolean))].sort();
-  mfDiv.innerHTML = `<button class="filter-chip ${!state.monthFilter?'active':''}" onclick="setMonthFilter(null)">All Months</button>` +
-    months.map(m=>`<button class="filter-chip ${state.monthFilter===m?'active':''}" onclick="setMonthFilter('${m}')">${m}</button>`).join('');
-  document.getElementById('kpi-opps').textContent       = kpis.opps;
-  document.getElementById('kpi-opps-sub').textContent    = `${kpis.sold} sold / ${kpis.opps-kpis.sold} active`;
-  document.getElementById('kpi-sales').textContent       = fmt$(kpis.totalSales);
-  document.getElementById('kpi-sales-sub').textContent   = `${kpis.sold} closed deals`;
-  document.getElementById('kpi-pipeline').textContent    = fmt$(kpis.weightedPipe);
-  document.getElementById('kpi-pipeline-sub').textContent= `${kpis.opps-kpis.sold} active opps`;
-  document.getElementById('kpi-overdue').textContent     = kpis.overdue;
-  document.getElementById('kpi-conversion').textContent  = Math.round(kpis.conversion)+'%';
-  document.getElementById('kpi-homecalls').textContent   = kpis.homeCalls;
-  document.getElementById('kpi-avgval').textContent      = fmt$(kpis.avgVal);
-  document.getElementById('kpi-goldcomp').textContent    = Math.round(kpis.gcPct)+'%';
-  document.getElementById('overdueCount').textContent    = kpis.overdue;
-  const ptData  = BL.salesByProjectType(opps, state.monthFilter);
-  const ptMax   = Math.max(...Object.values(ptData),1);
-  const ptItems = Object.entries(ptData).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('projectTypeChart').innerHTML = ptItems.length
-    ? ptItems.map(([pt,val])=>`<div class="bar-row"><div class="bar-label">${pt}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(val/ptMax*100)}%"></div></div><div class="bar-val">${fmt$(val)}</div></div>`).join('')
-    : '<div class="text-muted" style="font-size:13px;padding:20px 0">No sales data yet</div>';
-  const stageData = BL.pipelineByStage(opps);
-  document.getElementById('stageChart').innerHTML = stageData.filter(s=>s.count>0).map(s=>
-    `<div class="stage-row"><div class="stage-dot" style="background:${LOOKUP.stageColors[s.stage]||'#888'}"></div><div class="stage-name">${s.stage}</div><div class="stage-count">${s.count}</div><div class="stage-pipe">${s.weighted>0?fmt$(s.weighted):''}</div></div>`
-  ).join('')||'<div class="text-muted" style="font-size:13px;padding:20px 0">No pipeline data</div>';
-  const mRev   = BL.monthlyRevenue(opps);
-  const maxRev = Math.max(...mRev.map(m=>Math.max(m.revenue,m.goal)),1);
-  const curMIdx = today.getMonth();
-  document.getElementById('monthChart').innerHTML = mRev.map((m,i)=>{
-    const barH=m.revenue?Math.round(m.revenue/maxRev*90):4;
-    const goalH=Math.round(m.goal/maxRev*90);
-    return `<div class="month-col"><div class="month-bar-wrap"><div class="month-bar ${i===curMIdx?'current':''}" style="height:${barH}%"><div class="month-bar-tooltip">${m.short}: ${fmt$(m.revenue)}<br>Goal: ${fmt$(m.goal)}</div></div><div style="position:absolute;left:0;right:0;bottom:${goalH}%;height:1px;background:rgba(255,255,255,0.15)"></div></div><div class="month-label">${m.short}</div><div class="month-sales">${m.revenue>0?fmt$(m.revenue,true):''}</div></div>`;
-  }).join('');
-  const alertList = document.getElementById('alertList');
-  alertList.innerHTML = kpis.overdueList.length
-    ? kpis.overdueList.map(o=>`<div class="alert-row" onclick="editLeadAsync('${o.id}')"><div><div class="alert-days">${BL.getDaysOverdue(o)}</div><div class="alert-days-label">DAYS</div></div><div><div class="alert-name">${o.firstName} ${o.lastName}</div><div class="alert-detail">${o.projectType} · ${o.stage}</div></div><div class="alert-next">${o.nextStep||'—'} →</div></div>`).join('')
-    : '<div class="empty-state"><div class="icon">✅</div><p>No overdue follow-ups — great work!</p></div>';
-}
-
-function _renderPipelineWith(opps) {
-  const search    = (document.getElementById('searchInput')?.value||'').toLowerCase();
-  const stageFilt = state.stageFilter;
-  const sfDiv = document.getElementById('stageFilters');
-  if (sfDiv) sfDiv.innerHTML =
-    `<button class="filter-chip ${!stageFilt?'active':''}" onclick="setStageFilter(null)">All</button>` +
-    LOOKUP.stages.map(s=>{const c=opps.filter(o=>o.stage===s).length;if(!c)return'';return`<button class="filter-chip ${stageFilt===s?'active':''}" onclick="setStageFilter('${s}')">${s} <span style="opacity:.6">(${c})</span></button>`;}).join('');
-  let filtered=opps;
-  if(stageFilt) filtered=filtered.filter(o=>o.stage===stageFilt);
-  if(search)    filtered=filtered.filter(o=>`${o.firstName} ${o.lastName} ${o.projectType} ${o.stage} ${o.email||''} ${o.notes||''}`.toLowerCase().includes(search));
-  filtered.sort((a,b)=>{const ao=BL.isOverdue(a),bo=BL.isOverdue(b);if(ao!==bo)return ao?-1:1;return(Number(b.probability)||0)-(Number(a.probability)||0);});
-  const tbody=document.getElementById('pipelineBody');
-  const empty=document.getElementById('pipelineEmpty');
-  if(!filtered.length){tbody.innerHTML='';if(empty)empty.style.display='block';return;}
-  if(empty)empty.style.display='none';
-  tbody.innerHTML=filtered.map(o=>{
-    const prio=BL.getCampaignPriority(o);const overdue=BL.isOverdue(o);const weighted=BL.getWeightedValue(o);
-    const fupDisp=o.followUpDate?new Date(o.followUpDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
-    const trCls=overdue?'overdue':(o.saleMade==='Yes'?'sold':(Number(o.probability)>=75?'high-prob':''));
-    return `<tr class="${trCls}" onclick="editLeadAsync('${o.id}')"><td><div style="font-weight:500">${o.firstName} ${o.lastName}</div><div style="font-size:11px;color:var(--ink-40)">${o.email||''}</div></td><td>${o.projectType||'—'}</td><td><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}">${o.stage||'—'}</span></td><td style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':'—'}</td><td>${o.estimate?fmt$(Number(o.estimate)):'—'}</td><td style="color:var(--gold)">${weighted>0?fmt$(weighted):'—'}</td><td style="${overdue?'color:#E05252;font-weight:600':''}">${fupDisp}${overdue?` <span style="font-size:10px">(${BL.getDaysOverdue(o)}d)</span>`:''}</td><td><span class="badge ${prio.cls}">${prio.label}</span></td><td><button class="btn-icon" onclick="event.stopPropagation();editLeadAsync('${o.id}')">✏️</button></td></tr>`;
-  }).join('');
-}
-
-function _renderMailingWith(opps) {
-  const active=opps.filter(o=>o.firstName&&(o.email||o.lastName));
-  const mfDiv=document.getElementById('mailFilters');
-  if(mfDiv) mfDiv.innerHTML=`<button class="filter-chip ${!state.stageFilter?'active':''}" onclick="setMailFilter(null)">All (${active.length})</button><button class="filter-chip ${state.stageFilter==='sold'?'active':''}" onclick="setMailFilter('sold')">✅ Sold</button><button class="filter-chip ${state.stageFilter==='high'?'active':''}" onclick="setMailFilter('high')">🔥 High Priority</button><button class="filter-chip ${state.stageFilter==='nurture'?'active':''}" onclick="setMailFilter('nurture')">📋 Nurture</button>`;
-  let filtered=active;
-  if(state.stageFilter==='sold')    filtered=filtered.filter(o=>o.saleMade==='Yes');
-  if(state.stageFilter==='high')    filtered=filtered.filter(o=>Number(o.probability)>=75&&o.saleMade!=='Yes');
-  if(state.stageFilter==='nurture') filtered=filtered.filter(o=>Number(o.probability)<50&&o.saleMade!=='Yes');
-  const grid=document.getElementById('mailingGrid');
-  if(!filtered.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon">📧</div><p>No contacts found</p></div>';return;}
-  grid.innerHTML=filtered.map(o=>{
-    const topic=BL.getEmailTopic(o);const prio=BL.getCampaignPriority(o);
-    const initials=(o.firstName[0]||'')+(o.lastName[0]||'');
-    let cls='';if(o.saleMade==='Yes')cls='sold';else if(Number(o.probability)>=75)cls='high-prob';else if(Number(o.probability)>=50)cls='medium-prob';
-    return `<div class="mail-card ${cls}"><div class="mail-card-header"><div class="mail-avatar">${initials.toUpperCase()}</div><div><div class="mail-name">${o.firstName} ${o.lastName}</div><div class="mail-email">${o.email||'No email'}</div></div></div><div class="mail-topic">${topic}</div><div class="mail-meta"><span class="badge ${prio.cls}">${prio.label}</span><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}" style="font-size:10px">${o.stage}</span>${o.projectType?`<span style="font-size:11px;color:var(--ink-40)">${o.projectType}</span>`:''}</div></div>`;
-  }).join('');
-}
-
-async function editLeadAsync(id) {
-  const opps = await DB.getOpportunities();
-  const o = opps.find(x=>x.id===id);
-  if (!o) return;
-  state.editingId = id;
-  document.getElementById('modalTitle').textContent = `EDIT — ${o.firstName} ${o.lastName}`;
-  document.getElementById('leadId').value        = o.id;
-  document.getElementById('f-firstName').value   = o.firstName||'';
-  document.getElementById('f-lastName').value    = o.lastName||'';
-  document.getElementById('f-email').value       = o.email||'';
-  document.getElementById('f-phone').value       = o.phone||'';
-  document.getElementById('f-address').value     = o.address||'';
-  document.getElementById('f-projectType').value = o.projectType||'';
-  document.getElementById('f-stage').value       = o.stage||'';
-  document.getElementById('f-estimate').value    = o.estimate||'';
-  document.getElementById('f-probability').value = o.probability||'';
-  document.getElementById('f-nextStep').value    = o.nextStep||'';
-  document.getElementById('f-followUpDate').value= o.followUpDate||'';
-  document.getElementById('f-homeCall').value    = o.homeCall||'';
-  document.getElementById('f-homeCallDate').value= o.homeCallDate||'';
-  document.getElementById('f-saleMade').value    = o.saleMade||'';
-  document.getElementById('f-goldComp').value    = o.goldComp||'';
-  document.getElementById('f-notes').value       = o.notes||'';
-  document.getElementById('deleteBtn').style.display='inline-flex';
-  updateAutoFields();
-  document.getElementById('leadModal').classList.add('open');
-}
-// Alias for inline onclick
-const editLead = editLeadAsync;
-
-/* ═══════════════════════════════════════════════════
-   INIT — AUTO-CONNECTS TO SUPABASE ON LOAD
-═══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════
+   INIT — AUTO-CONNECTS ON LOAD
+═══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
+  // Hardcoded credentials — app auto-connects, no login screen needed
   const SB_URL = "https://rsoukgpaqsgsdfvwrceu.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzb3VrZ3BhcXNnc2RmdndyY2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDYzMTIsImV4cCI6MjA4ODU4MjMxMn0.akKmWJfNncLA-Fxq38gDCXvSuIk_L95zdj1p0_ylqAY";
 
   initDropdowns();
-
-  // Hide the connect screen — credentials are hardcoded
   document.getElementById('configScreen').style.display = 'none';
 
   try {
-    const sb = window.supabase.createClient(SB_URL, SB_KEY);
-    const { error } = await sb.from('opportunities').select('id').limit(1);
+    const client = window.supabase.createClient(SB_URL, SB_KEY);
+    const { error } = await client.from('opportunities').select('id').limit(1);
     if (error) throw new Error(error.message);
     DB.initSupabase(SB_URL, SB_KEY);
     await launchApp(true);
   } catch(e) {
-    console.error('Supabase failed:', e);
-    // Show error in UI without destroying the page
-    document.getElementById('configScreen').style.display = 'flex';
-    document.getElementById('cfg-url').value = SB_URL;
-    document.getElementById('cfg-key').value = SB_KEY;
-    showCfgError('Connection error: ' + (e.message || 'unknown') + ' — Check console for details.');
+    // Show a visible error on screen
+    document.body.innerHTML = `
+      <div style="min-height:100vh;background:#0a0a0a;display:flex;align-items:center;justify-content:center;font-family:sans-serif">
+        <div style="background:#1a1a1a;border:1px solid #333;border-radius:16px;padding:40px;max-width:500px;text-align:center">
+          <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+          <h2 style="color:#C4933F;margin-bottom:12px">Connection Error</h2>
+          <p style="color:#aaa;margin-bottom:20px">${e.message}</p>
+          <p style="color:#666;font-size:13px">Make sure STEP1 and STEP2 SQL scripts were run in Supabase SQL Editor.</p>
+          <button onclick="location.reload()" style="margin-top:20px;background:#C4933F;color:#000;border:none;padding:12px 28px;border-radius:8px;cursor:pointer;font-size:15px;font-weight:700">Retry</button>
+        </div>
+      </div>`;
   }
 });
 
