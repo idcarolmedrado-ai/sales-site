@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EA Sales Intelligence — Carolina Medrado</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <!DOCTYPE html>
 <html lang="en">
@@ -2380,7 +2381,6 @@ async function launchApp(fromSupabase) {
   }
 
   initDropdowns();
-  window._mainHTML = document.querySelector('main').innerHTML;
   renderDashboard();
   document.getElementById('f-followUpDate').value = new Date().toISOString().split('T')[0];
   toast(fromSupabase ? '🟢 Connected to Supabase!' : '📋 Running in Demo Mode', fromSupabase ? 'success' : 'info');
@@ -2604,77 +2604,34 @@ async function editLeadAsync(id) {
 const editLead = editLeadAsync;
 
 /* ═══════════════════════════════════════════════════
-   INIT (with Supabase auto-reconnect)
+   INIT — AUTO-CONNECTS TO SUPABASE ON LOAD
 ═══════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async () => {
-  initDropdowns();
-
-  // ── HARDCODED CREDENTIALS ──────────────────────────────────────
-  // Credentials are baked in — no manual entry needed.
-  // To change project, update these two lines.
   const SB_URL = "https://rsoukgpaqsgsdfvwrceu.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzb3VrZ3BhcXNnc2RmdndyY2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDYzMTIsImV4cCI6MjA4ODU4MjMxMn0.akKmWJfNncLA-Fxq38gDCXvSuIk_L95zdj1p0_ylqAY";
-  // ──────────────────────────────────────────────────────────────
 
-  // Hide config screen immediately
-  const cfgScreen = document.getElementById('configScreen');
-  cfgScreen.style.display = 'none';
+  initDropdowns();
 
-  // Show a loading state in the main area
-  document.querySelector('main').innerHTML =
-    '<div style="display:flex;align-items:center;justify-content:center;height:80vh;color:#C4933F;font-family:sans-serif;font-size:18px">Connecting to database…</div>';
+  // Hide the connect screen — credentials are hardcoded
+  document.getElementById('configScreen').style.display = 'none';
 
-  // Wait for Supabase SDK — poll up to 5 seconds
-  let attempts = 0;
-  while (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
-    await new Promise(r => setTimeout(r, 200));
-    attempts++;
-    if (attempts > 25) {
-      document.querySelector('main').innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:center;height:80vh;color:#e08080;font-family:sans-serif;text-align:center;padding:40px">' +
-        '<div><div style="font-size:24px;margin-bottom:16px">⚠️ SDK Failed to Load</div>' +
-        '<div>Supabase SDK could not be loaded. Check your internet connection and refresh.</div></div></div>';
-      return;
-    }
-  }
-
-  // Attempt connection
   try {
     const sb = window.supabase.createClient(SB_URL, SB_KEY);
     const { error } = await sb.from('opportunities').select('id').limit(1);
     if (error) throw new Error(error.message);
-
     DB.initSupabase(SB_URL, SB_KEY);
-    // Restore main HTML (we replaced it with loading state earlier)
-    // launchApp hides configScreen and renders everything
-    document.querySelector('main').innerHTML = window._mainHTML || '';
     await launchApp(true);
   } catch(e) {
-    console.error('Auto-connect failed:', e);
-    // Fall back: show config screen with error
-    cfgScreen.style.display = 'flex';
-    document.querySelector('main').innerHTML = '';
+    console.error('Supabase failed:', e);
+    // Show error in UI without destroying the page
+    document.getElementById('configScreen').style.display = 'flex';
     document.getElementById('cfg-url').value = SB_URL;
     document.getElementById('cfg-key').value = SB_KEY;
-    showCfgError('Auto-connect failed: ' + (e.message || 'Unknown error') + '. Click Connect to retry.');
+    showCfgError('Connection error: ' + (e.message || 'unknown') + ' — Check console for details.');
   }
 });
 
 </script>
 
-<!-- Supabase SDK — loaded last to guarantee availability -->
-<script>
-(function() {
-  // Try jsdelivr first, fallback to unpkg
-  var s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-  s.onerror = function() {
-    var s2 = document.createElement('script');
-    s2.src = 'https://unpkg.com/@supabase/supabase-js@2';
-    document.head.appendChild(s2);
-  };
-  document.head.appendChild(s);
-})();
-</script>
 
 </html>
