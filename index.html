@@ -2380,6 +2380,7 @@ async function launchApp(fromSupabase) {
   }
 
   initDropdowns();
+  window._mainHTML = document.querySelector('main').innerHTML;
   renderDashboard();
   document.getElementById('f-followUpDate').value = new Date().toISOString().split('T')[0];
   toast(fromSupabase ? '🟢 Connected to Supabase!' : '📋 Running in Demo Mode', fromSupabase ? 'success' : 'info');
@@ -2608,30 +2609,55 @@ const editLead = editLeadAsync;
 document.addEventListener('DOMContentLoaded', async () => {
   initDropdowns();
 
-  // Check if we have saved Supabase credentials
-  const savedUrl = localStorage.getItem('ea_sb_url');
-  const savedKey = localStorage.getItem('ea_sb_key');
+  // ── HARDCODED CREDENTIALS ──────────────────────────────────────
+  // Credentials are baked in — no manual entry needed.
+  // To change project, update these two lines.
+  const SB_URL = "https://rsoukgpaqsgsdfvwrceu.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzb3VrZ3BhcXNnc2RmdndyY2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDYzMTIsImV4cCI6MjA4ODU4MjMxMn0.akKmWJfNncLA-Fxq38gDCXvSuIk_L95zdj1p0_ylqAY";
+  // ──────────────────────────────────────────────────────────────
 
-  if (savedUrl && savedKey) {
-    // Auto-reconnect
-    document.getElementById('cfg-url').value = savedUrl;
-    document.getElementById('cfg-key').value = savedKey;
-    try {
-      const sb = window.supabase.createClient(savedUrl, savedKey);
-      const { error } = await sb.from('opportunities').select('id').limit(1);
-      if (!error) {
-        DB.initSupabase(savedUrl, savedKey);
-        await launchApp(true);
-        return;
-      }
-    } catch {}
-    // If auto-connect failed, show config screen
-    document.getElementById('cfg-error').style.display = 'block';
-    document.getElementById('cfg-error').textContent = 'Previous connection failed. Please reconnect.';
+  // Hide config screen immediately
+  const cfgScreen = document.getElementById('configScreen');
+  cfgScreen.style.display = 'none';
+
+  // Show a loading state in the main area
+  document.querySelector('main').innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:center;height:80vh;color:#C4933F;font-family:sans-serif;font-size:18px">Connecting to database…</div>';
+
+  // Wait for Supabase SDK — poll up to 5 seconds
+  let attempts = 0;
+  while (typeof window.supabase === 'undefined' || typeof window.supabase.createClient !== 'function') {
+    await new Promise(r => setTimeout(r, 200));
+    attempts++;
+    if (attempts > 25) {
+      document.querySelector('main').innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:80vh;color:#e08080;font-family:sans-serif;text-align:center;padding:40px">' +
+        '<div><div style="font-size:24px;margin-bottom:16px">⚠️ SDK Failed to Load</div>' +
+        '<div>Supabase SDK could not be loaded. Check your internet connection and refresh.</div></div></div>';
+      return;
+    }
   }
 
-  // Show config screen
-  // (already visible by default)
+  // Attempt connection
+  try {
+    const sb = window.supabase.createClient(SB_URL, SB_KEY);
+    const { error } = await sb.from('opportunities').select('id').limit(1);
+    if (error) throw new Error(error.message);
+
+    DB.initSupabase(SB_URL, SB_KEY);
+    // Restore main HTML (we replaced it with loading state earlier)
+    // launchApp hides configScreen and renders everything
+    document.querySelector('main').innerHTML = window._mainHTML || '';
+    await launchApp(true);
+  } catch(e) {
+    console.error('Auto-connect failed:', e);
+    // Fall back: show config screen with error
+    cfgScreen.style.display = 'flex';
+    document.querySelector('main').innerHTML = '';
+    document.getElementById('cfg-url').value = SB_URL;
+    document.getElementById('cfg-key').value = SB_KEY;
+    showCfgError('Auto-connect failed: ' + (e.message || 'Unknown error') + '. Click Connect to retry.');
+  }
 });
 
 </script>
