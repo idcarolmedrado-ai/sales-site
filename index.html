@@ -699,7 +699,7 @@ td.muted { color: var(--ink-40); }
 #configScreen {
   position:fixed;inset:0;z-index:9999;
   background:var(--ink);
-  display:flex;align-items:center;justify-content:center;
+  display:none;align-items:center;justify-content:center;
   flex-direction:column;gap:0;
   animation:fadeIn 0.3s ease;
 }
@@ -1229,7 +1229,7 @@ td.muted { color: var(--ink-40); }
 
 
   initDropdowns();
-  document.getElementById('configScreen').style.display = 'none';
+  /* configScreen is hidden by default via CSS */
 
   try {
     const client = window.supabase.createClient(SB_URL, SB_KEY);
