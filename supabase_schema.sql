@@ -3,6 +3,11 @@
 --  Carolina Medrado | Ethan Allen | 2026
 --  Run this entire file in Supabase → SQL Editor → Run
 --  Expected result: "count | 0" with no errors
+--
+--  CHANGELOG:
+--  v3 (2026-03) — Added closeDate (expected close + quarter)
+--  v4 (2026-03) — Added customer tracking, active client, and
+--                 delivery/issue fields for Tasks system
 -- ══════════════════════════════════════════════════════════════
 
 -- Step 1: Clean slate
@@ -40,6 +45,21 @@ create table opportunities (
   estimate        numeric(12,2) default 0,
   follow_up_date  text,
   notes           text,
+
+  -- Close / quarter tracking (v3)
+  "closeDate"     text,
+
+  -- Active client tracking (v4)
+  "customerNumber" text,        -- e.g. EA-2026-0001, auto-assigned on sale
+  "saleDate"       text,        -- date sale was confirmed
+  "activePhase"    text,        -- e.g. "Design Review", "Ordering"
+  "deliveryDate"   text,        -- scheduled delivery date
+  "linkReviewDate" text,        -- survey follow-up date (auto: deliveryDate + 7d)
+
+  -- Issue tracking (v4)
+  "issueFlag"      text,        -- 'Yes' | 'No'
+  "issueType"      text,        -- free-text notes about the issue
+  "issueResult"    text,        -- 'Yes' (resolved) | 'No'
 
   -- Computed (updated by trigger)
   urgency_score   integer       default 0,
@@ -113,3 +133,19 @@ create policy "anon_all" on opportunities
 
 -- Step 5: Verify
 select count(*) from opportunities;
+
+-- ══════════════════════════════════════════════════════════════
+--  EXISTING PROJECT? Run only these ALTERs instead of the full
+--  schema above (safe to run multiple times — IF NOT EXISTS)
+-- ══════════════════════════════════════════════════════════════
+/*
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "closeDate"      text;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "customerNumber" text;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "saleDate"       text;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "activePhase"    text;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "deliveryDate"   text;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "linkReviewDate" text;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "issueFlag"      text;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "issueType"      text;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "issueResult"    text;
+*/
