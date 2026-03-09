@@ -46,6 +46,7 @@ nav {
   background: transparent; color: var(--ink-20);
   font-family: var(--font-body); font-size: 13px; font-weight: 500;
   cursor: pointer; transition: all .15s; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
 }
 .nav-tab:hover { background: var(--ink-70); color: #fff; }
 .nav-tab.active { background: var(--gold); color: #000; font-weight: 600; }
@@ -114,7 +115,7 @@ h2.display { font-size: 40px; }
   transition: border-color .15s;
 }
 .kpi-card:hover { border-color: var(--gold); }
-.kpi-icon { font-size: 18px; margin-bottom: 4px; }
+.kpi-icon { width:20px;height:20px;margin-bottom:6px;color:var(--gold);opacity:.8; }
 .kpi-value { font-family: var(--font-display); font-size: 28px; line-height: 1; }
 .kpi-value.gold { color: var(--gold); }
 .kpi-value.red  { color: var(--red); }
@@ -143,6 +144,7 @@ h2.display { font-size: 40px; }
 .insight-card.warn { border-left-color: var(--red); }
 .insight-card.good { border-left-color: var(--green); }
 .insight-icon { font-size: 20px; margin-bottom: 8px; }
+.insight-icon-text { font-family:var(--font-display);font-size:22px;color:var(--gold);margin-bottom:8px;letter-spacing:.05em; }
 .insight-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
 .insight-body { font-size: 12px; color: var(--ink-20); line-height: 1.5; }
 
@@ -393,6 +395,31 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
 .empty-state p { font-size: 14px; }
 
+/* ── YEAR MONTH CARD ── */
+.month-kpi-card {
+  background: var(--ink-80); border: 1px solid var(--ink-70); border-radius: var(--r);
+  padding: 20px; cursor: pointer; transition: border-color .2s, transform .15s;
+  position: relative; overflow: hidden;
+}
+.month-kpi-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+.month-kpi-card.on-track { border-left: 3px solid var(--green); }
+.month-kpi-card.below { border-left: 3px solid var(--ink-60); }
+.month-kpi-card.current-month { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.month-kpi-card .m-name { font-family:var(--font-display);font-size:22px;letter-spacing:.06em;margin-bottom:2px; }
+.month-kpi-card .m-revenue { font-family:var(--font-display);font-size:32px;color:var(--gold);line-height:1; }
+.month-kpi-card .m-goal-bar { height:4px;background:var(--ink-60);border-radius:2px;margin:10px 0 6px;overflow:hidden; }
+.month-kpi-card .m-goal-fill { height:100%;border-radius:2px;transition:width .5s ease; }
+.month-kpi-card .m-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px; }
+.month-kpi-card .m-stat { }
+.month-kpi-card .m-stat-val { font-size:15px;font-weight:600; }
+.month-kpi-card .m-stat-lbl { font-size:10px;color:var(--ink-40);letter-spacing:.08em;text-transform:uppercase;margin-top:1px; }
+.month-kpi-card .m-badge { position:absolute;top:14px;right:14px;font-size:10px;font-weight:700;
+  letter-spacing:.06em;padding:3px 8px;border-radius:20px; }
+.month-kpi-card .m-badge.hit { background:rgba(76,175,125,.2);color:var(--green); }
+.month-kpi-card .m-badge.miss { background:rgba(136,136,136,.1);color:var(--ink-40); }
+.month-kpi-card .m-badge.future { background:rgba(68,114,202,.12);color:#7ba4e8; }
+.month-kpi-card.empty-month { opacity:.45; }
+
 /* ── CONFIG SCREEN (hidden by default) ── */
 #configScreen {
   position: fixed; inset: 0; z-index: 9999; background: var(--ink);
@@ -447,11 +474,30 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     <div><span class="nav-logo-text">Ethan Allen</span><span class="nav-logo-sub">Sales Intelligence</span></div>
   </a>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="navigate('dashboard')" data-page="dashboard">📊 Dashboard</button>
-    <button class="nav-tab" onclick="navigate('pipeline')" data-page="pipeline">🎯 Pipeline</button>
-    <button class="nav-tab" onclick="navigate('priorities')" data-page="priorities">⚡ Priorities</button>
-    <button class="nav-tab" onclick="navigate('mailing')" data-page="mailing">📧 Mailing</button>
-    <button class="nav-tab" onclick="navigate('tests')" data-page="tests">🧪 Tests</button>
+    <button class="nav-tab active" onclick="navigate('dashboard')" data-page="dashboard">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-tab" onclick="navigate('pipeline')" data-page="pipeline">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 2h14M3 6h10M5 10h6M7 14h2"/></svg>
+      Pipeline
+    </button>
+    <button class="nav-tab" onclick="navigate('priorities')" data-page="priorities">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1l2 5h5l-4 3 1.5 5L8 11l-4.5 3L5 9 1 6h5z"/></svg>
+      Priorities
+    </button>
+    <button class="nav-tab" onclick="navigate('year')" data-page="year">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M5 1v4M11 1v4M1 8h14"/></svg>
+      Year
+    </button>
+    <button class="nav-tab" onclick="navigate('mailing')" data-page="mailing">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M1 4l7 5 7-5"/></svg>
+      Mailing
+    </button>
+    <button class="nav-tab" onclick="navigate('tests')" data-page="tests">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="7"/><path d="M5 8l2 2 4-4"/></svg>
+      Tests
+    </button>
   </div>
   <div class="nav-right">
     <span id="connBadge" class="conn-badge demo"><span class="dot"></span>Demo</span>
@@ -483,18 +529,18 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 
   <div class="kpi-grid" id="kpiGrid">
     <!-- 12 KPI cards -->
-    <div class="kpi-card"><span class="kpi-icon">🎯</span><span class="label">Opportunities</span><div class="kpi-value" id="k-opps">0</div><div class="kpi-delta" id="k-opps-d">In pipeline</div></div>
-    <div class="kpi-card"><span class="kpi-icon">💰</span><span class="label">Sales This Period</span><div class="kpi-value gold" id="k-sales">$0</div><div class="kpi-delta" id="k-sales-d">Closed deals</div></div>
-    <div class="kpi-card"><span class="kpi-icon">⚡</span><span class="label">Weighted Pipeline</span><div class="kpi-value" id="k-pipe">$0</div><div class="kpi-delta" id="k-pipe-d">Prob-adjusted</div></div>
-    <div class="kpi-card"><span class="kpi-icon">⚠️</span><span class="label">Overdue Follow-ups</span><div class="kpi-value red" id="k-overdue">0</div><div class="kpi-delta">Need attention today</div></div>
-    <div class="kpi-card"><span class="kpi-icon">📈</span><span class="label">Conversion Rate</span><div class="kpi-value" id="k-conv">0%</div><div class="kpi-delta">Opps → Sales</div></div>
-    <div class="kpi-card"><span class="kpi-icon">🏠</span><span class="label">Home Calls Done</span><div class="kpi-value" id="k-hc">0</div><div class="kpi-delta" id="k-hc-d">Completed visits</div></div>
-    <div class="kpi-card"><span class="kpi-icon">⭐</span><span class="label">Avg Project Value</span><div class="kpi-value gold" id="k-avg">$0</div><div class="kpi-delta">Per closed deal</div></div>
-    <div class="kpi-card"><span class="kpi-icon">🌟</span><span class="label">GoldComp Sales</span><div class="kpi-value" id="k-gc">$0</div><div class="kpi-delta" id="k-gc-d">0% of total</div></div>
-    <div class="kpi-card"><span class="kpi-icon">📊</span><span class="label">Avg Probability</span><div class="kpi-value" id="k-prob">0%</div><div class="kpi-delta">Active pipeline</div></div>
-    <div class="kpi-card"><span class="kpi-icon">🔥</span><span class="label">Hot Leads (≥75%)</span><div class="kpi-value red" id="k-hot">0</div><div class="kpi-delta">High-probability opps</div></div>
-    <div class="kpi-card"><span class="kpi-icon">💼</span><span class="label">Total Est. Pipeline</span><div class="kpi-value" id="k-total-est">$0</div><div class="kpi-delta">Sum of all estimates</div></div>
-    <div class="kpi-card"><span class="kpi-icon">🏆</span><span class="label">Win Rate (YTD)</span><div class="kpi-value green" id="k-winrate">0%</div><div class="kpi-delta">Sales ÷ total opps</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><circle cx="10" cy="10" r="5"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/></svg><span class="label">Opportunities</span><div class="kpi-value" id="k-opps">0</div><div class="kpi-delta" id="k-opps-d">In pipeline</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><path d="M10 5v1.5M10 13.5V15M7.5 12.5c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-2-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2"/></svg><span class="label">Sales This Period</span><div class="kpi-value gold" id="k-sales">$0</div><div class="kpi-delta" id="k-sales-d">Closed deals</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L5 11h7l-4 7 12-10h-8l4-6z"/></svg><span class="label">Weighted Pipeline</span><div class="kpi-value" id="k-pipe">$0</div><div class="kpi-delta" id="k-pipe-d">Prob-adjusted</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2L1 18h18L10 2z"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="label">Overdue Follow-ups</span><div class="kpi-value red" id="k-overdue">0</div><div class="kpi-delta">Need attention today</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 15l5-5 3 3 5-6 3 3"/><path d="M2 18h16"/></svg><span class="label">Conversion Rate</span><div class="kpi-value" id="k-conv">0%</div><div class="kpi-delta">Opps → Sales</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9l8-7 8 7v9H2z"/><path d="M8 18v-7h4v7"/></svg><span class="label">Home Calls Done</span><div class="kpi-value" id="k-hc">0</div><div class="kpi-delta" id="k-hc-d">Completed visits</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l2.2 6.2H18l-4.7 3.5 1.7 6-5-3.5-5 3.5 1.7-6L2 8.2h5.8z"/></svg><span class="label">Avg Project Value</span><div class="kpi-value gold" id="k-avg">$0</div><div class="kpi-delta">Per closed deal</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 1v4M10 15v4M1 10h4M15 10h4M3.4 3.4l2.8 2.8M13.8 13.8l2.8 2.8M16.6 3.4l-2.8 2.8M6.2 13.8L3.4 16.6"/><circle cx="10" cy="10" r="3"/></svg><span class="label">GoldComp Sales</span><div class="kpi-value" id="k-gc">$0</div><div class="kpi-delta" id="k-gc-d">0% of total</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="10" width="3" height="8" rx="1"/><rect x="8.5" y="5" width="3" height="13" rx="1"/><rect x="14" y="2" width="3" height="16" rx="1"/></svg><span class="label">Avg Probability</span><div class="kpi-value" id="k-prob">0%</div><div class="kpi-delta">Active pipeline</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 2c0 3-2 4-2 7a3 3 0 006 0c0-4-4-5-4-5s1 2-1 3c0-3-3-4-1-8 0 0-4 2-4 7a5 5 0 0010 0c0-6-4-7-4-4z"/></svg><span class="label">Hot Leads (≥75%)</span><div class="kpi-value red" id="k-hot">0</div><div class="kpi-delta">High-probability opps</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a3 3 0 016 0v2"/><path d="M2 12h16"/></svg><span class="label">Total Est. Pipeline</span><div class="kpi-value" id="k-total-est">$0</div><div class="kpi-delta">Sum of all estimates</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h8v6a4 4 0 01-8 0V3z"/><path d="M6 6H3a2 2 0 002 2M14 6h3a2 2 0 01-3 2M10 13v4M7 17h6"/></svg><span class="label">Win Rate (YTD)</span><div class="kpi-value green" id="k-winrate">0%</div><div class="kpi-delta">Sales ÷ total opps</div></div>
   </div>
 
   <!-- Insights -->
@@ -598,7 +644,13 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     <h2 class="display">📧 MAILING LIST</h2>
     <p style="font-size:13px;color:var(--ink-40);margin-top:8px">Auto-populated from pipeline. Topics calculated from Stage, Project Type &amp; Probability.</p>
   </div>
-  <div class="filter-row" id="mailFilters"></div>
+  <div style="padding:0 24px;max-width:1320px;margin:0 auto 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div id="mailFilters" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="exportMailingToCSV()" style="flex-shrink:0">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1v9M5 7l3 3 3-3"/><rect x="2" y="11" width="12" height="4" rx="1.5"/></svg>
+      Export CSV for Sheets
+    </button>
+  </div>
   <div class="mailing-grid" id="mailingGrid"></div>
 </div><!-- /mailing -->
 
@@ -615,6 +667,44 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     <div class="test-list" id="testList"></div>
   </div>
 </div><!-- /tests -->
+
+<!-- ══════ YEAR VIEW ══════ -->
+<div class="page" id="page-year">
+  <div class="dash-hero container">
+    <div class="dash-hero-title">
+      <span class="label">Annual Overview</span>
+      <h1 class="display">2026 AT A GLANCE</h1>
+      <p class="dash-hero-date" id="yearSubtitle"></p>
+    </div>
+    <div class="goal-pill" id="ytdPill">
+      <div><div class="goal-pill-label">YTD Revenue</div>
+        <div class="goal-pill-value" id="ytd-revenue">$0</div></div>
+      <div><div class="goal-pill-label" style="margin-bottom:6px">vs YTD Goal</div>
+        <div class="goal-pill-bar"><div class="goal-pill-fill" id="ytd-fill" style="width:0%"></div></div>
+        <div style="font-size:11px;color:var(--gold);margin-top:4px;text-align:right" id="ytd-pct">0%</div></div>
+    </div>
+  </div>
+
+  <!-- YTD Summary KPIs -->
+  <div class="kpi-grid" id="yearKpiGrid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))"></div>
+
+  <!-- Month grid header -->
+  <div class="container" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div class="label">Monthly Breakdown</div>
+      <div style="font-size:12px;color:var(--ink-40);margin-top:3px">Click any month to filter dashboard</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--ink-40)">
+      <div style="width:10px;height:10px;background:var(--gold);border-radius:2px;display:inline-block"></div> On/Exceeded Goal &nbsp;
+      <div style="width:10px;height:10px;background:var(--ink-60);border-radius:2px;display:inline-block"></div> Below Goal
+    </div>
+  </div>
+
+  <!-- 12-month card grid -->
+  <div class="container">
+    <div id="yearMonthGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;padding-bottom:32px"></div>
+  </div>
+</div><!-- /year -->
 
 </main>
 
@@ -763,7 +853,12 @@ function fmtDate(dateStr) {
 }
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function localDateStr(d) {
+  const dt = d || new Date();
+  return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
 }
 
 function toast(msg, type='info') {
@@ -808,8 +903,10 @@ const BL = {
   /* Days overdue */
   getDaysOverdue(opp) {
     if (!opp.followUpDate) return 0;
-    const today = new Date(); today.setHours(0,0,0,0);
-    const fup   = new Date(opp.followUpDate + 'T12:00:00'); fup.setHours(0,0,0,0);
+    // Use noon local time on both sides to avoid DST/UTC edge cases
+    const toLocal = (s) => { const d = new Date(s+'T12:00:00'); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+    const today = toLocal(localDateStr());
+    const fup   = toLocal(opp.followUpDate);
     const diff  = Math.floor((today - fup) / 86400000);
     return diff > 0 ? diff : 0;
   },
@@ -822,7 +919,7 @@ const BL = {
   isDueToday(opp) {
     if (opp.saleMade === 'Yes' || opp.stage === 'Canceled') return false;
     if (!opp.followUpDate) return false;
-    return opp.followUpDate === todayStr() && this.getDaysOverdue(opp) === 0;
+    return opp.followUpDate === todayStr() && this.getDaysOverdue(opp) === 0;  // todayStr() is now TZ-safe
   },
 
   /* Weighted pipeline value */
@@ -836,7 +933,7 @@ const BL = {
     if (!src) return '';
     try {
       const d = new Date(src + 'T12:00:00');
-      return `${LOOKUP.months[d.getMonth()]} ${d.getFullYear()}`;
+      return LOOKUP.months[d.getMonth()] + ' ' + d.getFullYear();
     } catch { return ''; }
   },
 
@@ -918,6 +1015,32 @@ const BL = {
     };
   },
 
+  /* Per-month KPI breakdown for Year view */
+  calcAllMonthsKPIs(opps) {
+    const year = new Date().getFullYear();
+    return LOOKUP.months.map((m, i) => {
+      const key  = m + ' ' + year;
+      const src  = opps.filter(o => this.getMonthAuto(o) === key);
+      const sold = src.filter(o => o.saleMade === 'Yes');
+      const active = src.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+      const totalSales  = sold.reduce((s,o) => s+(Number(o.estimate)||0), 0);
+      const gcSales     = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+      const weightedPipe= active.reduce((s,o)=>s+this.getWeighted(o),0);
+      const goal        = LOOKUP.monthGoals[i];
+      const convRate    = src.length ? (sold.length/src.length)*100 : 0;
+      const overdue     = src.filter(o=>this.isOverdue(o)).length;
+      const homeCalls   = src.filter(o=>o.homeCall==='Yes').length;
+      return {
+        month:m, short:MONTHS_SHORT[i], idx:i, goal,
+        totalSales, gcSales, gcPct: totalSales ? (gcSales/totalSales)*100 : 0,
+        weightedPipe, deals:sold.length, totalOpps:src.length,
+        convRate, overdue, homeCalls,
+        pctToGoal: goal ? Math.min((totalSales/goal)*100, 999) : 0,
+        onTrack: totalSales >= goal,
+      };
+    });
+  },
+
   salesByProjectType(opps, monthFilter=null) {
     const src  = monthFilter ? opps.filter(o=>this.getMonthAuto(o)===monthFilter) : opps;
     const sold = src.filter(o=>o.saleMade==='Yes');
@@ -951,44 +1074,44 @@ const BL = {
     const curGoal = LOOKUP.monthGoals[today.getMonth()];
 
     if (kpis.overdue > 0) {
-      insights.push({ type:'warn', icon:'🚨', title:`${kpis.overdue} Overdue Follow-Up${kpis.overdue>1?'s':''}`,
+      insights.push({ type:'warn', icon:'⚠', title:`${kpis.overdue} Overdue Follow-Up${kpis.overdue>1?'s':''}`,
         body:`Respond today! Every day of delay reduces close probability. Priority: ${opps.filter(o=>this.isOverdue(o)).sort((a,b)=>this.getDaysOverdue(b)-this.getDaysOverdue(a))[0]?.firstName || ''} ${opps.filter(o=>this.isOverdue(o)).sort((a,b)=>this.getDaysOverdue(b)-this.getDaysOverdue(a))[0]?.lastName || ''} is most overdue.` });
     }
     if (kpis.hotCount > 0) {
-      insights.push({ type:'gold', icon:'🔥', title:`${kpis.hotCount} Hot Lead${kpis.hotCount>1?'s':''} Ready to Close`,
+      insights.push({ type:'gold', icon:'↑', title:`${kpis.hotCount} Hot Lead${kpis.hotCount>1?'s':''} Ready to Close`,
         body:`${kpis.hotCount} opportunit${kpis.hotCount>1?'ies':'y'} at ≥75% probability. Focus effort here — highest ROI per hour spent.` });
     }
     const pctToGoal = curGoal ? (kpis.totalSales / curGoal) * 100 : 0;
     if (pctToGoal >= 100) {
-      insights.push({ type:'good', icon:'🏆', title:'Monthly Goal Achieved!',
+      insights.push({ type:'good', icon:'◆', title:'Monthly Goal Achieved!',
         body:`You've hit ${fmt$(kpis.totalSales)} vs goal of ${fmt$(curGoal)}. Push for ${fmt$(kpis.totalSales * 1.1)} to exceed by 10%.` });
     } else if (pctToGoal >= 70) {
       const gap = curGoal - kpis.totalSales;
-      insights.push({ type:'gold', icon:'🎯', title:`${Math.round(pctToGoal)}% to Monthly Goal`,
+      insights.push({ type:'gold', icon:'○', title:`${Math.round(pctToGoal)}% to Monthly Goal`,
         body:`You need ${fmt$(gap)} more to hit your ${fmt$(curGoal)} goal. ${kpis.hotCount} hot leads could close the gap.` });
     } else {
       const gap = curGoal - kpis.totalSales;
-      insights.push({ type:'warn', icon:'📉', title:`Only ${Math.round(pctToGoal)}% of Monthly Goal`,
+      insights.push({ type:'warn', icon:'↓', title:`Only ${Math.round(pctToGoal)}% of Monthly Goal`,
         body:`${fmt$(gap)} remaining to reach ${fmt$(curGoal)}. Schedule home calls for your ${kpis.active} active leads.` });
     }
     if (kpis.avgProb > 0 && kpis.avgProb < 30) {
-      insights.push({ type:'warn', icon:'⚠️', title:'Low Average Probability',
+      insights.push({ type:'warn', icon:'⚠', title:'Low Average Probability',
         body:`Pipeline avg is ${Math.round(kpis.avgProb)}%. Focus on qualifying leads better — schedule more home calls to increase commitment.` });
     }
     if (kpis.weightedPipe > curGoal * 2) {
-      insights.push({ type:'good', icon:'💰', title:'Strong Weighted Pipeline',
+      insights.push({ type:'good', icon:'$', title:'Strong Weighted Pipeline',
         body:`${fmt$(kpis.weightedPipe)} probability-adjusted pipeline — ${Math.round(kpis.weightedPipe/curGoal*100)}% of monthly goal. Convert your HOT leads.` });
     }
     if (kpis.gcPct > 0) {
-      insights.push({ type:kpis.gcPct>=50?'good':'gold', icon:'🌟', title:`GoldComp at ${Math.round(kpis.gcPct)}%`,
+      insights.push({ type:kpis.gcPct>=50?'good':'gold', icon:'★', title:`GoldComp at ${Math.round(kpis.gcPct)}%`,
         body:`${fmt$(kpis.gcSales)} in GoldComp sales. ${kpis.gcPct>=50?'Excellent! Keep pushing premium.':'Aim for 50%+ GoldComp mix to maximize earnings.'}` });
     }
     if (kpis.dueToday > 0) {
-      insights.push({ type:'gold', icon:'📅', title:`${kpis.dueToday} Follow-Up${kpis.dueToday>1?'s':''} Due Today`,
+      insights.push({ type:'gold', icon:'▷', title:`${kpis.dueToday} Follow-Up${kpis.dueToday>1?'s':''} Due Today`,
         body:`Don't let these become overdue. Call before end of day to maintain momentum.` });
     }
     if (insights.length === 0) {
-      insights.push({ type:'good', icon:'✅', title:'Pipeline Looks Healthy!',
+      insights.push({ type:'good', icon:'✓', title:'Pipeline Looks Healthy!',
         body:'No urgent alerts. Add more leads to grow your pipeline and hit your monthly targets.' });
     }
     return insights.slice(0, 6);
@@ -1208,6 +1331,7 @@ async function renderPage(page) {
     case 'dashboard':  await renderDashboard(); break;
     case 'pipeline':   await renderPipeline();  break;
     case 'priorities': await renderPriorities(); break;
+    case 'year':       await renderYear();       break;
     case 'mailing':    await renderMailing();    break;
     case 'tests': break;
   }
@@ -1264,7 +1388,7 @@ async function renderDashboard() {
   const insights = BL.generateInsights(kpis, opps);
   document.getElementById('insightsGrid').innerHTML = insights.map(ins =>
     `<div class="insight-card ${ins.type==='warn'?'warn':ins.type==='good'?'good':''}">
-      <div class="insight-icon">${ins.icon}</div>
+      <div class="insight-icon-text">${ins.icon}</div>
       <div class="insight-title">${esc(ins.title)}</div>
       <div class="insight-body">${esc(ins.body)}</div>
     </div>`).join('');
@@ -1737,11 +1861,11 @@ async function runAllTests() {
 
   // ── 12: getDaysOverdue — future = 0
   test('Days Overdue: future date → 0',
-    () => { const f=new Date(); f.setDate(f.getDate()+5); return BL.getDaysOverdue({followUpDate:f.toISOString().split('T')[0]}) === 0; });
+    () => { const f=new Date(); f.setDate(f.getDate()+5); return BL.getDaysOverdue({followUpDate:localDateStr(f)}) === 0; });
 
   // ── 13: getDaysOverdue — past = correct count
   test('Days Overdue: 3 days past → 3',
-    () => { const p=new Date(); p.setDate(p.getDate()-3); return BL.getDaysOverdue({followUpDate:p.toISOString().split('T')[0]}) === 3; });
+    () => { const p=new Date(); p.setDate(p.getDate()-3); return BL.getDaysOverdue({followUpDate:localDateStr(p)}) === 3; });
 
   // ── 14: isOverdue — false for sold
   test('isOverdue: SOLD → false even if past due',
@@ -1832,6 +1956,95 @@ async function runAllTests() {
 /* ══════════════════════════════════════════════════
    LAUNCH
 ══════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════
+   EXPORT: MAILING → CSV (for Google Sheets + ChatGPT)
+══════════════════════════════════════════════════ */
+async function exportMailingToCSV() {
+  const opps = await DB.getAll();
+  const list = opps.filter(o => o.firstName && o.lastName);
+  const rows = [
+    ['First Name','Last Name','Email','Project Type','Stage','Sale Made','Probability (%)','Email Topic','Campaign Priority','Win Tier','Notes','ChatGPT Prompt'],
+    ...list.map(o => {
+      const topic = BL.getEmailTopic(o);
+      const prio  = BL.getCampaignPriority(o);
+      const wt    = BL.getWinTier(o);
+      const prompt = `You are a luxury interior design sales consultant for Ethan Allen. Write a warm, professional, personalized email to ${o.firstName} ${o.lastName}. Subject: "${topic}". The client is interested in ${o.projectType||'home furnishings'}. Current stage: ${o.stage||'initial contact'}. Probability of sale: ${o.probability}%. Tone: elegant, consultative, not pushy. End with a clear next step. Max 150 words.`;
+      return [o.firstName,o.lastName,o.email||'',o.projectType||'',o.stage||'',o.saleMade||'',o.probability||0,topic,prio.label,wt.label,o.notes||'',prompt];
+    })
+  ];
+  const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'EA_Mailing_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  toast('CSV exported — import into Google Sheets', 'success');
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER: YEAR VIEW
+══════════════════════════════════════════════════ */
+async function renderYear() {
+  const opps = await DB.getAll();
+  const today = new Date();
+  const curMonthIdx = today.getMonth();
+  const monthData = BL.calcAllMonthsKPIs(opps);
+
+  // YTD totals (months up to and including current)
+  const ytdMonths = monthData.slice(0, curMonthIdx + 1);
+  const ytdRevenue = ytdMonths.reduce((s,m) => s+m.totalSales, 0);
+  const ytdGoal    = ytdMonths.reduce((s,m) => s+m.goal, 0);
+  const ytdDeals   = ytdMonths.reduce((s,m) => s+m.deals, 0);
+  const ytdGC      = ytdMonths.reduce((s,m) => s+m.gcSales, 0);
+  const ytdPct     = ytdGoal ? Math.min(Math.round(ytdRevenue/ytdGoal*100), 999) : 0;
+
+  document.getElementById('yearSubtitle').textContent =
+    today.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' — Year to date through ' + LOOKUP.months[curMonthIdx];
+  document.getElementById('ytd-revenue').textContent = fmt$(ytdRevenue);
+  document.getElementById('ytd-fill').style.width = Math.min(ytdPct,100) + '%';
+  document.getElementById('ytd-pct').textContent = ytdPct + '% of YTD goal';
+
+  // YTD summary KPIs
+  const annualGoal = LOOKUP.monthGoals.reduce((s,g)=>s+g,0);
+  document.getElementById('yearKpiGrid').innerHTML = `
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><path d="M10 5v1.5M10 13.5V15M7.5 12.5c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-2-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2"/></svg><span class="label">YTD Revenue</span><div class="kpi-value gold">${fmt$(ytdRevenue)}</div><div class="kpi-delta">vs ${fmt$(ytdGoal)} goal</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a3 3 0 016 0v2"/><path d="M2 12h16"/></svg><span class="label">Total Deals</span><div class="kpi-value">${ytdDeals}</div><div class="kpi-delta">closed YTD</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 1v4M10 15v4M1 10h4M15 10h4M3.4 3.4l2.8 2.8M13.8 13.8l2.8 2.8M16.6 3.4l-2.8 2.8M6.2 13.8L3.4 16.6"/><circle cx="10" cy="10" r="3"/></svg><span class="label">GoldComp YTD</span><div class="kpi-value">${fmt$(ytdGC)}</div><div class="kpi-delta">${ytdRevenue?Math.round(ytdGC/ytdRevenue*100):0}% of revenue</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 15l5-5 3 3 5-6 3 3"/><path d="M2 18h16"/></svg><span class="label">YTD vs Goal</span><div class="kpi-value ${ytdPct>=100?'green':ytdPct>=70?'gold':'red'}">${ytdPct}%</div><div class="kpi-delta">${fmt$(Math.max(ytdGoal-ytdRevenue,0))} remaining</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="10" width="3" height="8" rx="1"/><rect x="8.5" y="5" width="3" height="13" rx="1"/><rect x="14" y="2" width="3" height="16" rx="1"/></svg><span class="label">Annual Goal</span><div class="kpi-value">${fmt$(annualGoal)}</div><div class="kpi-delta">Full year target</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2L1 18h18L10 2z"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="label">Months w/ Goal Hit</span><div class="kpi-value green">${ytdMonths.filter(m=>m.onTrack&&m.deals>0).length}</div><div class="kpi-delta">of ${curMonthIdx+1} months elapsed</div></div>
+  `;
+
+  // 12-month cards
+  document.getElementById('yearMonthGrid').innerHTML = monthData.map((m, i) => {
+    const isFuture  = i > curMonthIdx;
+    const isCurrent = i === curMonthIdx;
+    const isEmpty   = m.deals === 0 && !isCurrent;
+    const fillPct   = Math.min(m.pctToGoal, 100);
+    const fillColor = m.onTrack ? 'var(--green)' : 'var(--gold)';
+    const badgeCls  = isFuture ? 'future' : m.onTrack && m.deals>0 ? 'hit' : 'miss';
+    const badgeTxt  = isFuture ? 'UPCOMING' : m.onTrack && m.deals>0 ? '✓ GOAL HIT' : m.deals>0 ? `${Math.round(m.pctToGoal)}%` : '—';
+    const cardCls   = isCurrent ? 'current-month' : m.onTrack && m.deals>0 ? 'on-track' : 'below';
+
+    return \`<div class="month-kpi-card \${cardCls} \${isEmpty&&!isCurrent?'empty-month':''}"
+        onclick="setMonthFilter('\${m.month} 2026');navigate('dashboard')">
+      <div class="m-badge \${badgeCls}">\${badgeTxt}</div>
+      <div class="m-name">\${m.month.toUpperCase()}</div>
+      <div class="m-revenue">\${m.deals>0||isCurrent?fmt$(m.totalSales):'—'}</div>
+      <div style="font-size:11px;color:var(--ink-40);margin-top:2px">Goal: \${fmt$(m.goal)}</div>
+      <div class="m-goal-bar"><div class="m-goal-fill" style="width:\${fillPct}%;background:\${fillColor}"></div></div>
+      <div class="m-grid">
+        <div class="m-stat"><div class="m-stat-val">\${m.deals}</div><div class="m-stat-lbl">Deals</div></div>
+        <div class="m-stat"><div class="m-stat-val">\${Math.round(m.convRate)}%</div><div class="m-stat-lbl">Conv Rate</div></div>
+        <div class="m-stat"><div class="m-stat-val">\${m.gcSales>0?fmt$(m.gcSales,true):'—'}</div><div class="m-stat-lbl">GoldComp</div></div>
+        <div class="m-stat"><div class="m-stat-val">\${m.weightedPipe>0?fmt$(m.weightedPipe,true):'—'}</div><div class="m-stat-lbl">Wtd Pipeline</div></div>
+        <div class="m-stat"><div class="m-stat-val">\${m.overdue>0?m.overdue:'—'}</div><div class="m-stat-lbl" style="color:\${m.overdue>0?'var(--red)':''}">Overdue</div></div>
+        <div class="m-stat"><div class="m-stat-val">\${m.homeCalls}</div><div class="m-stat-lbl">Home Calls</div></div>
+      </div>
+    </div>\`;
+  }).join('');
+}
+
 async function launchApp(fromSupabase) {
   document.getElementById('configScreen').style.display = 'none';
   initDropdowns();
