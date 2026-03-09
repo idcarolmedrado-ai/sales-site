@@ -662,7 +662,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   <div class="dash-hero container">
     <div class="dash-hero-title">
       <span class="label" data-i18n="dash_subtitle">Sales Intelligence — 2026</span>
-      <h1 class="display">PERFORMANCE<br>DASHBOARD</h1>
+      <h1 class="display" id="dashTitle">PERFORMANCE<br>DASHBOARD</h1>
       <p class="dash-hero-date" id="dashDate"></p>
     </div>
     <div class="goal-pill">
@@ -676,16 +676,13 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 
   <div style="padding:0 0 8px;display:flex;gap:8px;flex-wrap:wrap" class="container">
     <button onclick="printPage('page-dashboard')" class="print-btn" title="Print or Save as PDF">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
-      Print / PDF
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg><span data-i18n="btn_print">Print / PDF</span>
     </button>
     <button onclick="exportToExcel()" class="export-btn" title="Export all data to Excel">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 15l4-8 3 5 2-3 4 6"/><rect x="2" y="2" width="16" height="16" rx="2"/></svg>
-      Export to Excel
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 15l4-8 3 5 2-3 4 6"/><rect x="2" y="2" width="16" height="16" rx="2"/></svg><span data-i18n="btn_excel">Export to Excel</span>
     </button>
     <button onclick="copyForSheets()" class="export-btn" title="Copy data for Google Sheets">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="14" height="14" rx="1"/><path d="M3 8h14M3 13h14M8 3v14"/></svg>
-      Copy for Sheets
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="14" height="14" rx="1"/><path d="M3 8h14M3 13h14M8 3v14"/></svg><span data-i18n="btn_sheets">Copy for Sheets</span>
     </button>
   </div>
   <div class="filter-row" id="monthFilter"></div>
@@ -711,25 +708,25 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 
   <div class="dash-grid container">
     <div class="dash-card">
-      <div class="dash-card-header"><div><div class="dash-card-title">Sales by Project Type</div><div class="dash-card-sub">Revenue from closed deals</div></div></div>
+      <div class="dash-card-header"><div><div class="dash-card-title" data-i18n="card_sales_by_type">Sales by Project Type</div><div class="dash-card-sub" data-i18n="card_sales_by_type_sub">Revenue from closed deals</div></div></div>
       <div id="projectTypeChart"></div>
     </div>
     <div class="dash-card">
-      <div class="dash-card-header"><div><div class="dash-card-title">Pipeline by Stage</div><div class="dash-card-sub">Count &amp; weighted value</div></div></div>
+      <div class="dash-card-header"><div><div class="dash-card-title" data-i18n="card_pipeline_stage">Pipeline by Stage</div><div class="dash-card-sub" data-i18n="card_pipeline_stage_sub">Count &amp; weighted value</div></div></div>
       <div class="stage-list" id="stageChart"></div>
     </div>
   </div>
 
   <div class="dash-card month-chart container">
-    <div class="dash-card-header"><div><div class="dash-card-title">2026 Monthly Revenue vs Goal</div><div class="dash-card-sub">Hover bars for details</div></div></div>
+    <div class="dash-card-header"><div><div class="dash-card-title" data-i18n="card_monthly_rev">2026 Monthly Revenue vs Goal</div><div class="dash-card-sub" data-i18n="card_monthly_sub">Hover bars for details</div></div></div>
     <div class="month-bars" id="monthChart"></div>
   </div>
 
   <div class="container" style="margin-bottom:24px">
     <div class="dash-card">
       <div class="dash-card-header">
-        <div><div class="dash-card-title">🔔 Overdue Follow-ups</div><div class="dash-card-sub">Clients needing immediate attention</div></div>
-        <button class="btn btn-ghost btn-sm" onclick="navigate('priorities')">View All →</button>
+        <div><div class="dash-card-title" data-i18n="card_overdue_title">🔔 Overdue Follow-ups</div><div class="dash-card-sub" data-i18n="card_overdue_sub">Clients needing immediate attention</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('priorities')" data-i18n="btn_view_all">View All →</button>
       </div>
       <div class="alert-list" id="alertList">
         <div class="empty-state"><div class="icon">✅</div><p>No overdue follow-ups</p></div>
@@ -749,8 +746,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     </div>
     <div style="display:flex;gap:8px">
     <button onclick="printPage('page-pipeline')" class="print-btn" title="Print or Save as PDF">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
-      Print / PDF
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg><span data-i18n="btn_print">Print / PDF</span>
     </button>
     <button class="btn btn-primary" onclick="openNewLead()" data-i18n="btn_new_lead">+ New Lead</button>
   </div>
@@ -778,8 +774,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     <h2 class="display" data-i18n="prio_header">⚡ PRIORITIES</h2>
     <p style="font-size:13px;color:var(--ink-40);margin-top:8px" id="prioritiesSubtitle" data-i18n="prio_sub">Clients sorted by urgency score</p>
     <button onclick="printPage('page-priorities')" class="print-btn" style="margin-top:12px" title="Print or Save as PDF">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
-      Print / PDF
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg><span data-i18n="btn_print">Print / PDF</span>
     </button>
   </div>
 
@@ -1135,6 +1130,34 @@ const STRINGS = {
     toast_copied:'Copied to clipboard!',
     toast_excel:'Excel file downloaded!',
     toast_sheets:'Pipeline data copied! Paste into Google Sheets (Ctrl+V)',
+
+    // Dashboard dynamic
+    dash_date_locale: 'en-US',
+    all_months: 'All Months',
+    sold_active: (s,a) => `${s} sold / ${a} active`,
+    closed_deals: (n) => `${n} closed deal${n!==1?'s':''}`,
+    active_opps: (n) => `${n} active opp${n!==1?'s':''}`,
+    pct_of_goal: (p) => `${p}% of goal`,
+    pct_of_sales: (p) => `${p}% of sales`,
+    no_sales_data: 'No sales data yet',
+    no_pipeline_data: 'No pipeline data',
+    no_overdue: 'No overdue follow-ups — great work!',
+    chart_goal: 'Goal',
+    chart_click: 'Click to view details',
+    chart_sale: (n) => `${n} sale${n!==1?'s':''}`,
+    alert_days: 'DAYS',
+    ins_urgent: 'URGENT', ins_great: 'GREAT', ins_note: 'NOTE',
+    card_sales_by_type: 'Sales by Project Type',
+    card_sales_by_type_sub: 'Revenue from closed deals',
+    card_pipeline_stage: 'Pipeline by Stage',
+    card_pipeline_stage_sub: 'Count & weighted value',
+    card_monthly_rev: '2026 Monthly Revenue vs Goal',
+    card_monthly_sub: 'Hover bars for details',
+    card_overdue_title: '🔔 Overdue Follow-ups',
+    card_overdue_sub: 'Clients needing immediate attention',
+    btn_view_all: 'View All →',
+    perf_title: 'PERFORMANCE DASHBOARD',
+    dash_title_display: 'PERFORMANCE<br>DASHBOARD',
     toast_no_email:'No email on file',
   },
 
@@ -1266,6 +1289,34 @@ const STRINGS = {
     toast_copied:'Copiado!',
     toast_excel:'Arquivo Excel baixado!',
     toast_sheets:'Dados copiados! Cole no Google Planilhas (Ctrl+V)',
+
+    // Dashboard dynamic
+    dash_date_locale: 'pt-BR',
+    all_months: 'Todos os Meses',
+    sold_active: (s,a) => `${s} vendida${s!==1?'s':''} / ${a} ativa${a!==1?'s':''}`,
+    closed_deals: (n) => `${n} venda${n!==1?'s':''} fechada${n!==1?'s':''}`,
+    active_opps: (n) => `${n} oportunidade${n!==1?'s':''} ativa${n!==1?'s':''}`,
+    pct_of_goal: (p) => `${p}% da meta`,
+    pct_of_sales: (p) => `${p}% das vendas`,
+    no_sales_data: 'Sem dados de vendas ainda',
+    no_pipeline_data: 'Sem dados de pipeline',
+    no_overdue: 'Nenhum follow-up em atraso — ótimo trabalho!',
+    chart_goal: 'Meta',
+    chart_click: 'Clique para ver detalhes',
+    chart_sale: (n) => `${n} venda${n!==1?'s':''}`,
+    alert_days: 'DIAS',
+    ins_urgent: 'URGENTE', ins_great: 'ÓTIMO', ins_note: 'NOTA',
+    card_sales_by_type: 'Vendas por Tipo de Projeto',
+    card_sales_by_type_sub: 'Receita de vendas fechadas',
+    card_pipeline_stage: 'Pipeline por Etapa',
+    card_pipeline_stage_sub: 'Quantidade e valor ponderado',
+    card_monthly_rev: 'Receita Mensal 2026 vs Meta',
+    card_monthly_sub: 'Passe o mouse sobre as barras',
+    card_overdue_title: '🔔 Follow-ups Atrasados',
+    card_overdue_sub: 'Clientes que precisam de atenção imediata',
+    btn_view_all: 'Ver Todos →',
+    perf_title: 'PAINEL DE DESEMPENHO',
+    dash_title_display: 'PAINEL DE<br>DESEMPENHO',
     toast_no_email:'Sem e-mail cadastrado',
   }
 };
@@ -1291,6 +1342,9 @@ function applyI18n() {
     const val = T(key);
     if (val) el.textContent = val;
   });
+  // Special: H1 dashboard title uses innerHTML (has <br>)
+  const dashTitle = document.getElementById('dashTitle');
+  if (dashTitle) dashTitle.innerHTML = T('dash_title_display') || 'PERFORMANCE<br>DASHBOARD';
   document.querySelectorAll('[data-i18n-ph]').forEach(el => {
     const key = el.getAttribute('data-i18n-ph');
     const val = T(key);
@@ -2244,12 +2298,24 @@ async function renderPage(page) {
 /* ══════════════════════════════════════════════════
    RENDER: DASHBOARD
 ══════════════════════════════════════════════════ */
+function localMonthLabel(monthYearStr) {
+  // "March 2026" -> localized based on lang
+  if (!monthYearStr) return monthYearStr;
+  const months_en = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
+  const months_pt = T('months');
+  const [mname, y] = monthYearStr.split(' ');
+  const idx = months_en.indexOf(mname);
+  if (idx >= 0 && months_pt && months_pt[idx]) return months_pt[idx] + ' ' + y;
+  return monthYearStr;
+}
+
 async function renderDashboard() {
   const opps = await DB.getAll();
   const today = new Date();
 
   document.getElementById('dashDate').textContent =
-    today.toLocaleDateString('en-US', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    today.toLocaleDateString(T('dash_date_locale'), {weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
   const kpis = BL.calcKPIs(opps, state.monthFilter);
 
@@ -2258,28 +2324,28 @@ async function renderDashboard() {
   const pct  = goal ? Math.min(Math.round(kpis.totalSales / goal * 100), 100) : 0;
   document.getElementById('goalValue').textContent = fmt$(goal);
   document.getElementById('goalFill').style.width = pct + '%';
-  document.getElementById('goalPct').textContent = pct + '% of goal';
+  document.getElementById('goalPct').textContent = T('pct_of_goal')(pct);
 
   // Month filter chips
   const months = [...new Set(opps.map(o=>BL.getMonthAuto(o)).filter(Boolean))].sort();
   document.getElementById('monthFilter').innerHTML =
-    `<button class="filter-chip ${!state.monthFilter?'active':''}" onclick="setMonthFilter(null)">All Months</button>` +
-    months.map(m=>`<button class="filter-chip ${state.monthFilter===m?'active':''}" onclick="setMonthFilter('${m}')">${m}</button>`).join('');
+    `<button class="filter-chip ${!state.monthFilter?'active':''}" onclick="setMonthFilter(null)">${T('all_months')}</button>` +
+    months.map(m=>`<button class="filter-chip ${state.monthFilter===m?'active':''}" onclick="setMonthFilter('${m}')">${localMonthLabel(m)}</button>`).join('');
 
   // KPI values
   document.getElementById('k-opps').textContent    = kpis.opps;
-  document.getElementById('k-opps-d').textContent  = `${kpis.sold} sold / ${kpis.active} active`;
+  document.getElementById('k-opps-d').textContent  = T('sold_active')(kpis.sold, kpis.active);
   document.getElementById('k-sales').textContent   = fmt$(kpis.totalSales);
-  document.getElementById('k-sales-d').textContent = `${kpis.sold} closed deal${kpis.sold!==1?'s':''}`;
+  document.getElementById('k-sales-d').textContent = T('closed_deals')(kpis.sold);
   document.getElementById('k-pipe').textContent    = fmt$(kpis.weightedPipe);
-  document.getElementById('k-pipe-d').textContent  = `${kpis.active} active opps`;
+  document.getElementById('k-pipe-d').textContent  = T('active_opps')(kpis.active);
   document.getElementById('k-overdue').textContent = kpis.overdue;
   document.getElementById('k-conv').textContent    = Math.round(kpis.convRate) + '%';
   document.getElementById('k-hc').textContent      = kpis.homeCalls;
-  document.getElementById('k-hc-d').textContent    = 'Completed visits';
+  document.getElementById('k-hc-d').textContent    = T('kpi_hc_d');
   document.getElementById('k-avg').textContent     = fmt$(kpis.avgVal);
   document.getElementById('k-gc').textContent      = fmt$(kpis.gcSales);
-  document.getElementById('k-gc-d').textContent    = Math.round(kpis.gcPct) + '% of sales';
+  document.getElementById('k-gc-d').textContent    = T('pct_of_sales')(Math.round(kpis.gcPct));
   document.getElementById('k-prob').textContent    = Math.round(kpis.avgProb) + '%';
   document.getElementById('k-hot').textContent     = kpis.hotCount;
   document.getElementById('k-total-est').textContent = fmt$(kpis.totalEst);
@@ -2302,7 +2368,7 @@ async function renderDashboard() {
             ${ins.icon}</div>
           <span style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
             color:${ins.type==='warn'?'var(--red)':ins.type==='good'?'var(--green)':'var(--gold)'}">
-            ${ins.type==='warn'?'URGENT':ins.type==='good'?'GREAT':'NOTE'}</span>
+            ${ins.type==='warn'?T('ins_urgent'):ins.type==='good'?T('ins_great'):T('ins_note')}</span>
         </div>
         <div class="insight-title">${esc(ins.title)}</div>
         <div class="insight-body">${esc(ins.body)}</div>
@@ -2320,18 +2386,18 @@ async function renderDashboard() {
         <div class="bar-track"><div class="bar-fill" style="width:${Math.round(x.val/ptMax*100)}%"></div></div>
         <div class="bar-val">${fmt$(x.val)}</div>
       </div>`).join('')
-    : '<div class="text-muted" style="font-size:13px;padding:20px 0">No sales data yet</div>';
+    : `<div class="text-muted" style="font-size:13px;padding:20px 0">${T('no_sales_data')}</div>`;
 
   // Stage chart
   const stages = BL.pipelineByStage(opps).filter(s=>s.count>0);
   document.getElementById('stageChart').innerHTML = stages.length
     ? stages.map(s=>`<div class="stage-row">
         <div class="stage-dot" style="background:${LOOKUP.stageColors[s.stage]||'#888'}"></div>
-        <div class="stage-name">${esc(s.stage)}</div>
+        <div class="stage-name">${stageLabel(s.stage)}</div>
         <div class="stage-count">${s.count}</div>
         <div class="stage-pipe">${s.weighted>0?fmt$(s.weighted):''}</div>
       </div>`).join('')
-    : '<div class="text-muted" style="font-size:13px;padding:20px 0">No pipeline data</div>';
+    : `<div class="text-muted" style="font-size:13px;padding:20px 0">${T('no_pipeline_data')}</div>`;
 
   // Monthly revenue chart
   const mRev  = BL.monthlyRevenue(opps);
@@ -2345,11 +2411,11 @@ async function renderDashboard() {
       title="Click to see ${m.full} details" style="cursor:pointer">
       <div class="month-bar-wrap">
         <div class="month-bar ${isCur?'current':m.revenue>0?'has-sales':''}" style="height:${barH}%">
-          <div class="month-bar-tooltip">${m.short}: ${fmt$(m.revenue)}<br>Goal: ${fmt$(m.goal)}<br>${m.count} sale${m.count!==1?'s':''}<br><em>Click to view details</em></div>
+          <div class="month-bar-tooltip">${T('months_short')[new Date(m.full+' 1').getMonth()]||m.short}: ${fmt$(m.revenue)}<br>${T('chart_goal')}: ${fmt$(m.goal)}<br>${T('chart_sale')(m.count)}<br><em>${T('chart_click')}</em></div>
         </div>
         <div style="position:absolute;left:0;right:0;bottom:${goalH}%;height:1px;background:rgba(255,255,255,.15);pointer-events:none"></div>
       </div>
-      <div class="month-label">${m.short}</div>
+      <div class="month-label">${T('months_short')[new Date(m.full+' 1').getMonth()]||m.short}</div>
       <div class="month-sales">${m.revenue>0?fmt$(m.revenue,true):''}</div>
     </div>`;
   }).join('');
@@ -2358,7 +2424,7 @@ async function renderDashboard() {
   const alertEl = document.getElementById('alertList');
   if (kpis.overdueList.length) {
     alertEl.innerHTML = kpis.overdueList.map(o=>`<div class="alert-row" onclick="editLead('${o.id}')">
-      <div><div class="alert-days">${BL.getDaysOverdue(o)}</div><div class="alert-days-label">DAYS</div></div>
+      <div><div class="alert-days">${BL.getDaysOverdue(o)}</div><div class="alert-days-label">${T('alert_days')}</div></div>
       <div>
         <div class="alert-name">${esc(o.firstName)} ${esc(o.lastName)}</div>
         <div class="alert-detail">${esc(o.projectType||'—')} · ${stageLabel(o.stage)||'—'}</div>
@@ -2366,7 +2432,7 @@ async function renderDashboard() {
       <div class="alert-next">${esc(o.nextStep||'—')} →</div>
     </div>`).join('');
   } else {
-    alertEl.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No overdue follow-ups — great work!</p></div>';
+    alertEl.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>${T('no_overdue')}</p></div>`;
   }
 }
 
@@ -2814,7 +2880,7 @@ async function renderMileage() {
       color:var(--ink-10);border-radius:5px;padding:3px 5px;font-size:12px;
       font-family:var(--font-body)">`;
   const numInp = (id,f,v,w) =>
-    `<input onchange="updateMileage('${id}','${f}',this.value)" value="${esc(String(v||''))}" type="number"
+    `<input oninput="updateMileage('${id}','${f}',this.value);recalcMileRow('${id}')" value="${esc(String(v||''))}" type="number"
       min="0" step="0.1" style="width:${w};background:var(--ink-80);border:1px solid var(--ink-60);
       color:var(--ink-10);border-radius:5px;padding:3px 5px;font-size:12px;text-align:right;
       font-family:var(--font-body)">`;
@@ -2854,14 +2920,12 @@ async function renderMileage() {
       <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopDC2',r.stopDC2||'','40px')}</td>
       <td style="padding:3px 5px;min-width:72px">${numInp(r.id,'totalMiles',r.totalMiles,'64px')}</td>
       <td style="padding:3px 5px;min-width:72px">${numInp(r.id,'commuteDeduct',r.commuteDeduct,'64px')}</td>
-      <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;
-                 color:${net>0?'var(--gold)':'var(--ink-60)'};min-width:72px">
-        ${net>0 ? net.toFixed(1) : '—'}
+      <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;min-width:72px">
+        <span id="net-${r.id}" style="color:${net>0?'var(--gold)':'var(--ink-60)'}">${net>0 ? net.toFixed(1) : '—'}</span>
       </td>
       <td style="padding:3px 5px;min-width:68px">${numInp(r.id,'tollsParking',r.tollsParking,'60px')}</td>
-      <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;
-                 color:${reimb>0?'var(--green)':'var(--ink-60)'};min-width:80px">
-        ${reimb>0 ? '$'+reimb.toFixed(2) : '—'}
+      <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;min-width:80px">
+        <span id="reimb-${r.id}" style="color:${reimb>0?'var(--green)':'var(--ink-60)'}">${reimb>0 ? '$'+reimb.toFixed(2) : '—'}</span>
       </td>
       <td style="padding:3px 5px;min-width:90px">${inp(r.id,'designPartner',r.designPartner||'','82px')}</td>
       <td style="padding:3px 8px;font-size:11px;color:var(--ink-40);min-width:110px;white-space:nowrap">
@@ -3011,11 +3075,11 @@ async function renderMileage() {
               </td>
               <td colspan="2" style="padding:10px 8px"></td>
               <td style="padding:10px 10px 10px 5px;text-align:right;font-weight:700;font-size:14px;color:var(--gold)">
-                ${totalNetMiles.toFixed(1)}
+                <span id="subtotal-net">${totalNetMiles.toFixed(1)}</span>
               </td>
               <td style="padding:10px 8px"></td>
               <td style="padding:10px 10px 10px 5px;text-align:right;font-weight:700;font-size:14px;color:var(--green)">
-                $${totalReimb.toFixed(2)}
+                <span id="subtotal-reimb">$${totalReimb.toFixed(2)}</span>
               </td>
               <td colspan="2"></td>
             </tr>
@@ -3058,6 +3122,50 @@ function updateMileage(id, field, value) {
   if (!rec) return;
   rec[field] = value;
   Store.save('mileage', recs);
+}
+
+function recalcMileRow(id) {
+  const RATE = 0.725;
+  const recs = getMileageRecords();
+  const r    = recs.find(x => x.id === id);
+  if (!r) return;
+  const net   = Math.max((parseFloat(r.totalMiles)||0) - (parseFloat(r.commuteDeduct)||0), 0);
+  const reimb = net > 0 ? net * RATE + (parseFloat(r.tollsParking)||0) : 0;
+
+  const netEl   = document.getElementById('net-'+id);
+  const reimbEl = document.getElementById('reimb-'+id);
+  if (netEl) {
+    netEl.textContent = net > 0 ? net.toFixed(1) : '—';
+    netEl.style.color = net > 0 ? 'var(--gold)' : 'var(--ink-60)';
+  }
+  if (reimbEl) {
+    reimbEl.textContent = reimb > 0 ? '$'+reimb.toFixed(2) : '—';
+    reimbEl.style.color = reimb > 0 ? 'var(--green)' : 'var(--ink-60)';
+  }
+  recalcMileSubtotals();
+}
+
+function recalcMileSubtotals() {
+  const RATE = 0.725;
+  const allRecs  = getMileageRecords();
+  const MS       = window._mileState || {year: new Date().getFullYear(), month: new Date().getMonth()};
+  const curKey   = `${MS.year}-${String(MS.month+1).padStart(2,'0')}`;
+  const monthRecs = allRecs.filter(r => {
+    if (!r.date) return false;
+    const d = new Date(r.date + 'T12:00:00');
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    return k === curKey;
+  });
+  let totalNet = 0, totalReimb = 0;
+  monthRecs.forEach(r => {
+    const net = Math.max((parseFloat(r.totalMiles)||0) - (parseFloat(r.commuteDeduct)||0), 0);
+    totalNet   += net;
+    totalReimb += net > 0 ? net * RATE + (parseFloat(r.tollsParking)||0) : 0;
+  });
+  const sn = document.getElementById('subtotal-net');
+  const sr = document.getElementById('subtotal-reimb');
+  if (sn) sn.textContent = totalNet.toFixed(1);
+  if (sr) sr.textContent = '$'+totalReimb.toFixed(2);
 }
 
 function updateMileageCalc(id, field, value) {
