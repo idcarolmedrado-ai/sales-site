@@ -625,6 +625,11 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M1 4l7 5 7-5"/></svg>
       <span data-i18n="nav_mailing">Mailing</span>
     </button>
+    <button class="nav-tab" onclick="navigate('tasks')" data-page="tasks">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="14" height="14" rx="2"/><path d="M4 5h8M4 8h8M4 11h5"/></svg>
+      <span>Tasks</span>
+      <span id="tasksBadge" style="background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px">0</span>
+    </button>
     <button class="nav-tab" onclick="navigate('post30')" data-page="post30">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="2" width="14" height="12" rx="1.5"/><path d="M5 8h6M5 11h4"/><circle cx="8" cy="5" r="1.5"/></svg>
       <span data-i18n="nav_post30">Post 30</span>
@@ -669,9 +674,17 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <h1 class="display" id="dashTitle">PERFORMANCE<br>DASHBOARD</h1>
       <p class="dash-hero-date" id="dashDate"></p>
     </div>
-    <div class="goal-pill">
-      <div><div class="goal-pill-label" data-i18n="dash_goal">Monthly Goal</div>
-        <div class="goal-pill-value" id="goalValue">$30,000</div></div>
+    <div class="goal-pill" onclick="openGoalEditor()" title="Click to edit goal"
+        style="cursor:pointer;transition:border-color .2s"
+        onmouseover="this.style.borderColor='var(--gold)'"
+        onmouseout="this.style.borderColor=''">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+        <div>
+          <div class="goal-pill-label" data-i18n="dash_goal">Monthly Goal</div>
+          <div class="goal-pill-value" id="goalValue">$30,000</div>
+        </div>
+        <div style="color:var(--gold-dk);font-size:18px;opacity:.7" title="Edit goal">✏️</div>
+      </div>
       <div><div class="goal-pill-label" style="margin-bottom:6px" data-i18n="dash_progress">Progress</div>
         <div class="goal-pill-bar"><div class="goal-pill-fill" id="goalFill" style="width:0%"></div></div>
         <div style="font-size:11px;color:var(--gold);margin-top:4px;text-align:right" id="goalPct">0%</div></div>
@@ -729,11 +742,14 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   <div class="container" style="margin-bottom:24px">
     <div class="dash-card">
       <div class="dash-card-header">
-        <div><div class="dash-card-title" data-i18n="card_overdue_title">🔔 Overdue Follow-ups</div><div class="dash-card-sub" data-i18n="card_overdue_sub">Clients needing immediate attention</div></div>
-        <button class="btn btn-ghost btn-sm" onclick="navigate('priorities')" data-i18n="btn_view_all">View All →</button>
+        <div>
+          <div class="dash-card-title">📋 Tasks</div>
+          <div class="dash-card-sub">All pending follow-ups, post-sale &amp; overdue activities</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('tasks')">View All →</button>
       </div>
-      <div class="alert-list" id="alertList">
-        <div class="empty-state"><div class="icon">✅</div><p>No overdue follow-ups</p></div>
+      <div id="tasksWidget">
+        <div class="empty-state"><div class="icon">✅</div><p>All caught up!</p></div>
       </div>
     </div>
   </div>
@@ -835,6 +851,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 </div><!-- /mailing -->
 
 <!-- ══════ TESTS ══════ -->
+<div class="page" id="page-tasks"></div>
 <div class="page" id="page-post30"></div>
 <div class="page" id="page-post60"></div>
 <div class="page" id="page-sales"></div>
@@ -861,7 +878,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <h1 class="display">2026 AT A GLANCE</h1>
       <p class="dash-hero-date" id="yearSubtitle"></p>
     </div>
-    <div class="goal-pill" id="ytdPill">
+    <div class="goal-pill" id="ytdPill" onclick="openAnnualGoalEditor()" style="cursor:pointer" title="Edit annual goal" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor=''">
       <div><div class="goal-pill-label">YTD Revenue</div>
         <div class="goal-pill-value" id="ytd-revenue">$0</div></div>
       <div><div class="goal-pill-label" style="margin-bottom:6px">vs YTD Goal</div>
@@ -989,6 +1006,49 @@ tbody td { padding: 11px 12px; font-size: 13px; }
         <div style="margin-top:12px">
           <div class="overline" style="margin-bottom:6px">Smart Email Topic</div>
           <div class="mail-topic" id="auto-topic" style="margin:0">Select Stage and Project Type…</div>
+        </div>
+      </div>
+
+      <div class="form-section" id="activeClientSection" style="display:none">
+        <div class="form-section-title">✅ Active Client Info</div>
+        <div class="form-grid">
+          <div class="field">
+            <label>Customer #</label>
+            <input id="f-customerNumber" type="text" readonly placeholder="Auto-assigned on sale"
+              style="background:var(--ink-70);color:var(--gold);font-family:var(--font-display);font-weight:700">
+          </div>
+          <div class="field">
+            <label>Active Phase</label>
+            <input id="f-activePhase" type="text" placeholder="e.g. Design Review, Ordering…">
+          </div>
+          <div class="field">
+            <label>Sale Date</label>
+            <input id="f-saleDate" type="date">
+          </div>
+          <div class="field">
+            <label>Delivery Date</label>
+            <input id="f-deliveryDate" type="date" onchange="onDeliveryDateChange()">
+          </div>
+          <div class="field">
+            <label>Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: +7d)</span></label>
+            <input id="f-linkReviewDate" type="date">
+          </div>
+          <div class="field">
+            <label>Issue Flag</label>
+            <select id="f-issueFlag">
+              <option value="">—</option><option>Yes</option><option>No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Issue Type <span style="font-size:10px;color:var(--ink-40)">(manual notes)</span></label>
+            <input id="f-issueType" type="text" placeholder="Describe issue…">
+          </div>
+          <div class="field">
+            <label>Issue Resolved?</label>
+            <select id="f-issueResult">
+              <option value="">—</option><option>Yes</option><option>No</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -1421,7 +1481,7 @@ function stageLabel(stage) { return T(STAGE_KEYS[stage] || 'stage_new') || stage
 ══════════════════════════════════════════════════ */
 const LOOKUP = {
   stages: ['New Lead','Home Call','Design in Progress','Quote Sent','Follow-up','Pending Decision','Sale Made','Postponed','Canceled'],
-  projectTypes: ['Living Room','Dining','Bedroom','Home Office','Outdoor','Lighting','Rugs & Flooring','Decor','Clearance','Mix'],
+  projectTypes: ['Living Room','Dining','Bedroom','Home Office','Outdoor','Lighting','Rugs & Flooring','Decor','Window Treatment','Drapery','Clearance','Mix'],
   nextSteps: ['Schedule Home Visit','Presentation','Presentation / Quote','Follow-Up Call','Send Proposal','Awaiting Decision','Postpone'],
   probabilities: [0,10,25,50,70,75,85,90,100],
   leadSources: ['Referral','Walk-in','Website','Instagram','Repeat Client','Builder'],
@@ -1848,7 +1908,7 @@ Interior Design Consultant | Ethan Allen`
       const totalSales  = sold.reduce((s,o) => s+(Number(o.estimate)||0), 0);
       const gcSales     = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
       const weightedPipe= active.reduce((s,o)=>s+this.getWeighted(o),0);
-      const goal        = LOOKUP.monthGoals[i];
+      const goal        = getGoalForMonth(i);
       const convRate    = src.length ? (sold.length/src.length)*100 : 0;
       const overdue     = src.filter(o=>this.isOverdue(o)).length;
       const homeCalls   = src.filter(o=>o.homeCall==='Yes').length;
@@ -1895,14 +1955,14 @@ Interior Design Consultant | Ethan Allen`
     return LOOKUP.months.map((m,i) => {
       const key = `${m} ${new Date().getFullYear()}`;
       const sold = opps.filter(o=>o.saleMade==='Yes' && this.getMonthAuto(o)===key);
-      const yr = new Date().getFullYear(); return { month:m, short:MONTHS_SHORT[i], full:`${m} ${yr}`, revenue:sold.reduce((s,o)=>s+(Number(o.estimate)||0),0), goal:LOOKUP.monthGoals[i], count:sold.length };
+      const yr = new Date().getFullYear(); return { month:m, short:MONTHS_SHORT[i], full:`${m} ${yr}`, revenue:sold.reduce((s,o)=>s+(Number(o.estimate)||0),0), goal:getGoalForMonth(i), count:sold.length };
     });
   },
 
   /* Priority-sorted insights — scored by urgency × value */
   generateInsights(kpis, opps) {
     const today    = new Date();
-    const curGoal  = LOOKUP.monthGoals[today.getMonth()];
+    const curGoal  = getGoalForMonth(today.getMonth());
     const pctToGoal = curGoal ? (kpis.totalSales / curGoal) * 100 : 0;
     const gap      = Math.max(curGoal - kpis.totalSales, 0);
     const candidates = [];
@@ -1927,23 +1987,31 @@ Interior Design Consultant | Ethan Allen`
       const worst = overdue[0];
       const days  = this.getDaysOverdue(worst);
       const wt    = this.getWinTier(worst);
-      add('warn','🚨',
-        `${overdue.length} Overdue Follow-Up${overdue.length>1?'s':''} — Revenue Risk`,
-        `Most urgent: ${worst.firstName} ${worst.lastName} (${days}d overdue, ${wt.label} tier, ${worst.stage||''}). `+
-        `Each day of delay drops close probability ~8-12%. Call before noon — morning outreach has 2x response rate. `+
-        `Opener: "Hi ${worst.firstName}, I've been thinking about your ${worst.projectType||'project'} — I have something specific to share."`,
-        5, overdue.length * 3);
+      candidates.push({
+        type:'warn', icon:'🚨', barCls:'p1', isPriority1:true,
+        score: 5*10 + overdue.length*3, urgency:5, value: overdue.length*3,
+        title: overdue.length + ' Overdue Follow-Up' + (overdue.length>1?'s':'') + ' — Revenue Risk',
+        body:  'Most urgent: ' + worst.firstName + ' ' + worst.lastName + ' (' + days + 'd overdue, ' + wt.label + ' tier). Value: ' + fmt$(Number(worst.estimate)||0),
+        details: worst.firstName + ' ' + worst.lastName + ' · Stage: ' + (worst.stage||'Unknown') + ' · Project: ' + (worst.projectType||'—') + ' · Value: ' + fmt$(Number(worst.estimate)||0) + '. Each day of delay reduces close probability 8–12%.',
+        nextStep: 'Call ' + worst.firstName + ' before noon (2× response rate). Opener: "Hi ' + worst.firstName + ', I have been thinking about your ' + (worst.projectType||'project') + ' and have a specific idea for you." Follow up by email within 2 hours if no answer.',
+        upsell: 'Stage ' + (worst.stage||'') + ' suggests comparison shopping. Offer a limited incentive or exclusive new arrival preview for their ' + (worst.projectType||'') + ' project. Complementary add-ons (accent lighting, custom hardware) can increase order value 15–25%.',
+        oppId: worst.id,
+      });
     }
 
     // 2. DUE TODAY
     if (dueToday.length > 0) {
       const top = dueToday.sort((a,b)=>(Number(b.probability)||0)-(Number(a.probability)||0))[0];
-      add('warn','📅',
-        `${dueToday.length} Follow-Up${dueToday.length>1?'s':''} Due Today`,
-        `Top priority: ${top.firstName} ${top.lastName} (${top.stage||''}, ${top.probability||0}% prob). `+
-        `Contacts reached on their scheduled day convert at 3x the rate. Block time before 11 AM. `+
-        `${top.nextStep ? `Your next step: "${top.nextStep}".` : 'Review your notes before calling.'}`,
-        4, dueToday.length * 2);
+      candidates.push({
+        type:'warn', icon:'📅', barCls:'p1',
+        score: 4*10 + dueToday.length*2, urgency:4, value: dueToday.length*2,
+        title: dueToday.length + ' Follow-Up' + (dueToday.length>1?'s':'') + ' Due Today',
+        body:  'Top priority: ' + top.firstName + ' ' + top.lastName + ' (' + (top.stage||'') + ', ' + (top.probability||0) + '% prob). Contacts reached on schedule day convert 3x.',
+        details: dueToday.length + ' follow-up' + (dueToday.length>1?'s':'') + ' due today. Top: ' + top.firstName + ' ' + top.lastName + ', Stage: ' + (top.stage||'Unknown') + ', ' + (top.probability||0) + '% close probability, value: ' + fmt$(Number(top.estimate)||0) + '.',
+        nextStep: 'Start with ' + top.firstName + ' ' + top.lastName + '. Review their file, refresh on their needs. Best time: 10–11am or 2–3pm. Reference something specific from your last conversation.',
+        upsell: 'Reconnecting with ' + top.firstName + '? Mention new arrivals in ' + (top.projectType||'their category') + '. Offer a room visualization — clients who see styled rooms buy 35% more.',
+        oppId: top.id,
+      });
     }
 
     // 3. MEETING PREP — upcoming in next 3 days
@@ -2022,12 +2090,16 @@ Interior Design Consultant | Ethan Allen`
     if (hot.length > 0) {
       const hotPipe = hot.reduce((s,o)=>s+(Number(o.estimate)||0),0);
       const bestHot = [...hot].sort((a,b)=>(Number(b.estimate)||0)-(Number(a.estimate)||0))[0];
-      add('warn','🔥',
-        `${hot.length} HOT Lead${hot.length>1?'s':''} — Close This Week`,
-        `${fmt$(hotPipe)} in high-probability pipeline. Top: ${bestHot.firstName} ${bestHot.lastName} (${bestHot.stage||''}). `+
-        `HOT leads have a close window — delay drops probability 5-10% per week once momentum stalls. `+
-        `Next step with ${bestHot.firstName}: ${bestHot.nextStep || 'schedule a decision meeting this week'}.`,
-        4, Math.round(hotPipe/1000));
+      candidates.push({
+        type:'warn', icon:'🔥', barCls:'p2',
+        score: 4*10 + Math.round(hotPipe/1000), urgency:4, value: Math.round(hotPipe/1000),
+        title: hot.length + ' HOT Lead' + (hot.length>1?'s':'') + ' — Close This Week',
+        body:  fmt$(hotPipe) + ' in high-probability pipeline. Top: ' + bestHot.firstName + ' ' + bestHot.lastName + ' (' + (bestHot.stage||'') + ').',
+        details: fmt$(hotPipe) + ' total at 75%+ probability. Top client: ' + bestHot.firstName + ' ' + bestHot.lastName + ', ' + (bestHot.stage||'Unknown') + ', ' + (bestHot.probability||0) + '% probability, value: ' + fmt$(Number(bestHot.estimate)||0) + '.',
+        nextStep: 'Schedule a closing conversation with ' + bestHot.firstName + '. Present 2 clear options (good/better). Create real urgency: delivery slot, upcoming price change, or limited inventory. Next step: ' + (bestHot.nextStep || 'Schedule decision meeting this week') + '.',
+        upsell: 'Hot leads are most receptive to upgrades. Suggest GoldComp items, premium fabrics, or coordinated accessories. Frame it: "While placing the order, let me show you one piece that would complete the room." Average upsell: +18-22% of order value.',
+        oppId: bestHot.id,
+      });
     }
 
     // 7. GOLDCOMP MIX
@@ -2355,6 +2427,7 @@ async function renderPage(page) {
     case 'priorities': await renderPriorities(); break;
     case 'year':       await renderYear();       break;
     case 'mailing':    await renderMailing();    break;
+    case 'tasks':      await renderTasks();      break;
     case 'post30':     await renderPost30();     break;
     case 'post60':     await renderPost60();     break;
     case 'sales': window._currentPage='sales'; await renderSales(); break;
@@ -2378,6 +2451,147 @@ function localMonthLabel(monthYearStr) {
   return monthYearStr;
 }
 
+/* ── Monthly Goal persistence ── */
+function getGoals() {
+  try {
+    const raw = localStorage.getItem('ea_monthly_goals');
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
+}
+
+function getGoalForMonth(monthIdx) {
+  const saved = getGoals();
+  return saved[monthIdx] !== undefined ? saved[monthIdx] : getGoalForMonth(monthIdx);
+}
+
+function saveGoalForMonth(monthIdx, value) {
+  const goals = getGoals();
+  goals[monthIdx] = Number(value) || 0;
+  localStorage.setItem('ea_monthly_goals', JSON.stringify(goals));
+}
+
+function _insToggle(i) {
+  const exp  = document.getElementById('ins-exp-' + i);
+  const chev = document.getElementById('ins-chev-' + i);
+  if (!exp) return;
+  const open = exp.style.display !== 'none';
+  exp.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function openGoalEditor() {
+  const today    = new Date();
+  const monthIdx = today.getMonth();
+  const current  = getGoalForMonth(monthIdx);
+  const months   = T('months');
+  const monthName = months[monthIdx];
+
+  const modal = document.createElement('div');
+  modal.id = 'goalModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);backdrop-filter:blur(4px)';
+  modal.innerHTML = `
+    <div style="background:var(--ink-90);border:1px solid var(--ink-60);border-radius:var(--r-lg);
+                padding:28px 32px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div>
+          <div style="font-family:var(--font-display);font-size:22px;color:var(--gold-lt)">
+            ${getLang()==='pt'?'Meta do Mês':'Monthly Goal'}
+          </div>
+          <div style="font-size:12px;color:var(--ink-40);margin-top:3px">${monthName} ${today.getFullYear()}</div>
+        </div>
+        <button onclick="document.getElementById('goalModal').remove()"
+          style="background:none;border:none;color:var(--ink-40);font-size:20px;cursor:pointer;line-height:1">✕</button>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <label style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+                      color:var(--ink-40);display:block;margin-bottom:8px">
+          ${getLang()==='pt'?'Meta de Vendas (USD)':'Sales Goal (USD)'}
+        </label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--font-display);font-size:22px;color:var(--ink-40)">$</span>
+          <input id="goalInput" type="number" min="0" step="500" value="${current}"
+            style="flex:1;background:var(--ink-80);border:1px solid var(--gold-dk);color:var(--gold-lt);
+                   border-radius:var(--r);padding:10px 14px;font-family:var(--font-display);font-size:24px;
+                   text-align:right;width:100%"
+            oninput="document.getElementById('goalPreview').textContent=
+              new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Number(this.value)||0)">
+        </div>
+        <div id="goalPreview" style="text-align:right;font-size:13px;color:var(--gold);margin-top:6px;font-weight:600">
+          ${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(current)}
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:var(--r);padding:10px 12px;text-align:center">
+          <div style="font-size:10px;color:var(--ink-40);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">
+            ${getLang()==='pt'?'Vendas Atuais':'Current Sales'}
+          </div>
+          <div id="goalCurrentSales" style="font-family:var(--font-display);font-size:16px;color:var(--green)">…</div>
+        </div>
+        <div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:var(--r);padding:10px 12px;text-align:center">
+          <div style="font-size:10px;color:var(--ink-40);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">
+            ${getLang()==='pt'?'Faltando':'Remaining'}
+          </div>
+          <div id="goalRemaining" style="font-family:var(--font-display);font-size:16px;color:var(--gold)">…</div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;color:var(--ink-40);margin-bottom:16px;line-height:1.5">
+        ${getLang()==='pt'
+          ? '💡 Edite a meta de um m\u00eas sem afetar os outros meses.'
+          : '💡 Editing this month goal only \u2014 other months are unaffected.'}
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('goalModal').remove()"
+          style="flex:1;background:var(--ink-80);border:1px solid var(--ink-60);color:var(--ink-20);
+                 border-radius:var(--r);padding:10px;font-weight:600;cursor:pointer">
+          ${getLang()==='pt'?'Cancelar':'Cancel'}
+        </button>
+        <button onclick="saveGoalEdit()"
+          style="flex:2;background:var(--gold-dk);border:none;color:#000;
+                 border-radius:var(--r);padding:10px;font-weight:700;cursor:pointer;font-size:14px">
+          💾 ${getLang()==='pt'?'Salvar Meta':'Save Goal'}
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  // Populate live sales context
+  DB.getAll().then(opps => {
+    const today = new Date();
+    const mn = T('months')[today.getMonth()];
+    const salesNow = opps
+      .filter(o => o.saleMade === 'Yes' && BL.getMonthAuto(o) === mn + ' ' + today.getFullYear())
+      .reduce((s,o) => s + (Number(o.estimate)||0), 0);
+    const goal = Number(document.getElementById('goalInput')?.value) || current;
+    const rem  = Math.max(goal - salesNow, 0);
+    const sEl = document.getElementById('goalCurrentSales');
+    const rEl = document.getElementById('goalRemaining');
+    if (sEl) sEl.textContent = fmt$(salesNow);
+    if (rEl) rEl.textContent = rem > 0 ? fmt$(rem) : (getLang()==='pt'?'Meta atingida! 🎉':'Goal reached! 🎉');
+    // Update remaining as goal input changes
+    const inp = document.getElementById('goalInput');
+    if (inp) inp.addEventListener('input', () => {
+      const g = Number(inp.value)||0;
+      const r = Math.max(g - salesNow, 0);
+      if (rEl) rEl.textContent = r > 0 ? fmt$(r) : (getLang()==='pt'?'Meta atingida! 🎉':'Goal reached! 🎉');
+    });
+  });
+}
+
+async function saveGoalEdit() {
+  const inp = document.getElementById('goalInput');
+  if (!inp) return;
+  const val = Number(inp.value) || 0;
+  if (val <= 0) { toast(getLang()==='pt'?'Insira um valor válido':'Enter a valid goal amount','error'); return; }
+  saveGoalForMonth(new Date().getMonth(), val);
+  document.getElementById('goalModal')?.remove();
+  toast(getLang()==='pt'?`✅ Meta atualizada: ${fmt$(val)}`:`✅ Goal updated: ${fmt$(val)}`,'success');
+  await renderDashboard();
+}
+
 async function renderDashboard() {
   const opps = await DB.getAll();
   const today = new Date();
@@ -2388,7 +2602,7 @@ async function renderDashboard() {
   const kpis = BL.calcKPIs(opps, state.monthFilter);
 
   // Goal progress
-  const goal = LOOKUP.monthGoals[today.getMonth()];
+  const goal = getGoalForMonth(today.getMonth());
   const pct  = goal ? Math.min(Math.round(kpis.totalSales / goal * 100), 100) : 0;
   document.getElementById('goalValue').textContent = fmt$(goal);
   document.getElementById('goalFill').style.width = pct + '%';
@@ -2424,25 +2638,37 @@ async function renderDashboard() {
 
   // Insights
   const insights = BL.generateInsights(kpis, opps);
-  document.getElementById('insightsGrid').innerHTML = insights.map((ins,i) => {
-    const cls = [
-      ins.type==='warn'?'warn':ins.type==='good'?'good':'',
-      ins.isPriority1 ? 'priority-1' : ''
-    ].join(' ').trim();
-    return `<div class="insight-card ${cls}">
-      <div style="display:flex;flex-direction:column;gap:4px;flex:1">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <div style="font-family:var(--font-display);font-size:18px;color:${ins.type==='warn'?'var(--red)':ins.type==='good'?'var(--green)':'var(--gold)'}">
-            ${ins.icon}</div>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-            color:${ins.type==='warn'?'var(--red)':ins.type==='good'?'var(--green)':'var(--gold)'}">
-            ${ins.type==='warn'?T('ins_urgent'):ins.type==='good'?T('ins_great'):T('ins_note')}</span>
-        </div>
-        <div class="insight-title">${esc(ins.title)}</div>
-        <div class="insight-body">${esc(ins.body)}</div>
-        <div class="insight-priority-bar ${ins.barCls}"></div>
-      </div>
-    </div>`;
+  document.getElementById('insightsGrid').innerHTML = insights.map((ins, i) => {
+    const cls = [ins.type==='warn'?'warn':ins.type==='good'?'good':'', ins.isPriority1?'priority-1':''].join(' ').trim();
+    const ac  = ins.type==='warn' ? 'var(--red)' : ins.type==='good' ? 'var(--green)' : 'var(--gold)';
+    const hasExtra = !!(ins.details || ins.nextStep || ins.upsell);
+    const expandBtn = hasExtra
+      ? '<div id="ins-chev-' + i + '" style="font-size:11px;color:var(--ink-40)">▼</div>'
+      : '';
+    const expandSection = !hasExtra ? '' :
+      '<div id="ins-exp-' + i + '" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--ink-60)">'
+      + (ins.details  ? '<div style="font-size:12px;color:var(--ink-20);line-height:1.6;margin-bottom:10px">' + esc(ins.details)  + '</div>' : '')
+      + (ins.nextStep ? '<div style="font-size:11px;font-weight:700;color:' + ac + ';letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Ideal Next Step</div>'
+                       + '<div style="font-size:12px;color:var(--ink-10);background:var(--ink-70);border:1px solid var(--ink-60);border-radius:7px;padding:8px 12px;margin-bottom:10px">' + esc(ins.nextStep) + '</div>' : '')
+      + (ins.upsell   ? '<div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Growth Ideas</div>'
+                       + '<div style="font-size:12px;color:var(--ink-20);line-height:1.6">' + esc(ins.upsell) + '</div>' : '')
+      + (ins.oppId    ? '<button onclick="event.stopPropagation();editLead(\'' + ins.oppId + '\')" style="margin-top:10px;background:' + ac + ';border:none;color:#000;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">✏️ Open Opportunity</button>' : '')
+      + '</div>';
+    return '<div class="insight-card ' + cls + '" id="ins-card-' + i + '"'
+      + (hasExtra ? ' onclick="_insToggle(' + i + ')" style="cursor:pointer"' : '')
+      + '>'
+      + '<div style="display:flex;flex-direction:column;gap:4px;flex:1">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      + '<div style="display:flex;align-items:center;gap:8px">'
+      + '<div style="font-family:var(--font-display);font-size:18px;color:' + ac + '">' + ins.icon + '</div>'
+      + '<span style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:' + ac + '">'
+      + (ins.type==='warn' ? T('ins_urgent') : ins.type==='good' ? T('ins_great') : T('ins_note')) + '</span>'
+      + '</div>' + expandBtn + '</div>'
+      + '<div class="insight-title">' + esc(ins.title) + '</div>'
+      + '<div class="insight-body">' + esc(ins.body) + '</div>'
+      + '<div class="insight-priority-bar ' + ins.barCls + '"></div>'
+      + expandSection
+      + '</div></div>';
   }).join('');
 
   // Project type chart
@@ -2488,20 +2714,8 @@ async function renderDashboard() {
     </div>`;
   }).join('');
 
-  // Overdue alerts
-  const alertEl = document.getElementById('alertList');
-  if (kpis.overdueList.length) {
-    alertEl.innerHTML = kpis.overdueList.map(o=>`<div class="alert-row" onclick="editLead('${o.id}')">
-      <div><div class="alert-days">${BL.getDaysOverdue(o)}</div><div class="alert-days-label">${T('alert_days')}</div></div>
-      <div>
-        <div class="alert-name">${esc(o.firstName)} ${esc(o.lastName)}</div>
-        <div class="alert-detail">${esc(o.projectType||'—')} · ${stageLabel(o.stage)||'—'}</div>
-      </div>
-      <div class="alert-next">${esc(o.nextStep||'—')} →</div>
-    </div>`).join('');
-  } else {
-    alertEl.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>${T('no_overdue')}</p></div>`;
-  }
+  // Tasks widget (replaces overdue box)
+  await _updateTasksWidget(opps);
 }
 
 function setMonthFilter(m) { state.monthFilter = m; renderDashboard(); }
@@ -3503,6 +3717,18 @@ async function editLead(id) {
   document.getElementById('f-saleMade').value     = o.saleMade    || '';
   document.getElementById('f-goldComp').value     = o.goldComp    || '';
   document.getElementById('f-notes').value        = o.notes       || '';
+  // Active client fields
+  const _sf = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+  _sf('f-customerNumber', o.customerNumber);
+  _sf('f-activePhase',    o.activePhase);
+  _sf('f-saleDate',       o.saleDate || o.closeDate);
+  _sf('f-deliveryDate',   o.deliveryDate);
+  _sf('f-linkReviewDate', o.linkReviewDate);
+  _sf('f-issueFlag',      o.issueFlag);
+  _sf('f-issueType',      o.issueType);
+  _sf('f-issueResult',    o.issueResult);
+  const _acs = document.getElementById('activeClientSection');
+  if (_acs) _acs.style.display = (o.saleMade === 'Yes' || o.stage === 'Sale Made') ? '' : 'none';
   document.getElementById('deleteBtn').style.display = 'inline-flex';
   updateAutoFields();
   document.getElementById('leadModal').classList.add('open');
@@ -3513,7 +3739,19 @@ function closeModal() {
   state.editingId = null;
 }
 
-function onFieldChange() { updateAutoFields(); }
+function onFieldChange() {
+  updateAutoFields();
+  const sm  = document.getElementById('f-saleMade')?.value || '';
+  const st  = document.getElementById('f-stage')?.value   || '';
+  const acs = document.getElementById('activeClientSection');
+  if (acs) acs.style.display = (sm === 'Yes' || st === 'Sale Made') ? '' : 'none';
+}
+
+function onDeliveryDateChange() {
+  const dv = document.getElementById('f-deliveryDate')?.value || '';
+  const lr = document.getElementById('f-linkReviewDate');
+  if (lr && dv && !lr.value) lr.value = offsetDate(dv, 7);
+}
 
 function updateAutoFields() {
   const stage     = document.getElementById('f-stage')?.value || '';
@@ -3568,46 +3806,114 @@ async function saveLead() {
   const lastName  = document.getElementById('f-lastName').value.trim();
   if (!firstName || !lastName) { toast('First and last name are required', 'error'); return; }
 
-  const existingId = document.getElementById('leadId').value;
-  const opp = {
-    id:           existingId || uid(),
-    _isExisting:  !!existingId,
-    firstName,
-    lastName,
-    email:        document.getElementById('f-email').value.trim(),
-    phone:        document.getElementById('f-phone').value.trim(),
-    address:      document.getElementById('f-address').value.trim(),
-    projectType:  document.getElementById('f-projectType').value,
-    leadSource:   document.getElementById('f-leadSource').value,
-    stage:        document.getElementById('f-stage').value,
-    probability:  Number(document.getElementById('f-probability').value) || 0,
-    estimate:     Number(document.getElementById('f-estimate').value) || 0,
-    nextStep:     document.getElementById('f-nextStep').value,
-    followUpDate: document.getElementById('f-followUpDate').value,
-    homeCall:     document.getElementById('f-homeCall').value,
-    homeCallDate: document.getElementById('f-homeCallDate').value,
-    saleMade:     document.getElementById('f-saleMade').value,
-    goldComp:     document.getElementById('f-goldComp').value,
-    notes:        document.getElementById('f-notes').value.trim(),
-    closeDate:    document.getElementById('f-closeDate')?.value || '',
-    createdAt:    existingId ? undefined : todayStr(),
-  };
+  const existingId  = document.getElementById('leadId').value;
+  const stage       = document.getElementById('f-stage').value;
+  const saleMade    = document.getElementById('f-saleMade').value;
+  const isSold      = saleMade === 'Yes' || stage === 'Sale Made';
+  const isCanceled  = stage === 'Canceled';
+  const isPostponed = stage === 'Postponed';
 
-  // Preserve createdAt for edits
+  // ── Postponed: ask Post30 or Post60 ──
+  let postponeTarget = null;
+  if (isPostponed) {
+    postponeTarget = await new Promise(resolve => {
+      const m = document.createElement('div');
+      m.style.cssText = 'position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(4px)';
+      m.innerHTML = '<div style="background:var(--ink-90);border:1px solid var(--gold-dk);border-radius:14px;padding:28px 32px;max-width:360px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,.6)">'
+        + '<div style="font-family:var(--font-display);font-size:22px;color:var(--gold-lt);margin-bottom:8px">Postponed</div>'
+        + '<p style="color:var(--ink-20);font-size:14px;line-height:1.6;margin-bottom:22px">Move <strong>' + esc(firstName) + ' ' + esc(lastName) + '</strong> to a follow-up queue:</p>'
+        + '<div style="display:flex;flex-direction:column;gap:10px">'
+        + '<button id="pt30" style="background:var(--gold-dk);border:none;color:#000;border-radius:10px;padding:13px;font-weight:700;font-size:14px;cursor:pointer">📋 Post 30 &mdash; Follow up in ~30 days</button>'
+        + '<button id="pt60" style="background:var(--ink-70);border:1px solid var(--ink-50);color:var(--ink-10);border-radius:10px;padding:13px;font-weight:700;font-size:14px;cursor:pointer">📋 Post 60 &mdash; Follow up in ~60 days</button>'
+        + '<button id="ptNone" style="background:transparent;border:none;color:var(--ink-40);font-size:13px;padding:8px;cursor:pointer">Keep in pipeline (no queue)</button>'
+        + '</div></div>';
+      document.body.appendChild(m);
+      m.querySelector('#pt30').onclick   = () => { m.remove(); resolve('post30'); };
+      m.querySelector('#pt60').onclick   = () => { m.remove(); resolve('post60'); };
+      m.querySelector('#ptNone').onclick  = () => { m.remove(); resolve(null); };
+    });
+  }
+
+  // ── Preserve existing record ──
+  let existingRec = null;
   if (existingId) {
     const all = await DB.getAll();
-    const existing = all.find(o => o.id === existingId);
-    if (existing) opp.createdAt = existing.createdAt;
+    existingRec = all.find(o => o.id === existingId) || null;
   }
+
+  // ── Auto customer number on sale ──
+  let customerNumber = document.getElementById('f-customerNumber')?.value?.trim() || '';
+  if (isSold && !customerNumber) {
+    customerNumber = existingRec?.customerNumber || (() => {
+      const seq = parseInt(localStorage.getItem('ea_cust_seq') || '0', 10) + 1;
+      localStorage.setItem('ea_cust_seq', String(seq));
+      return 'EA-' + new Date().getFullYear() + '-' + String(seq).padStart(4, '0');
+    })();
+  }
+
+  // ── Auto saleDate / closeDate ──
+  let saleDate  = document.getElementById('f-saleDate')?.value  || '';
+  let closeDate = document.getElementById('f-closeDate')?.value || '';
+  if (isSold && !saleDate)  saleDate  = todayStr();
+  if (isSold && !closeDate) closeDate = saleDate || todayStr();
+
+  // ── Delivery & link review ──
+  const deliveryDate   = document.getElementById('f-deliveryDate')?.value   || '';
+  const linkReviewDate = document.getElementById('f-linkReviewDate')?.value ||
+                         (deliveryDate ? offsetDate(deliveryDate, 7) : '');
+
+  const opp = {
+    id:             existingId || uid(),
+    _isExisting:    !!existingId,
+    firstName,
+    lastName,
+    email:          document.getElementById('f-email').value.trim(),
+    phone:          document.getElementById('f-phone').value.trim(),
+    address:        document.getElementById('f-address').value.trim(),
+    projectType:    document.getElementById('f-projectType').value,
+    leadSource:     document.getElementById('f-leadSource').value,
+    stage,
+    probability:    Number(document.getElementById('f-probability').value) || 0,
+    estimate:       Number(document.getElementById('f-estimate').value)    || 0,
+    nextStep:       document.getElementById('f-nextStep').value,
+    followUpDate:   document.getElementById('f-followUpDate').value,
+    homeCall:       document.getElementById('f-homeCall').value,
+    homeCallDate:   document.getElementById('f-homeCallDate').value,
+    saleMade:       isSold ? 'Yes' : saleMade,
+    goldComp:       document.getElementById('f-goldComp').value,
+    notes:          document.getElementById('f-notes').value.trim(),
+    closeDate,
+    saleDate,
+    customerNumber,
+    activePhase:    document.getElementById('f-activePhase')?.value   || '',
+    deliveryDate,
+    linkReviewDate,
+    issueFlag:      document.getElementById('f-issueFlag')?.value     || '',
+    issueType:      document.getElementById('f-issueType')?.value     || '',
+    issueResult:    document.getElementById('f-issueResult')?.value   || '',
+    createdAt:      existingRec?.createdAt || todayStr(),
+  };
 
   const btn = document.querySelector('#leadForm .btn-primary');
   if (btn) { btn.textContent = '⏳ Saving…'; btn.disabled = true; }
 
   try {
     await DB.save(opp);
+    // Auto-create link review mailing task if new delivery date set
+    if (linkReviewDate && linkReviewDate !== (existingRec?.linkReviewDate || '')) {
+      _scheduleReviewTask(opp, linkReviewDate);
+    }
     closeModal();
-    toast(existingId ? `✅ Updated ${firstName} ${lastName}` : `✅ Added ${firstName} ${lastName}`, 'success');
-    await renderPage(state.page);
+    const msg = existingId ? 'Updated ' + firstName + ' ' + lastName : 'Added ' + firstName + ' ' + lastName;
+    toast('✅ ' + msg, 'success');
+    // ── Route to correct tab ──
+    if (postponeTarget) {
+      navigate(postponeTarget);
+    } else if (isSold || isCanceled) {
+      navigate('sales');
+    } else {
+      await renderPage(state.page);
+    }
   } catch(e) {
     toast('Save failed: ' + e.message, 'error');
   } finally {
@@ -3615,6 +3921,17 @@ async function saveLead() {
   }
 }
 
+function _scheduleReviewTask(opp, date) {
+  try {
+    const key   = 'ea_review_tasks';
+    const tasks = JSON.parse(localStorage.getItem(key) || '[]').filter(t => t.oppId !== opp.id);
+    tasks.push({ id: uid(), oppId: opp.id, firstName: opp.firstName, lastName: opp.lastName,
+      email: opp.email, projectType: opp.projectType, date,
+      subject: 'Survey & Link Review — ' + opp.firstName + ' ' + opp.lastName,
+      note: 'Auto: send survey link + thank-you one week after delivery' });
+    localStorage.setItem(key, JSON.stringify(tasks));
+  } catch(e) { /* silent */ }
+}
 async function deleteLead() {
   if (!state.editingId) return;
   const opps = await DB.getAll();
@@ -4198,6 +4515,97 @@ async function exportMailingToCSV() {
 /* ══════════════════════════════════════════════════
    RENDER: YEAR VIEW
 ══════════════════════════════════════════════════ */
+/* ── Annual Goal ── */
+function getAnnualGoal() {
+  const saved = parseInt(localStorage.getItem('ea_annual_goal') || '0', 10);
+  return saved > 0 ? saved : LOOKUP.monthGoals.reduce((s,g) => s+g, 0);
+}
+
+function openAnnualGoalEditor() {
+  const cur = getAnnualGoal();
+  if (document.getElementById('annualGoalModal')) return;
+  const m = document.createElement('div');
+  m.id = 'annualGoalModal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);backdrop-filter:blur(4px)';
+  document.body.appendChild(m);
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--ink-90);border:1px solid var(--ink-60);border-radius:14px;padding:28px 32px;width:370px;box-shadow:0 20px 60px rgba(0,0,0,.5)';
+  m.appendChild(box);
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:20px';
+  header.innerHTML = '<div><div style="font-family:var(--font-display);font-size:22px;color:var(--gold-lt)">Annual Goal 2026</div>'
+    + '<div style="font-size:12px;color:var(--ink-40);margin-top:3px">Full year revenue target</div></div>';
+  const xBtn = document.createElement('button');
+  xBtn.textContent = '✕';
+  xBtn.style.cssText = 'background:none;border:none;color:var(--ink-40);font-size:20px;cursor:pointer';
+  xBtn.onclick = closeAnnualGoalModal;
+  header.appendChild(xBtn);
+  box.appendChild(header);
+
+  const label = document.createElement('div');
+  label.style.cssText = 'font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-40);margin-bottom:8px';
+  label.textContent = 'Annual Revenue Goal (USD)';
+  box.appendChild(label);
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+  const dollar = document.createElement('span');
+  dollar.style.cssText = 'font-family:var(--font-display);font-size:22px;color:var(--ink-40)';
+  dollar.textContent = '$';
+  const inp = document.createElement('input');
+  inp.id = 'annualGoalInput';
+  inp.type = 'number';
+  inp.min = '0';
+  inp.step = '1000';
+  inp.value = String(cur);
+  inp.style.cssText = 'flex:1;background:var(--ink-80);border:1px solid var(--gold-dk);color:var(--gold-lt);border-radius:8px;padding:10px 14px;font-family:var(--font-display);font-size:24px;text-align:right;outline:none';
+  row.appendChild(dollar);
+  row.appendChild(inp);
+  box.appendChild(row);
+
+  const prev = document.createElement('div');
+  prev.id = 'agPrev';
+  prev.style.cssText = 'text-align:right;font-size:13px;color:var(--gold);margin-bottom:16px;font-weight:600';
+  prev.textContent = fmt$(cur);
+  box.appendChild(prev);
+  inp.addEventListener('input', () => { prev.textContent = fmt$(Number(inp.value) || 0); });
+
+  const hint = document.createElement('div');
+  hint.style.cssText = 'font-size:11px;color:var(--ink-40);margin-bottom:16px;line-height:1.5';
+  hint.textContent = 'Monthly goals stay independent. This sets the Year tab annual target.';
+  box.appendChild(hint);
+
+  const btns = document.createElement('div');
+  btns.style.cssText = 'display:flex;gap:10px';
+  const cancelB = document.createElement('button');
+  cancelB.textContent = 'Cancel';
+  cancelB.style.cssText = 'flex:1;background:var(--ink-80);border:1px solid var(--ink-60);color:var(--ink-20);border-radius:8px;padding:10px;font-weight:600;cursor:pointer';
+  cancelB.onclick = closeAnnualGoalModal;
+  const saveB = document.createElement('button');
+  saveB.textContent = '💾 Save Annual Goal';
+  saveB.style.cssText = 'flex:2;background:var(--gold-dk);border:none;color:#000;border-radius:8px;padding:10px;font-weight:700;cursor:pointer;font-size:14px';
+  saveB.onclick = saveAnnualGoalEdit;
+  btns.appendChild(cancelB);
+  btns.appendChild(saveB);
+  box.appendChild(btns);
+  setTimeout(() => inp.focus(), 50);
+}
+
+function closeAnnualGoalModal() {
+  document.getElementById('annualGoalModal')?.remove();
+}
+
+async function saveAnnualGoalEdit() {
+  const val = Number(document.getElementById('annualGoalInput')?.value) || 0;
+  if (!val) { toast('Enter a valid annual goal', 'error'); return; }
+  localStorage.setItem('ea_annual_goal', String(val));
+  closeAnnualGoalModal();
+  toast('✅ Annual goal updated: ' + fmt$(val), 'success');
+  await renderYear();
+}
+
 async function renderYear() {
   const opps = await DB.getAll();
   const today = new Date();
@@ -4216,16 +4624,16 @@ async function renderYear() {
     today.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' — Year to date through ' + LOOKUP.months[curMonthIdx];
   document.getElementById('ytd-revenue').textContent = fmt$(ytdRevenue);
   document.getElementById('ytd-fill').style.width = Math.min(ytdPct,100) + '%';
-  document.getElementById('ytd-pct').textContent = ytdPct + '% of YTD goal';
+  document.getElementById('ytd-pct').textContent = ytdPct + '% of YTD goal (' + fmt$(ytdRevenue) + ' / ' + fmt$(ytdGoal) + ')';
 
   // YTD summary KPIs
-  const annualGoal = LOOKUP.monthGoals.reduce((s,g)=>s+g,0);
+  const annualGoal = getAnnualGoal();
   document.getElementById('yearKpiGrid').innerHTML = `
     <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><path d="M10 5v1.5M10 13.5V15M7.5 12.5c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-2-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2"/></svg><span class="label">YTD Revenue</span><div class="kpi-value gold">${fmt$(ytdRevenue)}</div><div class="kpi-delta">vs ${fmt$(ytdGoal)} goal</div></div>
     <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a3 3 0 016 0v2"/><path d="M2 12h16"/></svg><span class="label">Total Deals</span><div class="kpi-value">${ytdDeals}</div><div class="kpi-delta">closed YTD</div></div>
     <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 1v4M10 15v4M1 10h4M15 10h4M3.4 3.4l2.8 2.8M13.8 13.8l2.8 2.8M16.6 3.4l-2.8 2.8M6.2 13.8L3.4 16.6"/><circle cx="10" cy="10" r="3"/></svg><span class="label">GoldComp YTD</span><div class="kpi-value">${fmt$(ytdGC)}</div><div class="kpi-delta">${ytdRevenue?Math.round(ytdGC/ytdRevenue*100):0}% of revenue</div></div>
     <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 15l5-5 3 3 5-6 3 3"/><path d="M2 18h16"/></svg><span class="label">YTD vs Goal</span><div class="kpi-value ${ytdPct>=100?'green':ytdPct>=70?'gold':'red'}">${ytdPct}%</div><div class="kpi-delta">${fmt$(Math.max(ytdGoal-ytdRevenue,0))} remaining</div></div>
-    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="10" width="3" height="8" rx="1"/><rect x="8.5" y="5" width="3" height="13" rx="1"/><rect x="14" y="2" width="3" height="16" rx="1"/></svg><span class="label">Annual Goal</span><div class="kpi-value">${fmt$(annualGoal)}</div><div class="kpi-delta">Full year target</div></div>
+    <div class="kpi-card" onclick="openAnnualGoalEditor()" style="cursor:pointer"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="10" width="3" height="8" rx="1"/><rect x="8.5" y="5" width="3" height="13" rx="1"/><rect x="14" y="2" width="3" height="16" rx="1"/></svg><span class="label">Annual Goal ✏️</span><div class="kpi-value">${fmt$(annualGoal)}</div><div class="kpi-delta">Click to edit</div></div>
     <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2L1 18h18L10 2z"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="label">Months w/ Goal Hit</span><div class="kpi-value green">${ytdMonths.filter(m=>m.onTrack&&m.deals>0).length}</div><div class="kpi-delta">of ${curMonthIdx+1} months elapsed</div></div>
   `;
 
@@ -4280,7 +4688,7 @@ async function showMonthDetail(monthLabel) {
   const body  = document.getElementById('mdBody');
   title.textContent = `${mName.toUpperCase()} SALES DETAIL`;
 
-  const goal = LOOKUP.monthGoals[LOOKUP.months.indexOf(mName)] || 0;
+  const goal = getGoalForMonth(LOOKUP.months.indexOf(mName)) || 0;
 
   if (!monthOpps.length) {
     body.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--ink-40)">
@@ -4665,10 +5073,277 @@ function deleteMileEditRow() {
 /* ══════════════════════════════════════════════════
    RENDER: SALES — Closed deals by month + chart
 ══════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════
+   TASK ENGINE
+══════════════════════════════════════════════════ */
+
+function _buildTasks(opps) {
+  const todayS  = localDateStr(new Date());
+  const tasks   = [];
+
+  function addTask(t) { tasks.push(t); }
+
+  // ── Active pipeline: overdue & due today ──
+  opps.forEach(o => {
+    if (o.saleMade === 'Yes' || o.stage === 'Canceled') return;
+    const days = BL.getDaysOverdue(o);
+    const due  = BL.isDueToday(o);
+    if (days > 0 || due) {
+      addTask({
+        id: o.id + '_fu', oppId: o.id,
+        type: days > 0 ? 'overdue' : 'today',
+        priority: days > 0 ? 30 + days : 20,
+        icon: days > 0 ? '⚠️' : '📅',
+        label: days > 0 ? days + 'd overdue' : 'Due today',
+        labelColor: days > 0 ? 'var(--red)' : 'var(--gold)',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        customerNumber: o.customerNumber || '',
+        saleDate: o.saleDate || o.closeDate || '',
+        projectType: o.projectType || '—',
+        estimate: Number(o.estimate) || 0,
+        goldComp: o.goldComp || '',
+        stage: o.stage || '',
+        activePhase: o.activePhase || '',
+        deliveryDate: o.deliveryDate || '',
+        delivery2Day: false,
+        linkReviewDate: o.linkReviewDate || '',
+        dueDate: o.followUpDate || '',
+        activity: o.nextStep || ('Follow-up: ' + (o.stage || 'Contact client')),
+        issueFlag: '', issueType: '', issueResult: '',
+        source: 'pipeline',
+      });
+    }
+    if (o.stage === 'Postponed') {
+      addTask({
+        id: o.id + '_pp', oppId: o.id,
+        type: 'postponed', priority: 15,
+        icon: '⏸️', label: 'Postponed', labelColor: 'var(--ink-40)',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        customerNumber: o.customerNumber || '',
+        saleDate: o.saleDate || o.closeDate || '',
+        projectType: o.projectType || '—',
+        estimate: Number(o.estimate) || 0,
+        goldComp: o.goldComp || '',
+        stage: 'Postponed', activePhase: '',
+        deliveryDate: '', delivery2Day: false, linkReviewDate: '',
+        dueDate: o.followUpDate || '',
+        activity: 'Postponed — queued for post-30/60 follow-up',
+        issueFlag: '', issueType: '', issueResult: '',
+        source: 'pipeline',
+      });
+    }
+  });
+
+  // ── Sold clients: delivery & link review flags ──
+  opps.filter(o => o.saleMade === 'Yes').forEach(o => {
+    const dv = o.deliveryDate || '';
+    if (dv) {
+      const daysTo = daysDiff(todayS, dv);
+      if (daysTo >= -14 && daysTo <= 2) {
+        const is2 = daysTo >= 0 && daysTo <= 2;
+        const isToday = daysTo === 0;
+        addTask({
+          id: o.id + '_dv', oppId: o.id,
+          type: is2 ? (isToday ? 'today' : 'upcoming') : 'overdue',
+          priority: is2 ? (isToday ? 40 : 35) : 25,
+          icon: '🚚',
+          label: isToday ? 'Delivery TODAY' : (daysTo > 0 ? 'Delivery in ' + daysTo + 'd' : 'Delivery ' + Math.abs(daysTo) + 'd ago'),
+          labelColor: isToday ? 'var(--green)' : (daysTo > 0 ? 'var(--gold)' : 'var(--ink-40)'),
+          firstName: o.firstName || '', lastName: o.lastName || '',
+          customerNumber: o.customerNumber || '',
+          saleDate: o.saleDate || o.closeDate || '',
+          projectType: o.projectType || '—',
+          estimate: Number(o.estimate) || 0,
+          goldComp: o.goldComp || '',
+          stage: 'Active Client', activePhase: o.activePhase || '',
+          deliveryDate: dv, delivery2Day: is2,
+          linkReviewDate: o.linkReviewDate || '',
+          dueDate: dv,
+          activity: isToday ? 'Delivery day — confirm arrival & client satisfaction' : (daysTo > 0 ? 'Prepare for delivery in ' + daysTo + 'd' : 'Post-delivery follow-up needed'),
+          issueFlag: o.issueFlag || '', issueType: o.issueType || '', issueResult: o.issueResult || '',
+          source: 'delivery',
+        });
+      }
+    }
+    const lr = o.linkReviewDate || '';
+    if (lr) {
+      const daysLR = daysDiff(todayS, lr);
+      if (daysLR <= 0) {
+        addTask({
+          id: o.id + '_lr', oppId: o.id,
+          type: daysLR < 0 ? 'overdue' : 'today',
+          priority: daysLR < 0 ? 28 : 22,
+          icon: '⭐',
+          label: daysLR < 0 ? 'Review ' + Math.abs(daysLR) + 'd overdue' : 'Link Review Today',
+          labelColor: 'var(--gold)',
+          firstName: o.firstName || '', lastName: o.lastName || '',
+          customerNumber: o.customerNumber || '',
+          saleDate: o.saleDate || o.closeDate || '',
+          projectType: o.projectType || '—',
+          estimate: Number(o.estimate) || 0,
+          goldComp: o.goldComp || '',
+          stage: 'Link Review', activePhase: o.activePhase || '',
+          deliveryDate: o.deliveryDate || '', delivery2Day: false,
+          linkReviewDate: lr, dueDate: lr,
+          activity: 'Send survey link + thank-you note to client',
+          issueFlag: o.issueFlag || '', issueType: o.issueType || '', issueResult: o.issueResult || '',
+          source: 'review',
+        });
+      }
+    }
+    if (o.issueFlag === 'Yes' && o.issueResult !== 'Yes') {
+      addTask({
+        id: o.id + '_iss', oppId: o.id,
+        type: 'overdue', priority: 50,
+        icon: '🔴', label: 'Open Issue', labelColor: 'var(--red)',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        customerNumber: o.customerNumber || '',
+        saleDate: o.saleDate || o.closeDate || '',
+        projectType: o.projectType || '—',
+        estimate: Number(o.estimate) || 0,
+        goldComp: o.goldComp || '',
+        stage: 'Issue', activePhase: o.activePhase || '',
+        deliveryDate: o.deliveryDate || '', delivery2Day: false,
+        linkReviewDate: o.linkReviewDate || '', dueDate: todayS,
+        activity: 'Resolve issue: ' + (o.issueType || 'Review with client'),
+        issueFlag: 'Yes', issueType: o.issueType || '', issueResult: o.issueResult || '',
+        source: 'issue',
+      });
+    }
+  });
+
+  // ── Post30 overdue ──
+  try {
+    const p30 = getPost30Records();
+    opps.filter(o => o.saleMade === 'Yes').forEach(o => {
+      const rec = p30.find(r => r.oppId === o.id);
+      if (!rec || !rec.deliveryDate) return;
+      const fu = offsetDate(rec.deliveryDate, 30);
+      const d  = daysDiff(todayS, fu);
+      if (d <= 3) {
+        addTask({
+          id: o.id + '_p30', oppId: o.id,
+          type: d < 0 ? 'overdue' : 'today',
+          priority: d < 0 ? 18 : 16,
+          icon: '📋',
+          label: d < 0 ? 'Post-30 ' + Math.abs(d) + 'd overdue' : 'Post-30 Due',
+          labelColor: 'var(--ink-20)',
+          firstName: o.firstName || '', lastName: o.lastName || '',
+          customerNumber: o.customerNumber || '',
+          saleDate: o.saleDate || o.closeDate || '',
+          projectType: o.projectType || '—',
+          estimate: Number(o.estimate) || 0,
+          goldComp: o.goldComp || '',
+          stage: 'Post 30', activePhase: o.activePhase || '',
+          deliveryDate: rec.deliveryDate, delivery2Day: false,
+          linkReviewDate: o.linkReviewDate || '', dueDate: fu,
+          activity: rec.contactReason || '30-day satisfaction check-in',
+          issueFlag: '', issueType: '', issueResult: '',
+          source: 'post30',
+        });
+      }
+    });
+  } catch(e) { /* post30 unavailable */ }
+
+  tasks.sort((a, b) => b.priority !== a.priority ? b.priority - a.priority : (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
+  return tasks;
+}
+
+async function _updateTasksWidget(opps) {
+  const tasks = _buildTasks(opps);
+  const el    = document.getElementById('tasksWidget');
+  if (!el) return;
+  const urgentCnt = tasks.filter(t => t.type === 'overdue' || t.type === 'today').length;
+  const badge = document.getElementById('tasksBadge');
+  if (badge) { badge.textContent = String(urgentCnt); badge.style.display = urgentCnt > 0 ? 'flex' : 'none'; }
+  if (!tasks.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All caught up — no pending tasks</p></div>';
+    return;
+  }
+  el.innerHTML = tasks.slice(0, 8).map(t =>
+    '<div class="alert-row" onclick="editLead(\'' + t.oppId + '\')" style="border-left:3px solid ' + t.labelColor + ';padding-left:10px;cursor:pointer">'
+    + '<div style="font-size:18px;min-width:24px">' + t.icon + '</div>'
+    + '<div style="flex:1;min-width:0">'
+    + '<div style="font-weight:600;font-size:13px;color:var(--ink-10)">' + esc(t.firstName) + ' ' + esc(t.lastName)
+    + (t.customerNumber ? ' <span style="font-size:10px;color:var(--gold)">#' + esc(t.customerNumber) + '</span>' : '') + '</div>'
+    + '<div style="font-size:11px;color:var(--ink-40)">' + esc(t.activity) + '</div>'
+    + '<div style="font-size:11px;color:var(--ink-40)">' + esc(t.projectType) + (t.dueDate ? ' · ' + fmtDate(t.dueDate) : '') + '</div>'
+    + '</div>'
+    + '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:' + t.labelColor + '22;color:' + t.labelColor + '">' + esc(t.label) + '</span>'
+    + '</div>'
+  ).join('');
+}
+
+async function renderTasks() {
+  const opps  = await DB.getAll();
+  const tasks = _buildTasks(opps);
+  const el    = document.getElementById('page-tasks');
+  if (!el) return;
+
+  const cnt = { overdue: 0, today: 0, upcoming: 0, postponed: 0 };
+  tasks.forEach(t => { if (cnt[t.type] !== undefined) cnt[t.type]++; });
+
+  function TH(txt, right) {
+    return '<th style="padding:8px 10px;text-align:' + (right ? 'right' : 'left')
+      + ';font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.08em;text-transform:uppercase;'
+      + 'white-space:nowrap;background:var(--ink-80);border-bottom:2px solid var(--ink-60);position:sticky;top:0">' + txt + '</th>';
+  }
+  function TD(txt, right, extra) {
+    return '<td style="padding:8px 10px;text-align:' + (right ? 'right' : 'left')
+      + ';font-size:12px;vertical-align:middle;' + (extra || '') + '">' + txt + '</td>';
+  }
+
+  const rows = tasks.map(t => {
+    const badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;'
+      + 'background:' + t.labelColor + '22;color:' + t.labelColor + '">' + esc(t.label) + '</span>';
+    const del2badge = t.delivery2Day ? ' <span style="font-size:10px;font-weight:700;color:var(--red)">🚚</span>' : '';
+    return '<tr onclick="editLead(\'' + t.oppId + '\')" style="cursor:pointer;border-bottom:1px solid var(--ink-70);border-left:3px solid ' + t.labelColor + '"'
+      + ' onmouseover="this.style.background=\'rgba(196,147,63,.05)\'" onmouseout="this.style.background=\'\'">'
+      + TD('<div style="font-weight:600;color:var(--ink-10)">' + esc(t.firstName) + ' ' + esc(t.lastName) + '</div>'
+          + '<div style="font-size:10px;color:var(--ink-40)">' + esc(t.projectType) + '</div>')
+      + TD(t.customerNumber ? '<span style="color:var(--gold);font-weight:700">' + esc(t.customerNumber) + '</span>' : '—')
+      + TD(t.saleDate ? fmtDate(t.saleDate) : '—')
+      + TD(t.estimate > 0 ? '<span style="color:var(--green)">' + fmt$(t.estimate) + '</span>' : '—', true)
+      + TD(t.goldComp === 'Yes' ? '<span style="color:var(--gold)">⭐</span>' : '—', false, 'text-align:center')
+      + TD(esc(t.activePhase) || '—')
+      + TD(badge)
+      + TD('<div style="font-size:12px">' + esc(t.activity.slice(0, 60)) + (t.activity.length > 60 ? '…' : '') + '</div>'
+          + (t.dueDate ? '<div style="font-size:10px;color:var(--ink-40);margin-top:2px">' + fmtDate(t.dueDate) + '</div>' : ''))
+      + TD(t.delivery2Day ? '<span style="color:var(--red);font-weight:700">🚚 ' + fmtDate(t.deliveryDate) + '</span>' + del2badge
+                           : (t.deliveryDate ? fmtDate(t.deliveryDate) : '—'))
+      + TD(t.linkReviewDate ? fmtDate(t.linkReviewDate) : '—')
+      + TD(t.issueFlag || '—', false, 'color:' + (t.issueFlag === 'Yes' ? 'var(--red)' : 'var(--ink-40)') + ';text-align:center')
+      + TD(t.issueType ? esc(t.issueType.slice(0, 30)) + (t.issueType.length > 30 ? '…' : '') : '—')
+      + TD(t.issueResult || '—', false, 'color:' + (t.issueResult === 'Yes' ? 'var(--green)' : 'var(--ink-40)') + ';text-align:center')
+      + '</tr>';
+  }).join('');
+
+  el.innerHTML = '<div class="section-header"><div style="padding:0 24px;max-width:1320px;margin:0 auto">'
+    + '<span class="label" style="display:block;margin-bottom:6px">Task Management</span>'
+    + '<h2 class="display">TASKS</h2>'
+    + '<p style="font-size:13px;color:var(--ink-40);margin-top:8px">All open activities — overdue, due today, post-sale &amp; upcoming</p>'
+    + '</div></div>'
+    + '<div class="container" style="margin-bottom:16px"><div style="display:flex;gap:10px;flex-wrap:wrap">'
+    + (cnt.overdue  ? '<span style="background:rgba(231,76,60,.15);color:var(--red);font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(231,76,60,.3)">⚠️ ' + cnt.overdue + ' Overdue</span>' : '')
+    + (cnt.today    ? '<span style="background:rgba(196,147,63,.15);color:var(--gold);font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(196,147,63,.3)">📅 ' + cnt.today + ' Due Today</span>' : '')
+    + (cnt.upcoming ? '<span style="background:rgba(76,175,125,.1);color:var(--green);font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(76,175,125,.2)">📌 ' + cnt.upcoming + ' Upcoming</span>' : '')
+    + (!tasks.length ? '<span style="color:var(--green);font-weight:600">✅ All clear!</span>' : '')
+    + '</div></div>'
+    + '<div class="container" style="margin-bottom:32px;overflow-x:auto">'
+    + (!tasks.length
+        ? '<div class="empty-state"><div class="icon">✅</div><p>No open tasks — great work!</p></div>'
+        : '<table style="width:100%;border-collapse:collapse;min-width:1200px"><thead><tr>'
+          + TH('Client / Project') + TH('Customer #') + TH('Sale Date') + TH('Value', true)
+          + TH('GC') + TH('Phase') + TH('Status') + TH('Activity')
+          + TH('Delivery') + TH('Link Review') + TH('Issue?') + TH('Issue Type') + TH('Resolved?')
+          + '</tr></thead><tbody>' + rows + '</tbody></table>')
+    + '</div>';
+}
+
 async function renderSales() {
   const opps  = await DB.getAll();
   const sold  = opps
-    .filter(o => o.saleMade === 'Yes')
+    .filter(o => o.saleMade === 'Yes' || o.stage === 'Sale Made')
     .sort((a,b) => {
       // Sort by closeDate desc, then followUpDate desc, then createdAt desc
       const da = a.closeDate || a.followUpDate || a.createdAt || '';
@@ -4825,6 +5500,33 @@ async function renderSales() {
     </div>`;
   }).join('');
 
+  const canceled = opps.filter(o => o.stage === 'Canceled');
+  const canceledHTML = !canceled.length ? '' :
+    '<div style="margin-top:24px">'
+    + '<div style="padding:10px 16px;background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.25);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between">'
+    + '<span style="font-family:var(--font-display);font-size:16px;color:var(--red)">Closed Lost</span>'
+    + '<span style="font-size:12px;color:var(--ink-40)">' + canceled.length + ' deal' + (canceled.length!==1?'s':'') + '</span>'
+    + '</div>'
+    + '<div style="border:1px solid rgba(231,76,60,.2);border-top:none;border-radius:0 0 8px 8px;overflow-x:auto">'
+    + '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--ink-80)">'
+    + '<th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);text-transform:uppercase">Client</th>'
+    + '<th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);text-transform:uppercase">Project</th>'
+    + '<th style="padding:7px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--ink-40);text-transform:uppercase">Value</th>'
+    + '<th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);text-transform:uppercase">Source</th>'
+    + '<th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);text-transform:uppercase">Notes</th>'
+    + '<th></th></tr></thead><tbody>'
+    + canceled.map(o => '<tr onclick="editLead(\'' + o.id + '\')" style="cursor:pointer;border-bottom:1px solid var(--ink-70)"'
+        + ' onmouseover="this.style.background=rgba(231,76,60,.05)" onmouseout="this.style.background=">'
+        + '<td style="padding:9px 12px;font-weight:500">' + esc(o.firstName) + ' ' + esc(o.lastName) + '</td>'
+        + '<td style="padding:9px 12px;font-size:12px;color:var(--ink-40)">' + esc(o.projectType||'—') + '</td>'
+        + '<td style="padding:9px 12px;text-align:right;color:var(--red)">' + (o.estimate?fmt$(Number(o.estimate)):'—') + '</td>'
+        + '<td style="padding:9px 12px;font-size:11px;color:var(--ink-40)">' + esc(o.leadSource||'—') + '</td>'
+        + '<td style="padding:9px 12px;font-size:11px;color:var(--ink-40);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc((o.notes||'').slice(0,60)) + '</td>'
+        + '<td style="padding:9px 12px"><button onclick="event.stopPropagation();editLead(\'' + o.id + '\')"'
+        + ' style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">EDIT</button></td>'
+        + '</tr>').join('')
+    + '</tbody></table></div></div>';
+
   const el = document.getElementById('page-sales');
   el.innerHTML = `
     <div class="section-header" style="position:relative">
@@ -4870,6 +5572,7 @@ async function renderSales() {
       ${sold.length === 0
         ? `<div class="empty-state"><div class="icon">📈</div><p>${T('sales_no_data')}</p></div>`
         : sectionsHTML}
+    ${canceledHTML}
     </div>
 
     <!-- Monthly Bar Chart -->
