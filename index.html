@@ -64,6 +64,32 @@ nav {
 /* ── LAYOUT ── */
 main { padding-bottom: 80px; }
 .page { display: none; animation: fadeUp .28s ease; }
+/* ── Post30/Post60/Mileage shared ── */
+.delivery-hero { background: var(--ink-80); border: 1px solid var(--ink-60); border-radius: var(--r-lg); padding: 24px 28px; margin-bottom: 24px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+.delivery-stat { text-align: center; min-width: 80px; }
+.delivery-stat .num { font-family: var(--font-display); font-size: 36px; letter-spacing: .05em; color: var(--gold); }
+.delivery-stat .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-40); margin-top: 2px; }
+.delivery-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.delivery-table th { text-align: left; padding: 10px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-40); border-bottom: 1px solid var(--ink-60); white-space: nowrap; }
+.delivery-table td { padding: 10px 12px; border-bottom: 1px solid var(--ink-70); vertical-align: middle; }
+.delivery-table tr:last-child td { border-bottom: none; }
+.delivery-table tr:hover td { background: var(--ink-80); }
+.delivery-table input, .delivery-table select { background: var(--ink-70); border: 1px solid var(--ink-60); color: white; border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; font-family: var(--font-body); }
+.delivery-table input:focus, .delivery-table select:focus { outline: 1px solid var(--gold); border-color: var(--gold); }
+.status-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.status-overdue  { background: rgba(224,82,82,.15); color: var(--red); }
+.status-today    { background: rgba(196,147,63,.15); color: var(--gold); }
+.status-upcoming { background: rgba(76,175,125,.15); color: var(--green); }
+.status-waiting  { background: rgba(102,102,102,.12); color: var(--ink-20); }
+.status-done     { background: rgba(76,175,125,.1); color: var(--green); }
+/* Mileage */
+.mile-totals { background: var(--ink-70); border-radius: var(--r); padding: 16px 20px; display: flex; gap: 32px; margin-top: 16px; align-items: center; }
+.mile-total-item .val { font-family: var(--font-display); font-size: 28px; color: var(--gold); letter-spacing:.05em; }
+.mile-total-item .key { font-size: 10px; text-transform: uppercase; letter-spacing:.1em; color: var(--ink-40); }
+.mile-add-btn { background: transparent; border: 1px dashed var(--ink-60); color: var(--ink-40); border-radius: var(--r); padding: 10px 16px; font-size: 12px; cursor: pointer; transition: all .2s; }
+.mile-add-btn:hover { border-color: var(--gold); color: var(--gold); }
+.tab-section { background: var(--ink-80); border: 1px solid var(--ink-60); border-radius: var(--r-lg); padding: 20px 24px; margin-bottom: 20px; }
+.tab-section h3 { font-family: var(--font-display); font-size: 18px; letter-spacing: .06em; color: white; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
 .page.active { display: block; }
 .container { max-width: 1320px; margin: 0 auto; padding: 0 24px; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
@@ -550,6 +576,18 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M1 4l7 5 7-5"/></svg>
       Mailing
     </button>
+    <button class="nav-tab" onclick="navigate('post30')" data-page="post30">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="2" width="14" height="12" rx="1.5"/><path d="M5 8h6M5 11h4"/><circle cx="8" cy="5" r="1.5"/></svg>
+      Post 30
+    </button>
+    <button class="nav-tab" onclick="navigate('post60')" data-page="post60">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="2" width="14" height="12" rx="1.5"/><path d="M5 8h6M5 11h4"/><circle cx="8" cy="5" r="1.5" fill="currentColor"/></svg>
+      Post 60
+    </button>
+    <button class="nav-tab" onclick="navigate('mileage')" data-page="mileage">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="11" r="2.5"/><circle cx="12" cy="11" r="2.5"/><path d="M1.5 11H1V7l3-5h7l3 5v4h-.5M6.5 11h3"/><path d="M4 6H3M12 6l1-1"/></svg>
+      Mileage
+    </button>
     <button class="nav-tab" onclick="navigate('tests')" data-page="tests">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="7"/><path d="M5 8l2 2 4-4"/></svg>
       Tests
@@ -710,6 +748,10 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 </div><!-- /mailing -->
 
 <!-- ══════ TESTS ══════ -->
+<div class="page" id="page-post30"></div>
+<div class="page" id="page-post60"></div>
+<div class="page" id="page-mileage"></div>
+
 <div class="page" id="page-tests">
   <div class="test-container">
     <div class="test-hero">
@@ -764,6 +806,23 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 </main>
 
 <!-- ══════ MODAL: ADD / EDIT LEAD ══════ -->
+
+<!-- ═══════════════════════════════════════════════════════
+     MONTH DETAIL MODAL
+════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="monthDetailModal" onclick="if(event.target===this)closeMonthDetail()">
+  <div class="modal-panel" style="max-width:920px">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div class="modal-title" id="mdTitle">MONTH DETAIL</div>
+      <button onclick="closeMonthDetail()" style="background:var(--ink-70);border:1px solid var(--ink-60);
+        color:var(--ink-20);border-radius:8px;padding:6px 14px;cursor:pointer;
+        font-family:var(--font-body);font-size:13px">✕ Close</button>
+    </div>
+    <div id="mdBody"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="leadModal" onclick="if(event.target===this)closeModal()">
   <div class="modal-panel">
     <div class="modal-handle"></div>
@@ -949,20 +1008,19 @@ const BL = {
   /* Urgency Score — Excel: 3pts/day overdue + 2pts/prob% + 1pt/$1k estimate */
   getUrgencyScore(opp) {
     if (opp.saleMade === 'Yes' || opp.stage === 'Canceled') return 0;
-    const prob = Number(opp.probability)||0;
-    const est  = Number(opp.estimate)||0;
+    const prob     = Math.min(Number(opp.probability) || 0, 100);
+    const est      = Number(opp.estimate) || 0;
     const daysOver = this.getDaysOverdue(opp);
-    return (daysOver * 3) + (prob * 2) + Math.floor(est / 1000);
+    const raw      = (daysOver * 3) + (prob * 2) + Math.floor(est / 1000);
+    return Math.min(raw, 100); // capped at 100
   },
 
   /* Days overdue */
   getDaysOverdue(opp) {
     if (!opp.followUpDate) return 0;
-    // Use noon local time on both sides to avoid DST/UTC edge cases
-    const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); };
-    const today = parse(localDateStr(new Date()));
-    const fup   = parse(opp.followUpDate);
-    const diff  = Math.floor((today - fup) / 86400000);
+    // Date.UTC avoids DST — treats YYYY-MM-DD as exact calendar days
+    const toUTC = s => { const [y,m,d] = s.split('-').map(Number); return Date.UTC(y, m-1, d); };
+    const diff  = Math.floor((toUTC(localDateStr(new Date())) - toUTC(opp.followUpDate)) / 86400000);
     return diff > 0 ? diff : 0;
   },
 
@@ -979,7 +1037,8 @@ const BL = {
 
   /* Weighted pipeline value */
   getWeighted(opp) {
-    return ((Number(opp.probability)||0) / 100) * (Number(opp.estimate)||0);
+    if (opp.saleMade === 'Yes' || opp.stage === 'Canceled') return 0;
+    return Math.floor(((Number(opp.probability)||0) / 100) * (Number(opp.estimate)||0));
   },
 
   /* Month auto — from home_call_date or follow_up_date */
@@ -1003,45 +1062,41 @@ const BL = {
      SPIN Selling · Mirroring · Neuromarketing · FOMO
   ════════════════════════════════════════════════════ */
   generatePersuasionEmail(opp) {
-    const fn   = opp.firstName || 'there';
-    const pt   = opp.projectType || 'home';
-    const prob = Number(opp.probability) || 0;
-    const est  = Number(opp.estimate)    || 0;
-    const notes = opp.notes || '';
-    const today = new Date();
-    const month = LOOKUP.months[today.getMonth()];
-    const season = ['Winter','Winter','Spring','Spring','Spring','Summer','Summer','Summer','Fall','Fall','Fall','Winter'][today.getMonth()];
+    const fn     = opp.firstName || 'there';
+    const pt     = opp.projectType || 'your space';
+    const ptLow  = pt.toLowerCase();
+    const notes  = (opp.notes || '').trim();
+    const season = ['Winter','Winter','Spring','Spring','Spring','Summer','Summer','Summer','Fall','Fall','Fall','Winter'][new Date().getMonth()];
 
-    // Scarcity anchors (neuromarketing — specificity builds credibility)
-    const slots     = [2,3][Math.floor(Math.random()*2)];
-    const days      = [3,5,7][Math.floor(Math.random()*3)];
-    const anchorPct = Math.min(Math.round(est * 0.12), 4800);  // GoldComp hook
-
-    // Social proof snippets
     const socialProof = {
-      'Living Room': 'three families in your area recently transformed their living spaces',
-      'Dining':      'several clients this season upgraded their dining rooms before the holidays',
-      'Bedroom':     'our most popular bedroom collections are moving quickly this quarter',
-      'Home Office': 'demand for our home office collections has doubled this year',
+      'Living Room': 'many families in the area have recently transformed their living spaces',
+      'Dining':      'our dining room collections are among our most requested this season',
+      'Bedroom':     'our bedroom collections are moving quickly right now',
+      'Home Office': 'demand for our home office collections has grown significantly',
       'Outdoor':     'our outdoor collections typically sell out before peak season',
-      default:       'our design consultants are fully booked most weeks',
     };
-    const proof = socialProof[pt] || socialProof.default;
+    const proof = socialProof[pt] || 'our design consultants are fully booked most weeks';
 
-    // Stage-specific frameworks
+    // Strip values/dates from notes snippet
+    const safeNote = notes
+      .replace(/\$[\d,\.]+/g, '[ ]')
+      .replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/g, '[ ]')
+      .replace(/\d{4}-\d{2}-\d{2}/g, '[ ]')
+      .slice(0, 80) + (notes.length > 80 ? '\u2026' : '');
+
     if (opp.saleMade === 'Yes') {
       return {
         subject: `Your ${pt} Journey Begins — Welcome to the Ethan Allen Family`,
-        techniques: ['Corporate Visions: Why Pay confirmed','Neuromarketing: Ownership language','FOMO: Delivery timeline','Positive Selling: Future pacing'],
+        techniques: ['Corporate Visions: Why Pay confirmed','Neuromarketing: Ownership language','Positive Selling: Future pacing'],
         body: `Dear ${fn},
 
-What a wonderful decision you've made. Your new ${pt.toLowerCase()} isn't just furniture — it's the foundation of how your home will feel, function, and tell your story for years to come.
+What a wonderful decision you've made. Your new ${ptLow} isn't just furniture — it's the foundation of how your home will feel, function, and tell your story for years to come.
 
-Here's what happens next: our production team has received your order, and your pieces are being crafted with the same attention to detail that has made Ethan Allen a trusted name in American homes for over 90 years.
+Here's what happens next: our production team has received your order, and your pieces are being crafted with the same care and attention that has made Ethan Allen a trusted name in American homes for over 90 years.
 
-You'll receive a delivery confirmation within the next few days. In the meantime, I'd love to share a few styling ideas for your space — small details that will make everything feel truly complete.
+You'll receive a delivery confirmation soon. In the meantime, I'd love to share a few styling ideas for your space — small details that will make everything feel truly complete.
 
-Thank you for trusting me with your home. This is the beginning of something beautiful.
+Thank you for trusting me with your home.
 
 Warmly,
 Carolina Medrado
@@ -1052,19 +1107,19 @@ Interior Design Consultant | Ethan Allen`
     switch (opp.stage) {
       case 'New Lead':
         return {
-          subject: `${fn}, your complimentary design vision session — this week only`,
-          techniques: ['Corporate Visions: Why Change (status quo bias)','SPIN: Situation→Problem','Neuromarketing: Scarcity + anchoring','FOMO: Time-limited offer'],
+          subject: `${fn}, your complimentary design vision session — limited availability`,
+          techniques: ['Corporate Visions: Why Change','SPIN: Situation to Problem','Neuromarketing: Scarcity','FOMO: Time-limited offer'],
           body: `Dear ${fn},
 
-Most people live with furniture that "works" — functional, familiar, but never quite right. They walk into their ${pt.toLowerCase()} every day and feel that subtle sense of something missing. Sound familiar?
+Most people live with furniture that "works" — functional, familiar, but never quite right. They walk into their ${ptLow} every day and feel that subtle sense of something missing. Sound familiar?
 
-That's exactly what I help clients change. In a single 45-minute design vision session — complimentary, no obligation — I can show you how your ${pt.toLowerCase()} could look, feel, and function at its absolute best.
+That's exactly what I help clients change. In a single complimentary design vision session, I can show you how your ${ptLow} could look, feel, and function at its absolute best.
 
-I only have ${slots} consultation slots available this week, and given that ${proof}, I wanted to reach out to you first.
+I only have a few consultation slots available this week, and given that ${proof}, I wanted to reach out to you first.
 
-${(notes ? 'I noticed you mentioned: "${notes.slice(0,80)}${notes.length>80?\'…\':\'\'}" — this tells me we have a clear direction to work from.' : 'A quick conversation is all it takes to see what\'s possible.')}
+${safeNote ? `I noticed you mentioned: "${safeNote}" — this tells me we have a clear direction to work from.` : `A quick conversation is all it takes to see what's possible.`}
 
-Would Tuesday or Thursday work for you? Reply to this email and I'll hold your spot.
+Would this week work for you? Reply to this email and I'll hold your spot.
 
 Warmly,
 Carolina Medrado
@@ -1073,19 +1128,17 @@ Interior Design Consultant | Ethan Allen`
 
       case 'Home Call':
         return {
-          subject: `${fn}, I'm still thinking about your ${pt.toLowerCase()} — here's what I see`,
-          techniques: ['Corporate Visions: Why You (differentiation)','SPIN: Implication (cost of inaction)','Mirroring: Repeating client language','Neuromarketing: Visualization + sensory language'],
+          subject: `${fn}, I'm still thinking about your ${ptLow} — here's what I see`,
+          techniques: ['Corporate Visions: Why You','SPIN: Implication of inaction','Mirroring: Client language','Neuromarketing: Visualization'],
           body: `Dear ${fn},
 
-Walking through your home with you gave me a clear picture — and I haven't stopped thinking about the potential your ${pt.toLowerCase()} has.
+Walking through your home gave me a clear picture — and I haven't stopped thinking about the potential your ${ptLow} has.
 
-${(notes ? 'You mentioned ${notes.slice(0,100).toLowerCase()}${notes.length>100?\'…\':\'\'} — that told me everything I needed to know about what you\'re really looking for.' : 'The space has incredible bones. The right pieces would pull it together in a way that photographs rarely capture — you have to feel it in person.')}
+${safeNote ? `You mentioned "${safeNote}" — that told me everything I needed to know about what you're really looking for.` : `The space has incredible bones. The right pieces would pull it together in a way that photographs rarely capture — you have to feel it in person.`}
 
-Here's what I want you to consider: every month that passes is a month you spend in a space that isn't quite working for you. The cost of waiting isn't just financial — it's the daily friction of a room that doesn't feel right.
+Every month that passes is a month spent in a space that isn't quite working for you. The cost of waiting isn't just financial — it's the daily friction of a room that doesn't feel right.
 
-What's holding you back? If it's timing, budget, or just not seeing the full picture yet, I can work with all of that. Let's talk for 20 minutes.
-
-${est > 0 ? `Your investment starting at ${Math.round(est*0.7).toLocaleString('en-US', {style:'currency',currency:'USD',maximumFractionDigits:0})} could transform how you experience your home every single day.` : ''}
+What's holding you back? If it's timing, budget, or just not seeing the full picture yet, I can work with all of that. Let's talk.
 
 I'm here when you're ready,
 Carolina Medrado
@@ -1094,17 +1147,15 @@ Interior Design Consultant | Ethan Allen`
 
       case 'Design in Progress':
         return {
-          subject: `${fn} — your ${pt.toLowerCase()} design is taking shape (and it's beautiful)`,
-          techniques: ['Corporate Visions: Why Now (momentum)','Neuromarketing: Future pacing + ownership language','Positive Selling: Progress confirmation','FOMO: Collection availability'],
+          subject: `${fn} — your ${ptLow} design is taking shape (and it's beautiful)`,
+          techniques: ['Corporate Visions: Why Now','Neuromarketing: Future pacing','Positive Selling: Progress confirmation','FOMO: Collection availability'],
           body: `Dear ${fn},
 
-The designs for your ${pt.toLowerCase()} are coming together — and I want to share what I've been building for you.
+The designs for your ${ptLow} are coming together — and I want to share what I've been building for you.
 
-${season} is the perfect moment to finalize. Our ${season.toLowerCase()} collections are at full availability right now, but ${proof}, so the pieces you love most may not be available at this price point by next month.
+${season} is the perfect moment to finalize. Our ${season.toLowerCase()} collections are at full availability right now, but ${proof}, so the pieces you love most may move quickly.
 
-${(est > 0 ? 'Your project is scoped at approximately ${est.toLocaleString(\'en-US\', {style:\'currency\',currency:\'USD\',maximumFractionDigits:0})}. Did you know our GoldComp program could add ${anchorPct.toLocaleString(\'en-US\',{style:\'currency\',currency:\'USD\',maximumFractionDigits:0})} in additional value — essentially a gift with your purchase?' : 'Your design represents our best work this season.')}
-
-I'd love to walk you through the final board. Can we schedule 30 minutes this week — over coffee or a quick call?
+I'd love to walk you through the final design board. Can we schedule some time this week — over coffee or a quick call?
 
 With excitement,
 Carolina Medrado
@@ -1113,17 +1164,15 @@ Interior Design Consultant | Ethan Allen`
 
       case 'Quote Sent':
         return {
-          subject: `${fn}, a question about your ${pt.toLowerCase()} proposal`,
-          techniques: ['SPIN: Need-Payoff question','Mirroring: Softening language','Corporate Visions: Why Pay (ROI)','Objection handling: Preemptive reframe'],
+          subject: `${fn}, a question about your ${ptLow} proposal`,
+          techniques: ['SPIN: Need-Payoff question','Mirroring: Softening language','Corporate Visions: Why Pay','Objection handling: Preemptive reframe'],
           body: `Dear ${fn},
 
-I wanted to follow up on the proposal I sent for your ${pt.toLowerCase()}.
+I wanted to follow up on the proposal I sent for your ${ptLow}.
 
-A quick question: when you picture your space after it's complete — the way the light falls on the pieces, the way the room feels when you walk in — does it match what we discussed?
+When you picture your space after it's complete — the way the light falls on the pieces, the way the room feels when you walk in — does it match what we discussed?
 
-If so, I want to make sure nothing is standing between you and that outcome.
-
-Some clients at this stage have concerns about the investment. Here's how I think about it: ${(est > 0 ? 'your ${pt.toLowerCase()} at ${est.toLocaleString(\'en-US\', {style:\'currency\',currency:\'USD\',maximumFractionDigits:0})} averages out to less than ${Math.round(est/365).toLocaleString(\'en-US\', {style:\'currency\',currency:\'USD\',maximumFractionDigits:0})} per day for a year of enjoying a space that genuinely elevates your life.' : 'quality pieces hold their value and meaning for decades.')} That's not an expense — that's an investment in how you live.
+If so, I want to make sure nothing is standing between you and that outcome. Quality pieces hold their value and meaning for decades. That's not an expense — that's an investment in how you live.
 
 Is there anything in the proposal that needs clarification? I can adjust, explain, or simplify anything — just say the word.
 
@@ -1135,16 +1184,14 @@ Interior Design Consultant | Ethan Allen`
       case 'Follow-up':
         return {
           subject: `Still thinking, ${fn}? That makes sense — here's what I want you to know`,
-          techniques: ['Mirroring: Validating hesitation','SPIN: Implication surfacing','FOMO: Dual scarcity (time + inventory)','Neuromarketing: Loss aversion framing'],
+          techniques: ['Mirroring: Validating hesitation','SPIN: Implication surfacing','FOMO: Dual scarcity','Neuromarketing: Loss aversion'],
           body: `Dear ${fn},
 
-Still thinking — that makes sense. A decision like this deserves careful consideration.
+Still thinking — that makes complete sense. A decision like this deserves careful consideration.
 
-But I want to be honest with you: the ${pt.toLowerCase()} pieces we discussed have limited availability, and I'm seeing movement on similar items this week. I would hate for you to make the final decision after the window has closed.
+But I want to be honest with you: the ${ptLow} pieces we discussed have limited availability, and I'm seeing movement on similar items. I would hate for you to make the final decision after the window has closed.
 
-Here's what I know from working with clients like you: the hesitation almost never comes from the pieces themselves. It comes from uncertainty — is this the right time? Is this the right choice? Am I getting full value?
-
-${(notes ? 'You mentioned ${notes.slice(0,80).toLowerCase()} — and that tells me you already know what you want. The question is just whether now is the moment.' : 'In my experience, when someone has come this far in the process, they already know the answer.')}
+${safeNote ? `You mentioned "${safeNote}" — and that tells me you already know what you want. The question is just whether now is the moment.` : `In my experience, when someone has come this far in the process, they already know the answer.`}
 
 What would it take to move forward? I'm asking genuinely — because I want to find a way to make this work for you.
 
@@ -1155,14 +1202,14 @@ Interior Design Consultant | Ethan Allen`
       case 'Pending Decision':
         return {
           subject: `${fn} — one thing before you decide`,
-          techniques: ['Corporate Visions: Why Now (urgency crystallization)','SPIN: Need-Payoff close','Neuromarketing: Anchoring + commitment','FOMO: Peak urgency'],
+          techniques: ['Corporate Visions: Why Now','SPIN: Need-Payoff close','Neuromarketing: Commitment','FOMO: Peak urgency'],
           body: `Dear ${fn},
 
 You're at the finish line. Before you make your final decision, I want to share one thing.
 
-${proof.charAt(0).toUpperCase() + proof.slice(1)}. I'm currently holding your selections, but I can only do so for ${days} more days before I need to release them for other consultations.
+${proof.charAt(0).toUpperCase() + proof.slice(1)}. I'm currently holding your selections, but availability can change quickly.
 
-${(est > 0 ? 'At ${est.toLocaleString(\'en-US\', {style:\'currency\',currency:\'USD\',maximumFractionDigits:0})}, your ${pt.toLowerCase()} transformation represents an investment that will shape how your home feels every day. Clients who move forward consistently tell me the same thing: "I wish I\'d done this sooner."' : 'The pieces we selected together are the right ones. I can feel it, and I believe you can too.')}
+Clients who move forward consistently tell me the same thing: "I wish I'd done this sooner."
 
 If there's one remaining question — about timeline, financing, delivery, or anything else — I want to answer it today.
 
@@ -1174,18 +1221,18 @@ Interior Design Consultant | Ethan Allen`
       case 'Postponed':
         return {
           subject: `${fn}, whenever you're ready — I've kept your vision safe`,
-          techniques: ['Positive Selling: No pressure reactivation','Neuromarketing: Ownership language','FOMO: Seasonal hook','Corporate Visions: Why Change (renewed)'],
+          techniques: ['Positive Selling: No-pressure reactivation','Neuromarketing: Ownership language','FOMO: Seasonal hook','Corporate Visions: Why Change renewed'],
           body: `Dear ${fn},
 
 Life moves fast, and timing isn't always in our control. I completely understand.
 
-I'm reaching out because ${season} is arriving and I'm refreshing my client projects — and I couldn't help but think about the ${pt.toLowerCase()} vision we built together. It's still compelling. In fact, some of the pieces we discussed have actually become more sought-after.
+I'm reaching out because ${season} is arriving and I'm refreshing my client projects — and I couldn't help but think about the ${ptLow} vision we built together. It's still compelling, and some of the pieces we discussed have become even more sought-after.
 
 When the timing feels right again, I want you to know that I remember exactly where we were, what you love, and what would make your space feel like you. We don't have to start over.
 
-${(notes ? 'You shared that ${notes.slice(0,80).toLowerCase()} — I haven\'t forgotten.' : 'Your project is still here, waiting for its moment.')}
+${safeNote ? `You shared: "${safeNote}" — I haven't forgotten.` : `Your project is still here, waiting for its moment.`}
 
-No pressure. Just a reminder that I'm here when you're ready, and the door is always open.
+No pressure. Just a reminder that I'm here when you're ready.
 
 Carolina Medrado
 Interior Design Consultant | Ethan Allen`
@@ -1194,18 +1241,18 @@ Interior Design Consultant | Ethan Allen`
       case 'Canceled':
         return {
           subject: `${fn}, we've missed you — something new is here for you`,
-          techniques: ['Win-back: Low friction re-entry','Neuromarketing: Curiosity gap','Corporate Visions: Why Change (new stimulus)','Positive Selling: No-blame reconnection'],
+          techniques: ['Win-back: Low friction re-entry','Neuromarketing: Curiosity gap','Corporate Visions: Why Change','Positive Selling: No-blame reconnection'],
           body: `Dear ${fn},
 
 It's been a while, and I've been thinking about you.
 
-A lot has changed at Ethan Allen — new collections, new design perspectives, and honestly, a renewed sense of what luxury living at home can look and feel like in ${today.getFullYear()}.
+A lot has changed at Ethan Allen — new collections, new design perspectives, and a renewed sense of what luxury living at home can look and feel like today.
 
-I'm not going to pretend our timing was perfect last time. What I will say is this: if there's any part of you that's still thinking about your ${pt.toLowerCase()}, I'd love a fresh conversation — no pressure, no history, just a new starting point.
+I'm not going to pretend our timing was perfect last time. What I will say is this: if there's any part of you that's still thinking about your ${ptLow}, I'd love a fresh conversation — no pressure, no history, just a new starting point.
 
-We have several new arrivals that weren't available before. And I have one complimentary design session available this month that I'd love to offer you.
+We have several new arrivals that weren't available before, and I have a complimentary design session available this month I'd love to offer you.
 
-Would you be open to 20 minutes?
+Would you be open to a quick call?
 
 With warmth,
 Carolina Medrado
@@ -1222,7 +1269,7 @@ I wanted to reach out personally — not with a pitch or a proposal, but just to
 
 If you've been thinking about your home at all — what's working, what isn't, or even just what you'd love it to feel like — I'm always here for a conversation. No agenda, no pressure.
 
-${proof.charAt(0).toUpperCase() + proof.slice(1)}, and I always want my longtime clients to have first access to new arrivals.
+${proof.charAt(0).toUpperCase() + proof.slice(1)}, and I always want my clients to have first access to new arrivals.
 
 Wishing you a beautiful ${season},
 Carolina Medrado
@@ -1230,8 +1277,7 @@ Interior Design Consultant | Ethan Allen`
         };
     }
   },
-
-  /* Campaign priority for mailing */
+  
   getCampaignPriority(opp) {
     if (opp.saleMade === 'Yes') return { label:'✅ SOLD',   cls:'badge-sold' };
     const p = Number(opp.probability)||0;
@@ -1337,7 +1383,7 @@ Interior Design Consultant | Ethan Allen`
     return LOOKUP.months.map((m,i) => {
       const key = `${m} ${new Date().getFullYear()}`;
       const sold = opps.filter(o=>o.saleMade==='Yes' && this.getMonthAuto(o)===key);
-      return { month:m, short:MONTHS_SHORT[i], revenue:sold.reduce((s,o)=>s+(Number(o.estimate)||0),0), goal:LOOKUP.monthGoals[i], count:sold.length };
+      const yr = new Date().getFullYear(); return { month:m, short:MONTHS_SHORT[i], full:`${m} ${yr}`, revenue:sold.reduce((s,o)=>s+(Number(o.estimate)||0),0), goal:LOOKUP.monthGoals[i], count:sold.length };
     });
   },
 
@@ -1349,106 +1395,236 @@ Interior Design Consultant | Ethan Allen`
     const gap      = Math.max(curGoal - kpis.totalSales, 0);
     const candidates = [];
 
-    // Score = urgencyWeight * valueWeight → higher = shown first, potentially full-width
     const add = (type, icon, title, body, urgency, value) => {
       candidates.push({ type, icon, title, body,
-        score: urgency * 10 + value,
-        urgency, value,
-        barCls: urgency >= 3 ? 'p1' : urgency >= 2 ? 'p2' : 'p3'
+        score: urgency * 10 + value, urgency, value,
+        barCls: urgency >= 4 ? 'p1' : urgency >= 2 ? 'p2' : 'p3'
       });
     };
 
-    // Overdue — highest urgency (time is actively decaying)
-    if (kpis.overdue > 0) {
-      const worst = opps.filter(o=>this.isOverdue(o))
-        .sort((a,b) => (this.getDaysOverdue(b)*100 + Number(b.estimate||0)/1000) - (this.getDaysOverdue(a)*100 + Number(a.estimate||0)/1000))[0];
-      const days  = worst ? this.getDaysOverdue(worst) : 0;
-      const val   = worst ? Number(worst.estimate||0) : 0;
-      add('warn','!',
-        `${kpis.overdue} Overdue — Act Now`,
-        `Most urgent: ${worst?worst.firstName+' '+worst.lastName:'—'} (${days}d overdue${val>0?', '+fmt$(val):''}). Every day without contact reduces close rate. Call before noon.`,
-        5, kpis.overdue * 2);
+    const active  = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+    const sold    = opps.filter(o => o.saleMade === 'Yes');
+    const hot     = active.filter(o => (Number(o.probability)||0) >= 75);
+    const overdue = opps.filter(o => this.isOverdue(o))
+      .sort((a,b)=>(this.getDaysOverdue(b)*10+(Number(b.estimate)||0)/1000)
+                  -(this.getDaysOverdue(a)*10+(Number(a.estimate)||0)/1000));
+    const dueToday = opps.filter(o => this.isDueToday(o));
+
+    // 1. OVERDUE
+    if (overdue.length > 0) {
+      const worst = overdue[0];
+      const days  = this.getDaysOverdue(worst);
+      const wt    = this.getWinTier(worst);
+      add('warn','🚨',
+        `${overdue.length} Overdue Follow-Up${overdue.length>1?'s':''} — Revenue Risk`,
+        `Most urgent: ${worst.firstName} ${worst.lastName} (${days}d overdue, ${wt.label} tier, ${worst.stage||''}). `+
+        `Each day of delay drops close probability ~8-12%. Call before noon — morning outreach has 2x response rate. `+
+        `Opener: "Hi ${worst.firstName}, I've been thinking about your ${worst.projectType||'project'} — I have something specific to share."`,
+        5, overdue.length * 3);
     }
 
-    // Hot leads — high probability, high value
-    if (kpis.hotCount > 0) {
-      const hotVal = opps.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)>=75)
-        .reduce((s,o)=>s+(Number(o.estimate)||0),0);
-      add('warn','↑',
-        `${kpis.hotCount} HOT Lead${kpis.hotCount>1?'s':''} — Close This Week`,
-        `${fmt$(hotVal)} in high-probability (≥75%) pipeline. These are your highest-ROI opportunities. Do not let them go cold.`,
-        4, Math.round(hotVal/1000));
+    // 2. DUE TODAY
+    if (dueToday.length > 0) {
+      const top = dueToday.sort((a,b)=>(Number(b.probability)||0)-(Number(a.probability)||0))[0];
+      add('warn','📅',
+        `${dueToday.length} Follow-Up${dueToday.length>1?'s':''} Due Today`,
+        `Top priority: ${top.firstName} ${top.lastName} (${top.stage||''}, ${top.probability||0}% prob). `+
+        `Contacts reached on their scheduled day convert at 3x the rate. Block time before 11 AM. `+
+        `${top.nextStep ? `Your next step: "${top.nextStep}".` : 'Review your notes before calling.'}`,
+        4, dueToday.length * 2);
     }
 
-    // Monthly goal progress
+    // 3. MEETING PREP — upcoming in next 3 days
+    const upcoming = active.filter(o => {
+      if (!o.followUpDate) return false;
+      const d = new Date(o.followUpDate + 'T12:00:00');
+      const diff = Math.ceil((d - today) / 86400000);
+      return diff > 0 && diff <= 3;
+    }).sort((a,b) => (a.followUpDate||'').localeCompare(b.followUpDate||''));
+    if (upcoming.length > 0) {
+      const next = upcoming[0];
+      const daysAway = Math.ceil((new Date(next.followUpDate+'T12:00:00')-today)/86400000);
+      const prepMap = {
+        'Home Call': `HOME CALL PREP with ${next.firstName}: (1) Review notes + any design preferences. (2) Bring fabric samples and 2 concepts. (3) Open with: "Tell me what you love most about this room right now." (4) Goal: uncover the real pain point. (5) Leave with a clear next step agreed before you walk out.`,
+        'Design in Progress': `DESIGN REVIEW PREP with ${next.firstName}: (1) Have the full design board ready. (2) Lead with GoldComp options first — anchor high. (3) Use "When this room is done..." language (future pacing). (4) Prepare 2 close options, not an open-ended question.`,
+        'Quote Sent': `QUOTE FOLLOW-UP PREP with ${next.firstName}: (1) Anticipate objections: price, timing, spouse approval. (2) Prepare your ROI story — quality over time. (3) Ask: "What would need to be true for you to move forward today?" (5) Be ready to close or to reschedule with a specific date.`,
+        'Pending Decision': `CLOSE MEETING PREP with ${next.firstName}: (1) This is your close — come with conviction. (2) Summarize the journey: from vision to today. (3) Create gentle urgency: availability, season, timeline. (4) Have order paperwork ready. (5) Ask for the sale directly.`,
+        'Follow-up': `FOLLOW-UP PREP with ${next.firstName}: (1) Re-read all previous notes. (2) Come with something NEW — a new piece, idea, or update. (3) Never start with "just checking in" — lead with value. (4) Surface the blocker: "What's the one thing giving you pause?"`,
+      };
+      const prepMsg = prepMap[next.stage] || `MEETING PREP with ${next.firstName} (${next.stage||''}): Review notes, set a clear agenda, define your success metric. What's the one thing you need to learn or accomplish in this meeting?`;
+      add('gold','📋',
+        `Meeting Prep: ${next.firstName} ${next.lastName} in ${daysAway}d (${next.stage||''})`,
+        prepMsg, 3, Math.round((Number(next.estimate)||0)/2000));
+    }
+
+    // 4. DEBRIEF PROMPT — recent home call still at early stage
+    const recentHC = active.filter(o => {
+      if (o.homeCall !== 'Yes' || !o.homeCallDate) return false;
+      const d = new Date(o.homeCallDate+'T12:00:00');
+      const age = Math.ceil((today-d)/86400000);
+      return age >= 1 && age <= 5 && (o.stage === 'Home Call' || o.stage === 'New Lead');
+    });
+    if (recentHC.length > 0) {
+      const r = recentHC[0];
+      add('gold','🔎',
+        `Debrief Needed: Home Call with ${r.firstName} ${r.lastName}`,
+        `You visited ${r.firstName} recently (stage: "${r.stage}"). Log your debrief now while it's fresh: `+
+        `(1) What problem did they describe in their own words? (2) What objection surfaced? (3) What lit them up? `+
+        `(4) What's the decision timeline? Deals with rich notes close at 40% higher rates — capture it in Notes now.`,
+        3, 2);
+    }
+
+    // 5. GOAL PROGRESS
     if (pctToGoal >= 100) {
-      add('good','◆','Monthly Goal Crushed',
-        `${fmt$(kpis.totalSales)} vs ${fmt$(curGoal)} goal. You're at ${Math.round(pctToGoal)}%. Push for ${fmt$(Math.round(curGoal*1.1))} (+10%) — overachievement compounds over the year.`,
+      add('good','🏆','Monthly Goal Crushed — Push to +10%',
+        `${fmt$(kpis.totalSales)} vs ${fmt$(curGoal)} goal (${Math.round(pctToGoal)}%). `+
+        `Stretch target: ${fmt$(Math.round(curGoal*1.1))}. This is also your best time to ask for referrals: `+
+        `"I'm working with a few exceptional clients right now — is there anyone in your circle who deserves the same attention?"`,
         1, 5);
-    } else if (pctToGoal >= 70) {
-      add('gold','○',`${Math.round(pctToGoal)}% to Goal — ${fmt$(gap)} Gap`,
-        `${fmt$(gap)} away from your ${fmt$(curGoal)} goal. ${kpis.hotCount} hot leads × average close value could cover it this week.`,
+    } else if (pctToGoal >= 75) {
+      add('gold','🎯',`${Math.round(pctToGoal)}% to Goal — ${fmt$(gap)} to Close`,
+        `${fmt$(gap)} remaining. Your ${hot.length} hot lead${hot.length!==1?'s':''} are your fastest path. `+
+        `Priority: ${hot.slice(0,3).map(o=>`${o.firstName} ${o.lastName} (${o.probability}%)`).join(', ')||'push Pending Decision clients first'}.`,
         3, Math.round(gap/1000));
-    } else if (pctToGoal > 0) {
-      add('warn','↓',`Behind Goal — ${fmt$(gap)} Needed`,
-        `Only ${Math.round(pctToGoal)}% reached. ${fmt$(gap)} remains. Convert existing pipeline or generate ${Math.ceil(gap / Math.max(kpis.avgVal||1, 1))} more deals at avg value.`,
+    } else if (pctToGoal >= 30) {
+      add('warn','⚡',`Behind Goal — ${fmt$(gap)} Needed`,
+        `At ${Math.round(pctToGoal)}%, you need ${fmt$(gap)} more. Fastest path: `+
+        `(1) Close ${hot.length} hot leads — schedule decision meetings this week. `+
+        `(2) Move ${active.filter(o=>(Number(o.probability)||0)>=50&&(Number(o.probability)||0)<75).length} warm leads to home call (+20pts probability). `+
+        `(3) Send a personal note to every Pending Decision client today.`,
         4, Math.round(gap/1000));
+    } else if (pctToGoal > 0) {
+      add('warn','🔴','Significant Gap — Activate Full Pipeline',
+        `${Math.round(pctToGoal)}% reached. Need ~${Math.ceil(gap/Math.max(kpis.avgVal||1,1))} more deals at average value. `+
+        `Actions: (1) Re-qualify every active lead. (2) Schedule a home call blitz — 3 in 2 days. `+
+        `(3) Re-engage last 3 postponed leads with something new. (4) Ask your best sold client for 2 referrals.`,
+        5, Math.round(gap/1000));
     } else {
-      add('warn','↓','No Sales This Period Yet',
-        `Goal is ${fmt$(curGoal)}. Schedule home calls with your top ${Math.min(kpis.active,3)} active leads this week.`,
-        3, curGoal/1000);
+      add('warn','🔴','No Sales Yet — Time to Activate',
+        `Goal is ${fmt$(curGoal)}. Start with your highest-probability active leads. `+
+        `Schedule 2 home calls this week — in-person visits are the single biggest conversion catalyst.`,
+        4, curGoal/1000);
     }
 
-    // Due today
-    if (kpis.dueToday > 0) {
-      add('gold','▷',`${kpis.dueToday} Follow-Up${kpis.dueToday>1?'s':''} Due Today`,
-        `Act before close of business. Leads contacted on their follow-up date convert at 3× the rate of delayed follow-ups.`,
-        4, kpis.dueToday);
+    // 6. HOT LEADS
+    if (hot.length > 0) {
+      const hotPipe = hot.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+      const bestHot = [...hot].sort((a,b)=>(Number(b.estimate)||0)-(Number(a.estimate)||0))[0];
+      add('warn','🔥',
+        `${hot.length} HOT Lead${hot.length>1?'s':''} — Close This Week`,
+        `${fmt$(hotPipe)} in high-probability pipeline. Top: ${bestHot.firstName} ${bestHot.lastName} (${bestHot.stage||''}). `+
+        `HOT leads have a close window — delay drops probability 5-10% per week once momentum stalls. `+
+        `Next step with ${bestHot.firstName}: ${bestHot.nextStep || 'schedule a decision meeting this week'}.`,
+        4, Math.round(hotPipe/1000));
     }
 
-    // Weighted pipeline health
-    if (kpis.weightedPipe >= curGoal) {
-      add('good','$',`Strong Weighted Pipeline — ${fmt$(kpis.weightedPipe)}`,
-        `Your probability-adjusted pipeline is ${Math.round(kpis.weightedPipe/curGoal*100)}% of monthly goal. Strong position — execute on your HOT leads.`,
-        1, Math.round(kpis.weightedPipe/1000));
-    } else if (kpis.active > 0 && kpis.weightedPipe < curGoal * 0.5) {
-      add('warn','⚠',`Thin Weighted Pipeline — Add Higher-Prob Leads`,
-        `${fmt$(kpis.weightedPipe)} weighted vs ${fmt$(curGoal)} goal. Qualify existing leads more aggressively — schedule home calls to move stage and probability up.`,
-        3, 3);
+    // 7. GOLDCOMP MIX
+    if (kpis.totalSales > 0 || active.length > 0) {
+      const gcPct = Math.round(kpis.gcPct);
+      if (gcPct >= 50) {
+        add('good','⭐',`GoldComp Mix Excellent: ${gcPct}%`,
+          `You're hitting the GoldComp benchmark. Keep leading with GoldComp value in every presentation. `+
+          `Maintain by introducing GoldComp in the first 5 minutes of every home call.`,
+          1, Math.round(kpis.gcSales/1000));
+      } else {
+        add('gold','⭐',`GoldComp at ${gcPct}% — Target is 50%+`,
+          `In your next ${Math.min(active.length,3)} presentations, lead with GoldComp before showing regular items. `+
+          `Anchoring technique: "Before we look at the full range, I want to show you something special we've set aside for select clients..."`,
+          2, Math.round(kpis.gcSales/1000));
+      }
     }
 
-    // GoldComp
-    if (kpis.totalSales > 0) {
-      const gcMsg = kpis.gcPct >= 50
-        ? `Excellent ${Math.round(kpis.gcPct)}% GoldComp — keep pushing premium in every presentation.`
-        : `GoldComp at ${Math.round(kpis.gcPct)}% of sales. Target 50%+ by leading with GoldComp value in your next ${kpis.active} presentations.`;
-      add(kpis.gcPct>=50?'good':'gold','★',`GoldComp Mix: ${Math.round(kpis.gcPct)}%`, gcMsg, 2, Math.round(kpis.gcSales/1000));
+    // 8. HOME CALL RATE
+    const hcOpps  = opps.filter(o => o.homeCall === 'Yes');
+    const hcSold  = hcOpps.filter(o => o.saleMade === 'Yes').length;
+    const hcRate  = hcOpps.length ? Math.round(hcSold/hcOpps.length*100) : 0;
+    const noHCAct = active.filter(o => o.homeCall !== 'Yes');
+    if (noHCAct.length >= 2) {
+      add('gold','🏠',`${noHCAct.length} Active Leads With No Home Call`,
+        `Home visits convert at ${hcRate > 0 ? hcRate+'% for you (vs ~'+Math.round(kpis.convRate)+'% overall)' : '2.4x the rate of phone-only follow-ups'}. `+
+        `Top candidates: ${noHCAct.sort((a,b)=>(Number(b.probability)||0)-(Number(a.probability)||0)).slice(0,3).map(o=>`${o.firstName} ${o.lastName}`).join(', ')||'your highest-probability leads'}.`,
+        2, noHCAct.length * 2);
     }
 
-    // Avg probability low
-    if (kpis.avgProb > 0 && kpis.avgProb < 35) {
-      add('warn','~',`Low Avg Probability — ${Math.round(kpis.avgProb)}%`,
-        `Pipeline average is weak. Move leads to Home Call stage — in-person visits are the single biggest driver of probability increase.`,
+    // 9. PIPELINE VELOCITY — stalling stages
+    const stageAges = {};
+    active.forEach(o => {
+      if (!o.createdAt || !o.stage) return;
+      const age = Math.ceil((today - new Date(o.createdAt+'T12:00:00')) / 86400000);
+      if (!stageAges[o.stage]) stageAges[o.stage] = [];
+      stageAges[o.stage].push(age);
+    });
+    const stalling = Object.entries(stageAges)
+      .map(([stage,ages])=>({stage, avg: Math.round(ages.reduce((s,a)=>s+a,0)/ages.length)}))
+      .filter(s => s.avg > 21)
+      .sort((a,b) => b.avg - a.avg);
+    if (stalling.length > 0) {
+      const worst = stalling[0];
+      add('gold','⏱',`Pipeline Stalling in "${worst.stage}" — Avg ${worst.avg}d`,
+        `Leads in "${worst.stage}" have been there ${worst.avg} days on average — above the healthy 14-21 day window. `+
+        `For each stalled lead: (1) Has the decision maker changed? (2) Is there a hidden objection? `+
+        `(3) Send something tangible — a photo, a lookbook page, a new idea. Movement requires a reason — give them one.`,
+        2, stalling.length * 2);
+    }
+
+    // 10. LEAD SOURCE CORRELATION
+    if (sold.length >= 3) {
+      const srcPerf = {};
+      opps.forEach(o => {
+        const src = o.leadSource || 'Unknown';
+        if (!srcPerf[src]) srcPerf[src] = {total:0,sold:0};
+        srcPerf[src].total++;
+        if (o.saleMade==='Yes') srcPerf[src].sold++;
+      });
+      const bestSrc = Object.entries(srcPerf)
+        .filter(([,v])=>v.total>=2)
+        .map(([src,v])=>({src, rate:Math.round(v.sold/v.total*100), total:v.total}))
+        .sort((a,b)=>b.rate-a.rate)[0];
+      if (bestSrc && bestSrc.rate > Math.round(kpis.convRate)+10) {
+        add('good','📊',`Best Source: "${bestSrc.src}" Converts at ${bestSrc.rate}%`,
+          `"${bestSrc.src}" leads convert at ${bestSrc.rate}% vs your ${Math.round(kpis.convRate)}% overall average — this is your highest-ROI channel. `+
+          `Ask your last 2 clients from this source: "How did you first hear about me?" and replicate what brought them in.`,
+          1, bestSrc.total);
+      }
+    }
+
+    // 11. WIN RATE
+    if (opps.length >= 5) {
+      const wr = Math.round(kpis.winRate);
+      if (wr < 20) {
+        add('warn','📉',`Win Rate at ${wr}% — Qualification Opportunity`,
+          `Below 20% usually signals a qualification issue. Add a qualifying question early: `+
+          `"What's your timeline for making a decision?" Leads without a timeline convert at under 8% — `+
+          `early disqualification saves pipeline capacity for real buyers.`,
+          2, 3);
+      } else if (wr >= 40) {
+        add('good','📈',`Strong Win Rate: ${wr}% — Document and Scale`,
+          `Your ${wr}% win rate is above average. Document what's working — your language, meeting flow, follow-up sequence — `+
+          `and systematize it. Even a 5% improvement compounds significantly over a year.`,
+          1, 3);
+      }
+    }
+
+    // 12. LOW PROBABILITY
+    if (kpis.active > 2 && kpis.avgProb > 0 && kpis.avgProb < 35) {
+      add('warn','📊',`Avg Probability Low: ${Math.round(kpis.avgProb)}%`,
+        `Active pipeline averages ${Math.round(kpis.avgProb)}% — healthy target is 45-55%. `+
+        `Two paths: (1) Advance leads through home calls (+20-25 pts each). `+
+        `(2) Disqualify unlikely-to-close leads and focus on qualified buyers.`,
         2, 2);
     }
 
-    // Home call rate
-    if (kpis.active > 3 && kpis.homeCalls < kpis.active * 0.4) {
-      add('gold','⌂',`Only ${kpis.homeCalls} Home Calls vs ${kpis.active} Active Leads`,
-        `Home call rate is ${Math.round(kpis.homeCalls/kpis.active*100)}%. Aim for 60%+ — clients who receive home visits close at 2.4× the rate.`,
-        2, 3);
+    // 13. HEALTHY STATE
+    if (candidates.length <= 2) {
+      add('good','✅','Pipeline Looks Healthy — Stay Consistent',
+        `No critical alerts. Maintain follow-up cadence and keep adding new leads. `+
+        `Consistency compounds — one new conversation per day x 20 days = a fundamentally different pipeline next month.`,
+        0, 0);
     }
 
-    // Healthy state
-    if (candidates.length === 0) {
-      add('good','✓','Pipeline Looks Healthy', 'No urgent alerts. Add more leads to grow your pipeline and hit your targets.', 0, 0);
-    }
-
-    // Sort by score descending
     candidates.sort((a,b) => b.score - a.score);
-    // Mark top insight as priority-1 (full width)
     if (candidates[0]) candidates[0].isPriority1 = true;
-    return candidates.slice(0, 7);
+    return candidates.slice(0, 8);
   }
 };
 
@@ -1667,6 +1843,9 @@ async function renderPage(page) {
     case 'priorities': await renderPriorities(); break;
     case 'year':       await renderYear();       break;
     case 'mailing':    await renderMailing();    break;
+    case 'post30':     await renderPost30();     break;
+    case 'post60':     await renderPost60();     break;
+    case 'mileage':    await renderMileage();    break;
     case 'tests': break;
   }
 }
@@ -1771,10 +1950,11 @@ async function renderDashboard() {
     const barH  = m.revenue ? Math.max(Math.round(m.revenue/maxRev*90), 4) : 3;
     const goalH = Math.round(m.goal/maxRev*90);
     const isCur = i === curMIdx;
-    return `<div class="month-col">
+    return `<div class="month-col" onclick="showMonthDetail('${m.full}')"
+      title="Click to see ${m.full} details" style="cursor:pointer">
       <div class="month-bar-wrap">
         <div class="month-bar ${isCur?'current':m.revenue>0?'has-sales':''}" style="height:${barH}%">
-          <div class="month-bar-tooltip">${m.short}: ${fmt$(m.revenue)}<br>Goal: ${fmt$(m.goal)}<br>${m.count} sale${m.count!==1?'s':''}</div>
+          <div class="month-bar-tooltip">${m.short}: ${fmt$(m.revenue)}<br>Goal: ${fmt$(m.goal)}<br>${m.count} sale${m.count!==1?'s':''}<br><em>Click to view details</em></div>
         </div>
         <div style="position:absolute;left:0;right:0;bottom:${goalH}%;height:1px;background:rgba(255,255,255,.15);pointer-events:none"></div>
       </div>
@@ -1913,6 +2093,620 @@ async function renderPriorities() {
 /* ══════════════════════════════════════════════════
    RENDER: MAILING — with full persuasion email generation
 ══════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════
+   DB EXTENSIONS — Post30 / Post60 / Mileage storage
+   Uses localStorage for all modes (no schema change)
+════════════════════════════════════════════════════ */
+const Store = {
+  _key(name) { return `ea_${name}_v1`; },
+  load(name)  { try { return JSON.parse(localStorage.getItem(this._key(name)) || '[]'); } catch { return []; } },
+  save(name, arr) { try { localStorage.setItem(this._key(name), JSON.stringify(arr)); } catch(e) { console.warn('Store.save:', e); } },
+  upsert(name, record, idField='id') {
+    const arr = this.load(name);
+    const idx = arr.findIndex(r => r[idField] === record[idField]);
+    if (idx >= 0) arr[idx] = { ...arr[idx], ...record };
+    else arr.push(record);
+    this.save(name, arr);
+  },
+  remove(name, id, idField='id') {
+    const arr = this.load(name).filter(r => r[idField] !== id);
+    this.save(name, arr);
+  },
+};
+
+/* ═══ POST30 helpers ═══ */
+function getPost30Records() { return Store.load('post30'); }
+function savePost30Record(rec) { Store.upsert('post30', rec, 'oppId'); }
+function getPost30ByOppId(oppId) { return getPost30Records().find(r => r.oppId === oppId) || null; }
+
+/* ═══ MILEAGE helpers ═══ */
+function getMileageRecords() { return Store.load('mileage'); }
+function saveMileageRecord(rec) { Store.upsert('mileage', rec, 'id'); }
+function deleteMileageRecord(id) { Store.remove('mileage', id, 'id'); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+
+/* ════════════════════════════════════════════════════
+   RENDER: POST 30
+   Source: sold opportunities → 30-day delivery follow-up
+════════════════════════════════════════════════════ */
+async function renderPost30() {
+  const opps     = await DB.getAll();
+  const records  = getPost30Records();
+  const today    = localDateStr(new Date());
+
+  // Sold opps that have a delivery record OR we show all sold as potential
+  const sold = opps.filter(o => o.saleMade === 'Yes' && o.firstName && o.lastName);
+
+  // For each sold opp, get or create a post30 record
+  const rows = sold.map(o => {
+    const rec = records.find(r => r.oppId === o.id) || { oppId: o.id, deliveryDate: '', contactReason: '', newOpportunity: '', notes: '' };
+    const delivDate   = rec.deliveryDate || '';
+    const followup30  = delivDate ? offsetDate(delivDate, 30) : '';
+    const daysToFU    = followup30 ? daysDiff(today, followup30) : null;
+    return { opp: o, rec, delivDate, followup30, daysToFU };
+  });
+
+  // Sort: overdue first, then by follow-up date ascending
+  rows.sort((a,b) => {
+    if (a.daysToFU === null && b.daysToFU === null) return 0;
+    if (a.daysToFU === null) return 1;
+    if (b.daysToFU === null) return -1;
+    return a.daysToFU - b.daysToFU;
+  });
+
+  const overdue  = rows.filter(r => r.daysToFU !== null && r.daysToFU < 0).length;
+  const dueToday = rows.filter(r => r.daysToFU === 0).length;
+  const upcoming = rows.filter(r => r.daysToFU !== null && r.daysToFU > 0).length;
+  const pending  = rows.filter(r => r.daysToFU === null).length;
+
+  const tbody = rows.map((row, i) => {
+    const { opp, rec, delivDate, followup30, daysToFU } = row;
+    const statusBadge = daysToFU === null
+      ? `<span class="status-badge status-waiting">No Delivery Date</span>`
+      : daysToFU < 0
+        ? `<span class="status-badge status-overdue">Overdue ${Math.abs(daysToFU)}d</span>`
+        : daysToFU === 0
+          ? `<span class="status-badge status-today">Due Today</span>`
+          : `<span class="status-badge status-upcoming">In ${daysToFU}d</span>`;
+
+    const noNew = rec.newOpportunity === 'No';
+    return `<tr style="${noNew ? 'opacity:.55' : ''}">
+      <td><strong style="color:white">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:var(--ink-40);font-size:11px">${opp.projectType||'—'}</span></td>
+      <td><span style="color:var(--gold)">$${(opp.estimate||0).toLocaleString()}</span></td>
+      <td><input type="date" value="${delivDate}" style="width:140px"
+        onchange="updatePost30('${opp.id}','deliveryDate',this.value)" /></td>
+      <td style="color:var(--ink-20)">${followup30 ? formatDateShort(followup30) : '—'}</td>
+      <td>${statusBadge}</td>
+      <td><input type="text" value="${esc(rec.contactReason||'')}" placeholder="e.g. 3-week check-in"
+        onchange="updatePost30('${opp.id}','contactReason',this.value)" style="min-width:160px" /></td>
+      <td>
+        <select onchange="updatePost30('${opp.id}','newOpportunity',this.value)" style="width:80px">
+          <option value="">—</option>
+          <option value="Yes" ${rec.newOpportunity==='Yes'?'selected':''}>Yes</option>
+          <option value="No"  ${rec.newOpportunity==='No'?'selected':''}>No</option>
+        </select>
+      </td>
+      <td><input type="text" value="${esc(rec.notes||'')}" placeholder="Notes"
+        onchange="updatePost30('${opp.id}','notes',this.value)" style="min-width:120px" /></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('page-post30').innerHTML = `
+    <div class="container" style="padding-top:28px;padding-bottom:40px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
+        <div>
+          <span class="label" style="color:var(--gold);font-size:10px;letter-spacing:.15em;text-transform:uppercase">Delivery Follow-up</span>
+          <h1 class="display" style="font-size:42px;letter-spacing:.06em">POST 30</h1>
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${overdue  ? `<span class="status-badge status-overdue">${overdue} Overdue</span>` : ''}
+          ${dueToday ? `<span class="status-badge status-today">${dueToday} Due Today</span>` : ''}
+          ${upcoming ? `<span class="status-badge status-upcoming">${upcoming} Upcoming</span>` : ''}
+          ${pending  ? `<span class="status-badge status-waiting">${pending} Awaiting Date</span>` : ''}
+        </div>
+      </div>
+
+      <div class="tab-section">
+        <p style="font-size:12px;color:var(--ink-40);margin-bottom:16px">
+          30-day follow-up for all sold clients. Enter the delivery date to activate the follow-up timer.
+          Clients marked <strong style="color:var(--ink-20)">New Opportunity = No</strong> automatically flow to Post 60.
+        </p>
+        ${sold.length === 0
+          ? `<div style="text-align:center;padding:40px;color:var(--ink-40)">No sold clients yet. Mark opportunities as Sale Made = Yes to start tracking.</div>`
+          : `<div style="overflow-x:auto">
+          <table class="delivery-table">
+            <thead><tr>
+              <th>Client</th><th>Value</th><th>Delivery Date</th><th>Follow-up (30d)</th>
+              <th>Status</th><th>Contact Reason</th><th>New Opp?</th><th>Notes</th>
+            </tr></thead>
+            <tbody>${tbody}</tbody>
+          </table></div>`
+        }
+      </div>
+    </div>`;
+}
+
+function updatePost30(oppId, field, value) {
+  const rec = getPost30ByOppId(oppId) || { oppId };
+  rec[field] = value;
+  savePost30Record(rec);
+  // Re-render to refresh status badges and Post60 eligibility
+  renderPost30();
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: POST 60
+   Source: Post30 records where newOpportunity = 'No'
+════════════════════════════════════════════════════ */
+async function renderPost60() {
+  const opps    = await DB.getAll();
+  const records = getPost30Records();
+  const today   = localDateStr(new Date());
+
+  // Only clients from Post30 where newOpportunity = 'No'
+  const eligible = records.filter(r => r.newOpportunity === 'No' && r.deliveryDate);
+
+  const rows = eligible.map(rec => {
+    const opp = opps.find(o => o.id === rec.oppId);
+    if (!opp) return null;
+    const followup60 = offsetDate(rec.deliveryDate, 60);
+    const daysToFU   = daysDiff(today, followup60);
+    // Post60 has its own contact/notes — stored as rec.p60_*
+    return { opp, rec, followup60, daysToFU };
+  }).filter(Boolean);
+
+  rows.sort((a,b) => a.daysToFU - b.daysToFU);
+
+  const overdue  = rows.filter(r => r.daysToFU < 0).length;
+  const dueToday = rows.filter(r => r.daysToFU === 0).length;
+  const upcoming = rows.filter(r => r.daysToFU > 0).length;
+
+  const tbody = rows.map(row => {
+    const { opp, rec, followup60, daysToFU } = row;
+    const statusBadge = daysToFU < 0
+      ? `<span class="status-badge status-overdue">Overdue ${Math.abs(daysToFU)}d</span>`
+      : daysToFU === 0
+        ? `<span class="status-badge status-today">Due Today</span>`
+        : `<span class="status-badge status-upcoming">In ${daysToFU}d</span>`;
+
+    const done = rec.p60_newOpportunity === 'Yes' || rec.p60_newOpportunity === 'No';
+    return `<tr style="${done&&rec.p60_newOpportunity==='No'?'opacity:.5':''}">
+      <td><strong style="color:white">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:var(--ink-40);font-size:11px">${opp.projectType||'—'}</span></td>
+      <td><span style="color:var(--gold)">$${(opp.estimate||0).toLocaleString()}</span></td>
+      <td style="color:var(--ink-20)">${formatDateShort(rec.deliveryDate)}</td>
+      <td style="color:var(--ink-20)">${formatDateShort(followup60)}</td>
+      <td>${statusBadge}</td>
+      <td><input type="text" value="${esc(rec.p60_contactReason||'')}" placeholder="Final nurture touchpoint"
+        onchange="updatePost60('${rec.oppId}','p60_contactReason',this.value)" style="min-width:160px" /></td>
+      <td>
+        <select onchange="updatePost60('${rec.oppId}','p60_newOpportunity',this.value)" style="width:80px">
+          <option value="">—</option>
+          <option value="Yes" ${rec.p60_newOpportunity==='Yes'?'selected':''}>Yes</option>
+          <option value="No"  ${rec.p60_newOpportunity==='No'?'selected':''}>No</option>
+        </select>
+      </td>
+      <td><input type="text" value="${esc(rec.p60_notes||'')}" placeholder="Notes"
+        onchange="updatePost60('${rec.oppId}','p60_notes',this.value)" style="min-width:120px" /></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('page-post60').innerHTML = `
+    <div class="container" style="padding-top:28px;padding-bottom:40px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
+        <div>
+          <span class="label" style="color:var(--gold);font-size:10px;letter-spacing:.15em;text-transform:uppercase">Final Nurture</span>
+          <h1 class="display" style="font-size:42px;letter-spacing:.06em">POST 60</h1>
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${overdue  ? `<span class="status-badge status-overdue">${overdue} Overdue</span>` : ''}
+          ${dueToday ? `<span class="status-badge status-today">${dueToday} Due Today</span>` : ''}
+          ${upcoming ? `<span class="status-badge status-upcoming">${upcoming} Upcoming</span>` : ''}
+        </div>
+      </div>
+
+      <div class="tab-section">
+        <p style="font-size:12px;color:var(--ink-40);margin-bottom:16px">
+          Clients who had <strong style="color:var(--ink-20)">No New Opportunity</strong> at 30 days.
+          This is your final nurture touchpoint — mark the loop closed when done.
+        </p>
+        ${rows.length === 0
+          ? `<div style="text-align:center;padding:40px;color:var(--ink-40)">No clients here yet. Clients appear when Post 30 → New Opportunity = No.</div>`
+          : `<div style="overflow-x:auto">
+          <table class="delivery-table">
+            <thead><tr>
+              <th>Client</th><th>Value</th><th>Delivery Date</th><th>Follow-up (60d)</th>
+              <th>Status</th><th>Contact Reason</th><th>New Opp?</th><th>Notes</th>
+            </tr></thead>
+            <tbody>${tbody}</tbody>
+          </table></div>`
+        }
+      </div>
+    </div>`;
+}
+
+function updatePost60(oppId, field, value) {
+  const rec = getPost30ByOppId(oppId) || { oppId };
+  rec[field] = value;
+  savePost30Record(rec);
+  renderPost60();
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: MILEAGE
+   Auto-populate from home calls; manual entries allowed
+   Rate: $0.725/mile (2026 IRS)
+════════════════════════════════════════════════════ */
+async function renderMileage() {
+  const opps      = await DB.getAll();
+  const today     = new Date();
+  const curMonth  = today.getMonth();
+  const curYear   = today.getFullYear();
+  const monthName = today.toLocaleString('default', { month: 'long' });
+  const RATE      = 0.725;
+
+  /* ── Auto-seed home calls for this month ── */
+  let allRecs = getMileageRecords();
+  const homeCalls = opps.filter(o => {
+    if (o.homeCall !== 'Yes' || !o.homeCallDate) return false;
+    const d = new Date(o.homeCallDate + 'T12:00:00');
+    return d.getMonth() === curMonth && d.getFullYear() === curYear;
+  });
+  let seeded = false;
+  homeCalls.forEach(o => {
+    if (!allRecs.find(r => r.sourceOppId === o.id)) {
+      allRecs.push({
+        id: uid(), sourceOppId: o.id, isManual: false,
+        date: o.homeCallDate,
+        clientName: `${o.firstName||''} ${o.lastName||''}`.trim(),
+        address: o.address || '',
+        stopHome1:'', stopDC1:'', stopClient:'', stopHome2:'', stopDC2:'',
+        totalMiles:'', commuteDeduct:'', tollsParking:'', designPartner:'',
+      });
+      seeded = true;
+    }
+  });
+  if (seeded) Store.save('mileage', allRecs);
+  allRecs = getMileageRecords();
+
+  /* ── Filter + sort to current month ── */
+  const monthRecs = allRecs.filter(r => {
+    if (!r.date) return !!r.isManual;
+    const d = new Date(r.date + 'T12:00:00');
+    return d.getMonth() === curMonth && d.getFullYear() === curYear;
+  }).sort((a,b) => (a.date||'').localeCompare(b.date||''));
+
+  /* ── Totals (max 30 rows = rows 7–36 in Excel) ── */
+  let totalNetMiles = 0, totalReimb = 0;
+  monthRecs.slice(0,30).forEach(r => {
+    const net = Math.max((parseFloat(r.totalMiles)||0)-(parseFloat(r.commuteDeduct)||0), 0);
+    totalNetMiles += net;
+    totalReimb    += net * RATE + (parseFloat(r.tollsParking)||0);
+  });
+
+  /* ── Input helper — matches app .field input style ── */
+  const inp = (id, field, val, w='100%', type='text', ph='') =>
+    `<input type="${type}" data-id="${id}" data-field="${field}"
+      value="${esc(val||'')}" placeholder="${ph}"
+      oninput="updateMileage(this.dataset.id,this.dataset.field,this.value)"
+      style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;
+             color:#fff;font-family:var(--font-body);font-size:12px;padding:5px 8px;
+             width:${w};outline:none;transition:border-color .15s;"
+      onfocus="this.style.borderColor='var(--gold)'" 
+      onblur="this.style.borderColor='var(--ink-60)'" />`;
+
+  const numInp = (id, field, val, w='100%') =>
+    `<input type="number" data-id="${id}" data-field="${field}"
+      value="${esc(String(val||''))}" placeholder="0" min="0" step="0.1"
+      onchange="updateMileageCalc(this.dataset.id,this.dataset.field,this.value)"
+      style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;
+             color:#fff;font-family:var(--font-body);font-size:12px;padding:5px 8px;
+             width:${w};text-align:right;outline:none;transition:border-color .15s;"
+      onfocus="this.style.borderColor='var(--gold)'" 
+      onblur="this.style.borderColor='var(--ink-60)'" />`;
+
+  /* ── Build 30 data rows ── */
+  const EMPTY_ROWS = 30;
+  const rows = [];
+  for (let i = 0; i < EMPTY_ROWS; i++) {
+    const r    = monthRecs[i] || null;
+    const rowBg = i % 2 === 0 ? 'var(--ink-90)' : 'var(--ink-80)';
+
+    if (!r) {
+      rows.push(`<tr style="height:34px;background:${rowBg}">
+        <td style="background:rgba(68,114,202,.06);padding:3px 6px"></td>
+        <td style="background:rgba(68,114,202,.06);padding:3px 6px"></td>
+        <td style="background:rgba(68,114,202,.06);padding:3px 6px"></td>
+        <td style="padding:3px 5px"></td><td style="padding:3px 5px"></td>
+        <td style="padding:3px 5px"></td><td style="padding:3px 5px"></td>
+        <td style="padding:3px 5px"></td>
+        <td style="padding:3px 5px;background:rgba(68,114,202,.04)"></td>
+        <td style="padding:3px 5px;background:rgba(68,114,202,.04)"></td>
+        <td style="padding:3px 8px;text-align:right;color:var(--ink-60)">—</td>
+        <td style="padding:3px 5px;background:rgba(68,114,202,.04)"></td>
+        <td style="padding:3px 8px;text-align:right;color:var(--ink-60)">—</td>
+        <td style="padding:3px 5px"></td>
+        <td style="padding:3px 5px"></td>
+      </tr>`);
+      continue;
+    }
+
+    const net   = Math.max((parseFloat(r.totalMiles)||0)-(parseFloat(r.commuteDeduct)||0), 0);
+    const reimb = net > 0 ? net * RATE + (parseFloat(r.tollsParking)||0) : 0;
+    const isAuto = !r.isManual && r.sourceOppId;
+
+    rows.push(`<tr style="background:${rowBg}">
+      <td style="background:rgba(68,114,202,.08);padding:3px 6px;min-width:128px">
+        ${inp(r.id,'date',r.date,'118px','date')}
+      </td>
+      <td style="background:rgba(68,114,202,.08);padding:3px 6px;min-width:130px">
+        ${inp(r.id,'clientName',r.clientName,'118px','text',isAuto?'':'Client name')}
+      </td>
+      <td style="background:rgba(68,114,202,.08);padding:3px 6px;min-width:160px">
+        ${inp(r.id,'address',r.address,'148px','text',isAuto?'':'Address')}
+      </td>
+      <td style="padding:3px 5px;min-width:56px">${inp(r.id,'stopHome1',r.stopHome1||'','48px','text','')}</td>
+      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopDC1',r.stopDC1||'','40px','text','')}</td>
+      <td style="padding:3px 5px;min-width:56px">${inp(r.id,'stopClient',r.stopClient||'','48px','text','')}</td>
+      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopHome2',r.stopHome2||'','40px','text','')}</td>
+      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopDC2',r.stopDC2||'','40px','text','')}</td>
+      <td style="padding:3px 5px;min-width:72px;background:rgba(68,114,202,.04)">
+        ${numInp(r.id,'totalMiles',r.totalMiles,'64px')}
+      </td>
+      <td style="padding:3px 5px;min-width:72px;background:rgba(68,114,202,.04)">
+        ${numInp(r.id,'commuteDeduct',r.commuteDeduct,'64px')}
+      </td>
+      <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;
+                 color:${net>0?'var(--gold)':'var(--ink-60)'};min-width:72px">
+        ${net>0 ? net.toFixed(1) : '—'}
+      </td>
+      <td style="padding:3px 5px;min-width:68px;background:rgba(68,114,202,.04)">
+        ${numInp(r.id,'tollsParking',r.tollsParking,'60px')}
+      </td>
+      <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;
+                 color:${reimb>0?'var(--green)':'var(--ink-60)'};min-width:80px">
+        ${reimb>0 ? '$'+reimb.toFixed(2) : '—'}
+      </td>
+      <td style="padding:3px 5px;min-width:90px">
+        ${inp(r.id,'designPartner',r.designPartner||'','82px','text','')}
+      </td>
+      <td style="padding:3px 8px;font-size:11px;color:var(--ink-40);min-width:90px;white-space:nowrap">
+        ${isAuto ? '🏠 Home Call' : (r.purpose||'Home Call')}
+        ${r.isManual ? `<button onclick="deleteMileageRow('${r.id}')" title="Delete row"
+          style="background:none;border:none;color:var(--red);cursor:pointer;margin-left:3px;
+                 font-size:13px;vertical-align:middle;padding:0;line-height:1">✕</button>` : ''}
+      </td>
+    </tr>`);
+  }
+
+  /* ── Render page ── */
+  document.getElementById('page-mileage').innerHTML = `
+  <div class="container" style="padding-top:24px;padding-bottom:48px">
+
+    <!-- ── HEADER CARD ── -->
+    <div style="background:var(--ink-90);border:1px solid var(--ink-60);
+                border-radius:var(--r-lg) var(--r-lg) 0 0;padding:20px 24px 0;border-bottom:none">
+
+      <!-- Row 1: Title -->
+      <div style="font-family:var(--font-display);font-size:28px;letter-spacing:.12em;
+                  color:white;margin-bottom:14px">MONTHLY HOME CALL MILEAGE</div>
+
+      <!-- Row 3: Designer · Month · Year + Add button -->
+      <div style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;
+                  padding-bottom:14px;border-bottom:1px solid var(--ink-60)">
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
+                      text-transform:uppercase;color:var(--ink-40)">Designer</div>
+          <div style="font-weight:700;color:white;font-size:14px;margin-top:2px">CAROL MEDRADO</div>
+        </div>
+        <div style="width:1px;height:32px;background:var(--ink-60)"></div>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
+                      text-transform:uppercase;color:var(--ink-40)">Month</div>
+          <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">${monthName}</div>
+        </div>
+        <div style="width:1px;height:32px;background:var(--ink-60)"></div>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
+                      text-transform:uppercase;color:var(--ink-40)">Year</div>
+          <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">${curYear}</div>
+        </div>
+        <div style="width:1px;height:32px;background:var(--ink-60)"></div>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
+                      text-transform:uppercase;color:var(--ink-40)">Mileage Rate ${curYear}</div>
+          <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">$${RATE.toFixed(3)} / mile</div>
+        </div>
+        <div style="flex:1"></div>
+        <button onclick="addMileageRow()"
+          style="background:var(--gold);color:var(--ink);border:none;border-radius:8px;
+                 padding:8px 16px;font-family:var(--font-body);font-weight:700;font-size:13px;
+                 cursor:pointer;letter-spacing:.04em">+ Add Manual Trip</button>
+      </div>
+
+      <!-- Row 5: IRS warning -->
+      <div style="padding:10px 0;font-size:12px;color:var(--gold-lt);font-style:italic">
+        ⚠️ If the trip starts or ends at your home, you must deduct your daily commute
+      </div>
+    </div>
+
+    <!-- ── TABLE ── -->
+    <div style="overflow-x:auto;border:1px solid var(--ink-60);border-top:none;
+                border-radius:0 0 var(--r-lg) var(--r-lg)">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:1200px">
+
+        <!-- Row 6: Headers — Navy group (A B C I J K L M) · Gray group (D E F G H N O) -->
+        <thead>
+          <tr>
+            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:11px;
+                       letter-spacing:.05em;padding:9px 8px;text-align:left;
+                       border-right:1px solid rgba(255,255,255,.08);
+                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Date</th>
+            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:11px;
+                       letter-spacing:.05em;padding:9px 8px;text-align:left;
+                       border-right:1px solid rgba(255,255,255,.08);
+                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Client Name</th>
+            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:11px;
+                       letter-spacing:.05em;padding:9px 8px;text-align:left;
+                       border-right:1px solid rgba(255,255,255,.08);
+                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Address</th>
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
+                       letter-spacing:.05em;padding:9px 6px;text-align:center;
+                       border-right:1px solid var(--ink-60);
+                       border-bottom:2px solid var(--ink-60);white-space:nowrap">Home</th>
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
+                       letter-spacing:.05em;padding:9px 6px;text-align:center;
+                       border-right:1px solid var(--ink-60);
+                       border-bottom:2px solid var(--ink-60);white-space:nowrap">DC</th>
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
+                       letter-spacing:.05em;padding:9px 6px;text-align:center;
+                       border-right:1px solid var(--ink-60);
+                       border-bottom:2px solid var(--ink-60);white-space:nowrap">Client</th>
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
+                       letter-spacing:.05em;padding:9px 6px;text-align:center;
+                       border-right:1px solid var(--ink-60);
+                       border-bottom:2px solid var(--ink-60);white-space:nowrap">Home</th>
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
+                       letter-spacing:.05em;padding:9px 6px;text-align:center;
+                       border-right:1px solid var(--ink-60);
+                       border-bottom:2px solid var(--ink-60);white-space:nowrap">DC</th>
+            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:10px;
+                       letter-spacing:.04em;padding:9px 8px;text-align:right;
+                       border-right:1px solid rgba(255,255,255,.08);
+                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Total Miles<br>Driven</th>
+            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:10px;
+                       letter-spacing:.04em;padding:9px 8px;text-align:right;
+                       border-right:1px solid rgba(255,255,255,.08);
+                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Minus Daily<br>Commute</th>
+            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:10px;
+                       letter-spacing:.04em;padding:9px 8px;text-align:right;
+                       border-right:1px solid rgba(255,255,255,.08);
+                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Net<br>Miles</th>
+            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:10px;
+                       letter-spacing:.04em;padding:9px 8px;text-align:right;
+                       border-right:1px solid rgba(255,255,255,.08);
+                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Tolls /<br>Parking</th>
+            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:10px;
+                       letter-spacing:.04em;padding:9px 8px;text-align:right;
+                       border-right:1px solid rgba(255,255,255,.08);
+                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Total<br>Reimb.</th>
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
+                       letter-spacing:.05em;padding:9px 6px;text-align:left;
+                       border-right:1px solid var(--ink-60);
+                       border-bottom:2px solid var(--ink-60);white-space:nowrap">Design Partner</th>
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
+                       letter-spacing:.05em;padding:9px 6px;text-align:left;
+                       border-bottom:2px solid var(--ink-60);white-space:nowrap">Purpose</th>
+          </tr>
+        </thead>
+
+        <!-- Rows 7–36: 30 data rows -->
+        <tbody>${rows.join('')}</tbody>
+
+        <!-- Row 38: Totals footer -->
+        <tfoot>
+          <tr style="background:rgba(68,114,202,.12);border-top:2px solid #1F4E79">
+            <td colspan="8" style="padding:10px 12px;font-weight:700;font-size:12px;
+                                   color:var(--gold-lt);letter-spacing:.04em">
+              Mileage Rate ${curYear}: $${RATE.toFixed(3)} / Mile &nbsp;·&nbsp;
+              <span style="color:var(--ink-40);font-weight:400">${monthRecs.length} trip${monthRecs.length!==1?'s':''} this month</span>
+            </td>
+            <td colspan="2" style="padding:10px 8px"></td>
+            <td style="padding:10px 10px 10px 5px;text-align:right;font-weight:700;
+                       font-size:14px;color:var(--gold)">
+              ${totalNetMiles.toFixed(1)}
+            </td>
+            <td style="padding:10px 8px"></td>
+            <td style="padding:10px 10px 10px 5px;text-align:right;font-weight:700;
+                       font-size:14px;color:var(--green)">
+              $${totalReimb.toFixed(2)}
+            </td>
+            <td colspan="2"></td>
+          </tr>
+
+          <!-- Row 39: Commute reference -->
+          <tr style="background:var(--ink-80)">
+            <td style="padding:6px 8px"></td>
+            <td style="padding:6px 8px;font-size:11px;color:var(--ink-40)">Carol Medrado</td>
+            <td style="padding:6px 8px;font-size:11px;color:var(--ink-40)">2007 Florine Dr</td>
+            <td colspan="12" style="padding:6px 8px;font-size:10px;color:var(--ink-60);font-style:italic">
+              — home address for daily commute deduction reference
+            </td>
+          </tr>
+
+          <!-- Row 40–41: Signatures -->
+          <tr style="background:var(--ink-90);border-top:1px solid var(--ink-60)">
+            <td colspan="8" style="padding:16px 8px"></td>
+            <td colspan="7" style="padding:16px 18px;font-weight:700;font-size:11px;
+                                   letter-spacing:.08em;color:var(--ink-40);
+                                   border-left:1px solid var(--ink-60)">
+              DESIGNER SIGNATURE ___________________________________________
+            </td>
+          </tr>
+          <tr style="background:var(--ink-90)">
+            <td colspan="8" style="padding:16px 8px"></td>
+            <td colspan="7" style="padding:16px 18px;font-weight:700;font-size:11px;
+                                   letter-spacing:.08em;color:var(--ink-40);
+                                   border-left:1px solid var(--ink-60)">
+              DCL SIGNATURE _________________________________________________
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>`;
+}
+
+
+function updateMileage(id, field, value) {
+  const recs = getMileageRecords();
+  const rec  = recs.find(r => r.id === id);
+  if (!rec) return;
+  rec[field] = value;
+  Store.save('mileage', recs);
+}
+
+function updateMileageCalc(id, field, value) {
+  updateMileage(id, field, value);
+  renderMileage(); // re-render to recalculate totals
+}
+
+function addMileageRow() {
+  const rec = {
+    id: uid(), sourceOppId: null, isManual: true,
+    date: localDateStr(new Date()), clientName: '', address: '',
+    totalMiles: '', commuteDeduct: '', netMiles: '',
+    tollsParking: '', totalReimbursement: '', designPartner: '', purpose: 'Home Call',
+  };
+  saveMileageRecord(rec);
+  renderMileage();
+}
+
+function deleteMileageRow(id) {
+  deleteMileageRecord(id);
+  renderMileage();
+}
+
+/* ════ Date helpers ════ */
+function offsetDate(dateStr, days) {
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m-1, d + days);
+  return localDateStr(dt);
+}
+function daysDiff(todayStr, targetStr) {
+  const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); };
+  return Math.round((parse(targetStr) - parse(todayStr)) / 86400000);
+}
+function formatDateShort(dateStr) {
+  if (!dateStr) return '—';
+  const [y,m,d] = dateStr.split('-').map(Number);
+  return new Date(y,m-1,d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
 async function renderMailing() {
   const opps = await DB.getAll();
   const all  = opps.filter(o => o.firstName && o.lastName);
@@ -2301,14 +3095,13 @@ async function runAllTests() {
   // ── 7: Urgency Score — formula: days*3 + prob*2 + floor(est/1000)
   test('Urgency Score: formula correctness',
     () => {
-      // 5 days overdue, prob=75, est=22000 → 15+150+22=187
-      // Must use localDateStr (not toISOString) to avoid UTC timezone drift
+      // 5 days overdue, prob=75, est=22000 → raw 15+150+22=187 → capped 100
       const past = new Date(); past.setDate(past.getDate()-5);
       const o = { saleMade:'No', stage:'Follow-up', probability:75, estimate:22000,
                   followUpDate: localDateStr(past) };
       const score = BL.getUrgencyScore(o);
-      return score === 187 ? true : `Expected 187 got ${score}`;
-    }, '3×5days + 2×75prob + 22k = 187');
+      return score === 100 ? true : `Expected 100 (raw 187 capped), got ${score}`;
+    }, '3×5days + 2×75prob + 22k = 187 → capped 100');
 
   // ── 8: Urgency Score — SOLD = 0
   test('Urgency Score: SOLD → always 0',
@@ -2408,12 +3201,12 @@ async function runAllTests() {
     });
 
   // ── 21: Urgency — 1 day overdue, prob=50, est=10000 → 3+100+10=113
-  test('Urgency Score: 1 day overdue → 3+100+10=113',
+  test('Urgency Score: 1 day overdue → raw 3+100+10=113 → capped 100',
     () => {
       const p = new Date(); p.setDate(p.getDate()-1);
       const o = { saleMade:'No', stage:'Follow-up', probability:50, estimate:10000, followUpDate:localDateStr(p) };
       const got = BL.getUrgencyScore(o);
-      return got === 113 ? true : `Expected 113, got ${got}`;
+      return got === 100 ? true : `Expected 100 (raw 113 capped), got ${got}`;
     });
 
   // ── 22: Win Tier boundary — prob=74 = WARM not HOT
@@ -2541,11 +3334,39 @@ async function showKPIDetail(key) {
       render: () => {
         const byPT = LOOKUP.projectTypes.map(pt=>({label:pt,val:sold.filter(o=>o.projectType===pt).reduce((s,o)=>s+(Number(o.estimate)||0),0)})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
         const max = Math.max(...byPT.map(x=>x.val),1);
-        return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        const soldRows = [...sold].sort((a,b)=>(Number(b.estimate)||0)-(Number(a.estimate)||0)).map(o=>`
+          <tr style="border-bottom:1px solid var(--ink-70);cursor:pointer"
+              onmouseover="this.style.background='rgba(196,147,63,.08)'" onmouseout="this.style.background=''"
+              onclick="closeKPIAndEdit('${o.id}')">
+            <td style="padding:8px 10px;font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</td>
+            <td style="padding:8px 10px;color:var(--ink-20);font-size:11px">${esc(o.projectType||'—')}</td>
+            <td style="padding:8px 10px;font-size:11px;color:var(--ink-40)">${esc(o.leadSource||'—')}</td>
+            <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--green)">${fmt$(Number(o.estimate))}</td>
+            <td style="padding:8px 10px;font-size:11px;color:${o.goldComp==='Yes'?'var(--gold)':'var(--ink-60)'}">${o.goldComp==='Yes'?'⭐ GC':'—'}</td>
+            <td style="padding:8px 10px;text-align:right">
+              <button onclick="event.stopPropagation();closeKPIAndEdit('${o.id}')"
+                style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">EDIT</button>
+            </td>
+          </tr>`).join('');
+        return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
           <div><div class="label" style="margin-bottom:12px">Revenue by Project Type</div>${barChart(byPT,max,fmt$)}</div>
-          <div><div class="label" style="margin-bottom:12px">Top Deals</div>
-            ${miniTable([['Client','Project','Value'],...sold.sort((a,b)=>(Number(b.estimate)||0)-(Number(a.estimate)||0)).slice(0,8).map(o=>[o.firstName+' '+o.lastName,o.projectType||'—',fmt$(Number(o.estimate))])])}
-          </div></div>`;
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="kpi-card" style="padding:10px 14px"><span class="label">Total Sales</span><div class="kpi-value gold">${fmt$(sold.reduce((s,o)=>s+(Number(o.estimate)||0),0))}</div></div>
+            <div class="kpi-card" style="padding:10px 14px"><span class="label">GoldComp</span><div class="kpi-value">${fmt$(sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0))}</div></div>
+          </div>
+        </div>
+        <div class="label" style="margin-bottom:10px">All Closed Deals — Click Any Row to Edit</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--ink-70);border-bottom:2px solid var(--ink-60)">
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Client</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Project</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Source</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Value</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">GC</th>
+            <th style="padding:7px 10px;width:60px"></th>
+          </tr></thead>
+          <tbody>${soldRows||'<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--ink-40)">No closed sales yet</td></tr>'}</tbody>
+        </table></div>`;
       }
     },
     pipeline: {
@@ -2553,12 +3374,43 @@ async function showKPIDetail(key) {
       render: () => {
         const byStage = LOOKUP.stages.map(s=>({label:s,val:active.filter(o=>o.stage===s).reduce((sum,o)=>sum+BL.getWeighted(o),0)})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
         const max = Math.max(...byStage.map(x=>x.val),1);
-        return `<div>
-          <div class="label" style="margin-bottom:12px">Weighted Value by Stage (prob × estimate)</div>
+        const pipeRows = active.map(o=>({o,w:BL.getWeighted(o)})).sort((a,b)=>b.w-a.w).map(({o,w})=>{
+          const wt = BL.getWinTier(o);
+          const ovr = BL.isOverdue(o);
+          const clr = {'SOLD':'var(--green)','HOT':'var(--gold)','WARM':'#4472CA','NURTURE':'var(--purple)','COLD':'var(--ink-40)','CANCELED':'var(--red)'}[wt.key]||'var(--ink-40)';
+          return `<tr style="border-bottom:1px solid var(--ink-70);cursor:pointer"
+            onmouseover="this.style.background='rgba(196,147,63,.08)'" onmouseout="this.style.background=''"
+            onclick="closeKPIAndEdit('${o.id}')">
+            <td style="padding:8px 10px;font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</td>
+            <td style="padding:8px 10px;font-size:11px;color:var(--ink-20)">${esc(o.stage||'—')}</td>
+            <td style="padding:8px 10px"><span style="background:var(--ink-70);border:1px solid ${clr};color:${clr};border-radius:4px;font-size:10px;font-weight:700;padding:2px 6px">${wt.label}</span></td>
+            <td style="padding:8px 10px;text-align:right;font-weight:600">${o.probability||0}%</td>
+            <td style="padding:8px 10px;text-align:right;color:var(--ink-20)">${fmt$(Number(o.estimate))}</td>
+            <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--gold)">${w>0?fmt$(w):'—'}</td>
+            <td style="padding:8px 10px;font-size:11px;color:${ovr?'var(--red)':'var(--ink-40)'}">${o.followUpDate?fmtDate(o.followUpDate):'—'}${ovr?' ⚠️':''}</td>
+            <td style="padding:8px 10px;text-align:right">
+              <button onclick="event.stopPropagation();closeKPIAndEdit('${o.id}')"
+                style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">EDIT</button>
+            </td>
+          </tr>`;}).join('');
+        return `<div style="margin-bottom:20px">
+          <div class="label" style="margin-bottom:12px">Weighted Value by Stage (probability x estimate)</div>
           ${barChart(byStage, max, v=>fmt$(v))}
-          <div class="label" style="margin-bottom:12px;margin-top:20px">Top Weighted Opportunities</div>
-          ${miniTable([['Client','Stage','Prob','Est','Weighted'],...active.map(o=>({o,w:BL.getWeighted(o)})).sort((a,b)=>b.w-a.w).slice(0,8).map(({o,w})=>[o.firstName+' '+o.lastName,o.stage||'—',o.probability+'%',fmt$(Number(o.estimate)),fmt$(w)])])}
-        </div>`;
+        </div>
+        <div class="label" style="margin-bottom:10px">All Active Opportunities — Click Any Row to Edit</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--ink-70);border-bottom:2px solid var(--ink-60)">
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Client</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Stage</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Tier</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Prob</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Estimate</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Weighted</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Follow-Up</th>
+            <th style="padding:7px 10px;width:60px"></th>
+          </tr></thead>
+          <tbody>${pipeRows||'<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--ink-40)">No active pipeline</td></tr>'}</tbody>
+        </table></div>`;
       }
     },
     overdue: {
@@ -2623,19 +3475,42 @@ async function showKPIDetail(key) {
       label: 'GoldComp',
       render: () => {
         const pct = Math.round(kpis.gcPct);
-        return `<div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start">
+        const gcSold = sold.filter(o=>o.goldComp==='Yes');
+        const gcRows = [...gcSold].sort((a,b)=>(Number(b.estimate)||0)-(Number(a.estimate)||0)).map(o=>`
+          <tr style="border-bottom:1px solid var(--ink-70);cursor:pointer"
+              onmouseover="this.style.background='rgba(196,147,63,.08)'" onmouseout="this.style.background=''"
+              onclick="closeKPIAndEdit('${o.id}')">
+            <td style="padding:8px 10px;font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</td>
+            <td style="padding:8px 10px;color:var(--ink-20);font-size:11px">${esc(o.projectType||'—')}</td>
+            <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--gold)">${fmt$(Number(o.estimate))}</td>
+            <td style="padding:8px 10px;text-align:right">
+              <button onclick="event.stopPropagation();closeKPIAndEdit('${o.id}')"
+                style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">EDIT</button>
+            </td>
+          </tr>`).join('');
+        return `<div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start;margin-bottom:20px">
           <div style="text-align:center">${ring(pct,'var(--gold)',100)}
             <div style="font-size:12px;color:var(--ink-40);margin-top:6px">${pct}% of sales</div>
             <div style="font-size:11px;color:var(--gold);margin-top:4px">Target: 50%</div>
           </div>
-          <div>
-            <div style="display:flex;gap:12px;margin-bottom:16px">
-              <div class="kpi-card" style="flex:1"><span class="label">GoldComp $</span><div class="kpi-value gold">${fmt$(kpis.gcSales)}</div></div>
-              <div class="kpi-card" style="flex:1"><span class="label">Regular $</span><div class="kpi-value">${fmt$(kpis.totalSales-kpis.gcSales)}</div></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:12px">
+              <div class="kpi-card" style="flex:1;padding:10px 14px"><span class="label">GoldComp $</span><div class="kpi-value gold">${fmt$(kpis.gcSales)}</div></div>
+              <div class="kpi-card" style="flex:1;padding:10px 14px"><span class="label">Regular $</span><div class="kpi-value">${fmt$(kpis.totalSales-kpis.gcSales)}</div></div>
+              <div class="kpi-card" style="flex:1;padding:10px 14px"><span class="label">GC Deals</span><div class="kpi-value">${gcSold.length}</div></div>
             </div>
-            <div class="label" style="margin-bottom:8px">GoldComp Clients</div>
-            ${miniTable([['Client','Project','Value'],...sold.filter(o=>o.goldComp==='Yes').map(o=>[o.firstName+' '+o.lastName,o.projectType||'—',fmt$(Number(o.estimate))])])}
-          </div></div>`;
+          </div>
+        </div>
+        <div class="label" style="margin-bottom:10px">GoldComp Clients — Click Any Row to Edit</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--ink-70);border-bottom:2px solid var(--ink-60)">
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Client</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Project</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Value</th>
+            <th style="padding:7px 10px;width:60px"></th>
+          </tr></thead>
+          <tbody>${gcRows||'<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--ink-40)">No GoldComp sales yet</td></tr>'}</tbody>
+        </table></div>`;
       }
     },
     probability: {
@@ -2706,6 +3581,12 @@ async function showKPIDetail(key) {
 function closeKPIModal() {
   document.getElementById('kpiModal').classList.remove('open');
 }
+
+function closeKPIAndEdit(id) {
+  closeKPIModal();
+  setTimeout(() => editLead(id), 50);
+}
+
 
 /* ══════════════════════════════════════════════════
    EXPORT: MAILING → CSV (for Google Sheets + ChatGPT)
@@ -2778,7 +3659,7 @@ async function renderYear() {
     const cardCls   = isCurrent ? 'current-month' : m.onTrack && m.deals>0 ? 'on-track' : 'below';
 
     return `<div class="month-kpi-card ${cardCls} ${isEmpty&&!isCurrent?'empty-month':''}"
-        onclick="setMonthFilter('${m.month} 2026');navigate('dashboard')">
+        onclick="showMonthDetail('${m.month} 2026')">
       <div class="m-badge ${badgeCls}">${badgeTxt}</div>
       <div class="m-name">${m.month.toUpperCase()}</div>
       <div class="m-revenue">${m.deals>0||isCurrent?fmt$(m.totalSales):'—'}</div>
@@ -2795,6 +3676,183 @@ async function renderYear() {
     </div>`;
   }).join('');
 }
+
+/* ══════════════════════════════════════════════════
+   MONTH DETAIL MODAL — shows sales for a month,
+   allows inline edit via existing editLead() modal
+══════════════════════════════════════════════════ */
+async function showMonthDetail(monthLabel) {
+  // monthLabel = "March 2026" or "March"
+  const opps    = await DB.getAll();
+  const year    = new Date().getFullYear();
+  const label   = monthLabel.includes(' ') ? monthLabel : `${monthLabel} ${year}`;
+  const [mName] = label.split(' ');
+
+  // All opps for this month (sold = has saleDate in this month OR was made this month)
+  const monthOpps = opps.filter(o => BL.getMonthAuto(o) === label);
+  const soldOpps  = monthOpps.filter(o => o.saleMade === 'Yes');
+  const kpis      = BL.calcKPIs(opps, label);
+
+  const modal = document.getElementById('monthDetailModal');
+  const title = document.getElementById('mdTitle');
+  const body  = document.getElementById('mdBody');
+  title.textContent = `${mName.toUpperCase()} SALES DETAIL`;
+
+  const goal = LOOKUP.monthGoals[LOOKUP.months.indexOf(mName)] || 0;
+
+  if (!monthOpps.length) {
+    body.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--ink-40)">
+      <div style="font-size:32px;margin-bottom:12px">📭</div>
+      <div style="font-size:14px">No opportunities recorded for ${mName}</div>
+      <div style="font-size:12px;margin-top:6px;color:var(--ink-60)">Deals will appear here once you add opportunities with follow-up dates in ${mName}</div>
+    </div>`;
+    modal.classList.add('open');
+    return;
+  }
+
+  const fmtRow = o => {
+    const wt   = BL.getWinTier(o);
+    const cls  = {'SOLD':'var(--green)','HOT':'var(--gold)','WARM':'#4472CA',
+                  'NURTURE':'var(--purple)','COLD':'var(--ink-40)','CANCELED':'var(--red)'}[wt.key]||'var(--ink-40)';
+    const ovr  = BL.isOverdue(o);
+    return `<tr onclick="closeMonthDetail();editLead('${o.id}')"
+               style="cursor:pointer;border-bottom:1px solid var(--ink-70);
+                      transition:background .12s"
+               onmouseover="this.style.background='rgba(196,147,63,.08)'"
+               onmouseout="this.style.background='transparent'">
+      <td style="padding:10px 12px">
+        <div style="font-weight:500;color:white">${esc(o.firstName)} ${esc(o.lastName)}</div>
+        <div style="font-size:11px;color:var(--ink-40)">${esc(o.email||o.phone||'')}</div>
+      </td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--ink-20)">${esc(o.projectType||'—')}</td>
+      <td style="padding:10px 8px">
+        <span style="background:var(--ink-70);border:1px solid ${cls};color:${cls};
+               border-radius:4px;font-size:10px;font-weight:700;padding:2px 7px;
+               letter-spacing:.06em">${wt.label}</span>
+      </td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--ink-20)">${esc(o.stage||'—')}</td>
+      <td style="padding:10px 8px;text-align:right;font-weight:600;
+                 color:${o.saleMade==='Yes'?'var(--green)':'var(--ink-20)'};font-size:13px">
+        ${o.estimate ? fmt$(Number(o.estimate)) : '—'}
+      </td>
+      <td style="padding:10px 8px;text-align:right;font-size:12px;color:var(--ink-40)">
+        ${o.probability ? o.probability+'%' : '—'}
+      </td>
+      <td style="padding:10px 8px;text-align:right;font-size:12px;
+                 color:${ovr?'var(--red)':'var(--ink-40)'}">
+        ${o.followUpDate ? fmtDate(o.followUpDate) : '—'}
+        ${ovr ? `<span style="font-size:10px;color:var(--red)"> ⚠️ ${BL.getDaysOverdue(o)}d</span>` : ''}
+      </td>
+      <td style="padding:10px 8px;text-align:center">
+        <button onclick="event.stopPropagation();closeMonthDetail();editLead('${o.id}')"
+          style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--gold);
+                 border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;
+                 cursor:pointer;letter-spacing:.04em">EDIT ✏️</button>
+      </td>
+    </tr>`;
+  };
+
+  body.innerHTML = `
+    <!-- KPI summary strip -->
+    <div style="display:flex;gap:16px;flex-wrap:wrap;padding:16px;
+                background:var(--ink-80);border-radius:10px;margin-bottom:20px">
+      <div style="flex:1;min-width:100px;text-align:center">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+                    color:var(--ink-40);margin-bottom:4px">Total Sales</div>
+        <div style="font-size:20px;font-weight:700;color:var(--gold)">${fmt$(kpis.totalSales)}</div>
+      </div>
+      <div style="width:1px;background:var(--ink-60)"></div>
+      <div style="flex:1;min-width:100px;text-align:center">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+                    color:var(--ink-40);margin-bottom:4px">Monthly Goal</div>
+        <div style="font-size:20px;font-weight:700;color:${kpis.totalSales>=goal?'var(--green)':'var(--ink-20)'}">${fmt$(goal)}</div>
+      </div>
+      <div style="width:1px;background:var(--ink-60)"></div>
+      <div style="flex:1;min-width:100px;text-align:center">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+                    color:var(--ink-40);margin-bottom:4px">Deals Closed</div>
+        <div style="font-size:20px;font-weight:700;color:white">${kpis.sold}</div>
+      </div>
+      <div style="width:1px;background:var(--ink-60)"></div>
+      <div style="flex:1;min-width:100px;text-align:center">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+                    color:var(--ink-40);margin-bottom:4px">Active Opps</div>
+        <div style="font-size:20px;font-weight:700;color:white">${kpis.active}</div>
+      </div>
+      <div style="width:1px;background:var(--ink-60)"></div>
+      <div style="flex:1;min-width:100px;text-align:center">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+                    color:var(--ink-40);margin-bottom:4px">Wtd Pipeline</div>
+        <div style="font-size:20px;font-weight:700;color:var(--blue)">${fmt$(kpis.weightedPipe)}</div>
+      </div>
+      <div style="width:1px;background:var(--ink-60)"></div>
+      <div style="flex:1;min-width:100px;text-align:center">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+                    color:var(--ink-40);margin-bottom:4px">GoldComp</div>
+        <div style="font-size:20px;font-weight:700;color:var(--gold)">${fmt$(kpis.gcSales)}</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px;
+                  color:var(--ink-40)">
+        <span>Goal Progress</span>
+        <span style="color:${kpis.totalSales>=goal?'var(--green)':'var(--gold)'}">
+          ${goal?Math.min(Math.round(kpis.totalSales/goal*100),100):0}%
+        </span>
+      </div>
+      <div style="background:var(--ink-70);border-radius:4px;height:6px">
+        <div style="height:6px;border-radius:4px;transition:width .5s;
+                    background:${kpis.totalSales>=goal?'var(--green)':'var(--gold)'};
+                    width:${goal?Math.min(Math.round(kpis.totalSales/goal*100),100):0}%"></div>
+      </div>
+    </div>
+
+    <!-- Opportunities table -->
+    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+                color:var(--gold);margin-bottom:10px">
+      ALL OPPORTUNITIES (${monthOpps.length}) · Click any row to edit
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--ink-70);border-bottom:2px solid var(--ink-60)">
+            <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:.06em;color:var(--ink-20);text-transform:uppercase">Client</th>
+            <th style="padding:8px 8px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:.06em;color:var(--ink-20);text-transform:uppercase">Project</th>
+            <th style="padding:8px 8px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:.06em;color:var(--ink-20);text-transform:uppercase">Tier</th>
+            <th style="padding:8px 8px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:.06em;color:var(--ink-20);text-transform:uppercase">Stage</th>
+            <th style="padding:8px 8px;text-align:right;font-size:11px;font-weight:700;
+                       letter-spacing:.06em;color:var(--ink-20);text-transform:uppercase">Estimate</th>
+            <th style="padding:8px 8px;text-align:right;font-size:11px;font-weight:700;
+                       letter-spacing:.06em;color:var(--ink-20);text-transform:uppercase">Prob</th>
+            <th style="padding:8px 8px;text-align:right;font-size:11px;font-weight:700;
+                       letter-spacing:.06em;color:var(--ink-20);text-transform:uppercase">Follow-Up</th>
+            <th style="padding:8px 8px;text-align:center;font-size:11px;font-weight:700;
+                       letter-spacing:.06em;color:var(--ink-20);text-transform:uppercase">Action</th>
+          </tr>
+        </thead>
+        <tbody>${monthOpps.sort((a,b)=>BL.getUrgencyScore(b)-BL.getUrgencyScore(a)).map(fmtRow).join('')}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px;text-align:right">
+      <button onclick="closeMonthDetail();openNewLead()"
+        style="background:var(--gold);color:var(--ink);border:none;border-radius:8px;
+               padding:9px 18px;font-family:var(--font-body);font-weight:700;font-size:13px;
+               cursor:pointer;letter-spacing:.04em">+ New Opportunity</button>
+    </div>`;
+
+  modal.classList.add('open');
+}
+
+function closeMonthDetail() {
+  document.getElementById('monthDetailModal').classList.remove('open');
+}
+
 
 async function launchApp(fromSupabase) {
   document.getElementById('configScreen').style.display = 'none';
