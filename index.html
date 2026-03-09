@@ -607,42 +607,48 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="navigate('dashboard')" data-page="dashboard">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
-      Dashboard
+      <span data-i18n="nav_dashboard">Dashboard</span>
     </button>
     <button class="nav-tab" onclick="navigate('pipeline')" data-page="pipeline">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 2h14M3 6h10M5 10h6M7 14h2"/></svg>
-      Pipeline
+      <span data-i18n="nav_pipeline">Pipeline</span>
     </button>
     <button class="nav-tab" onclick="navigate('priorities')" data-page="priorities">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1l2 5h5l-4 3 1.5 5L8 11l-4.5 3L5 9 1 6h5z"/></svg>
-      Priorities
+      <span data-i18n="nav_priorities">Priorities</span>
     </button>
     <button class="nav-tab" onclick="navigate('year')" data-page="year">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M5 1v4M11 1v4M1 8h14"/></svg>
-      Year
+      <span data-i18n="nav_year">Year</span>
     </button>
     <button class="nav-tab" onclick="navigate('mailing')" data-page="mailing">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M1 4l7 5 7-5"/></svg>
-      Mailing
+      <span data-i18n="nav_mailing">Mailing</span>
     </button>
     <button class="nav-tab" onclick="navigate('post30')" data-page="post30">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="2" width="14" height="12" rx="1.5"/><path d="M5 8h6M5 11h4"/><circle cx="8" cy="5" r="1.5"/></svg>
-      Post 30
+      <span data-i18n="nav_post30">Post 30</span>
     </button>
     <button class="nav-tab" onclick="navigate('post60')" data-page="post60">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="2" width="14" height="12" rx="1.5"/><path d="M5 8h6M5 11h4"/><circle cx="8" cy="5" r="1.5" fill="currentColor"/></svg>
-      Post 60
+      <span data-i18n="nav_post60">Post 60</span>
     </button>
     <button class="nav-tab" onclick="navigate('mileage')" data-page="mileage">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="11" r="2.5"/><circle cx="12" cy="11" r="2.5"/><path d="M1.5 11H1V7l3-5h7l3 5v4h-.5M6.5 11h3"/><path d="M4 6H3M12 6l1-1"/></svg>
-      Mileage
+      <span data-i18n="nav_mileage">Mileage</span>
     </button>
     <button class="nav-tab" onclick="navigate('tests')" data-page="tests">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="7"/><path d="M5 8l2 2 4-4"/></svg>
-      Tests
+      <span data-i18n="nav_tests">Tests</span>
     </button>
   </div>
   <div class="nav-right">
+    <button id="langToggleBtn" onclick="setLang(getLang()==='en'?'pt':'en')"
+      style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-20);
+             border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;
+             cursor:pointer;letter-spacing:.04em;transition:border-color .15s,color .15s"
+      onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'"
+      onmouseout="this.style.borderColor='var(--ink-60)';this.style.color='var(--ink-20)'">🇧🇷 PT</button>
     <span id="connBadge" class="conn-badge demo"><span class="dot"></span>Demo</span>
     <span class="nav-badge" id="overdueCount" title="Overdue follow-ups">0</span>
     <div class="nav-avatar" title="Carolina Medrado">CM</div>
@@ -655,14 +661,14 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <div class="page active" id="page-dashboard">
   <div class="dash-hero container">
     <div class="dash-hero-title">
-      <span class="label">Sales Intelligence — 2026</span>
+      <span class="label" data-i18n="dash_subtitle">Sales Intelligence — 2026</span>
       <h1 class="display">PERFORMANCE<br>DASHBOARD</h1>
       <p class="dash-hero-date" id="dashDate"></p>
     </div>
     <div class="goal-pill">
-      <div><div class="goal-pill-label">Monthly Goal</div>
+      <div><div class="goal-pill-label" data-i18n="dash_goal">Monthly Goal</div>
         <div class="goal-pill-value" id="goalValue">$30,000</div></div>
-      <div><div class="goal-pill-label" style="margin-bottom:6px">Progress</div>
+      <div><div class="goal-pill-label" style="margin-bottom:6px" data-i18n="dash_progress">Progress</div>
         <div class="goal-pill-bar"><div class="goal-pill-fill" id="goalFill" style="width:0%"></div></div>
         <div style="font-size:11px;color:var(--gold);margin-top:4px;text-align:right" id="goalPct">0%</div></div>
     </div>
@@ -685,22 +691,22 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   <div class="filter-row" id="monthFilter"></div>
 
   <div class="kpi-grid" id="kpiGrid">
-    <div class="kpi-card" data-kpi="opps" onclick="showKPIDetail('opps')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><circle cx="10" cy="10" r="5"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/></svg><span class="label">Opportunities</span><div class="kpi-value" id="k-opps">0</div><div class="kpi-delta" id="k-opps-d">In pipeline</div></div>
-    <div class="kpi-card" data-kpi="sales" onclick="showKPIDetail('sales')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><path d="M10 5v1.5M10 13.5V15M7.5 12.5c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-2-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2"/></svg><span class="label">Sales This Period</span><div class="kpi-value gold" id="k-sales">$0</div><div class="kpi-delta" id="k-sales-d">Closed deals</div></div>
-    <div class="kpi-card" data-kpi="pipeline" onclick="showKPIDetail('pipeline')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L5 11h7l-4 7 12-10h-8l4-6z"/></svg><span class="label">Weighted Pipeline</span><div class="kpi-value" id="k-pipe">$0</div><div class="kpi-delta" id="k-pipe-d">Prob-adjusted</div></div>
-    <div class="kpi-card" data-kpi="overdue" onclick="showKPIDetail('overdue')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2L1 18h18L10 2z"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="label">Overdue Follow-ups</span><div class="kpi-value red" id="k-overdue">0</div><div class="kpi-delta">Need attention today</div></div>
-    <div class="kpi-card" data-kpi="conversion" onclick="showKPIDetail('conversion')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 15l5-5 3 3 5-6 3 3"/><path d="M2 18h16"/></svg><span class="label">Conversion Rate</span><div class="kpi-value" id="k-conv">0%</div><div class="kpi-delta">Opps → Sales</div></div>
-    <div class="kpi-card" data-kpi="homecalls" onclick="showKPIDetail('homecalls')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9l8-7 8 7v9H2z"/><path d="M8 18v-7h4v7"/></svg><span class="label">Home Calls Done</span><div class="kpi-value" id="k-hc">0</div><div class="kpi-delta" id="k-hc-d">Completed visits</div></div>
-    <div class="kpi-card" data-kpi="avgval" onclick="showKPIDetail('avgval')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l2.2 6.2H18l-4.7 3.5 1.7 6-5-3.5-5 3.5 1.7-6L2 8.2h5.8z"/></svg><span class="label">Avg Project Value</span><div class="kpi-value gold" id="k-avg">$0</div><div class="kpi-delta">Per closed deal</div></div>
-    <div class="kpi-card" data-kpi="goldcomp" onclick="showKPIDetail('goldcomp')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 1v4M10 15v4M1 10h4M15 10h4M3.4 3.4l2.8 2.8M13.8 13.8l2.8 2.8M16.6 3.4l-2.8 2.8M6.2 13.8L3.4 16.6"/><circle cx="10" cy="10" r="3"/></svg><span class="label">GoldComp Sales</span><div class="kpi-value" id="k-gc">$0</div><div class="kpi-delta" id="k-gc-d">0% of total</div></div>
-    <div class="kpi-card" data-kpi="probability" onclick="showKPIDetail('probability')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="10" width="3" height="8" rx="1"/><rect x="8.5" y="5" width="3" height="13" rx="1"/><rect x="14" y="2" width="3" height="16" rx="1"/></svg><span class="label">Avg Probability</span><div class="kpi-value" id="k-prob">0%</div><div class="kpi-delta">Active pipeline</div></div>
-    <div class="kpi-card" data-kpi="hot" onclick="showKPIDetail('hot')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 2c0 3-2 4-2 7a3 3 0 006 0c0-4-4-5-4-5s1 2-1 3c0-3-3-4-1-8 0 0-4 2-4 7a5 5 0 0010 0c0-6-4-7-4-4z"/></svg><span class="label">Hot Leads (≥75%)</span><div class="kpi-value red" id="k-hot">0</div><div class="kpi-delta">High-probability opps</div></div>
-    <div class="kpi-card" data-kpi="totalest" onclick="showKPIDetail('totalest')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a3 3 0 016 0v2"/><path d="M2 12h16"/></svg><span class="label">Total Est. Pipeline</span><div class="kpi-value" id="k-total-est">$0</div><div class="kpi-delta">Sum of all estimates</div></div>
-    <div class="kpi-card" data-kpi="winrate" onclick="showKPIDetail('winrate')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h8v6a4 4 0 01-8 0V3z"/><path d="M6 6H3a2 2 0 002 2M14 6h3a2 2 0 01-3 2M10 13v4M7 17h6"/></svg><span class="label">Win Rate (YTD)</span><div class="kpi-value green" id="k-winrate">0%</div><div class="kpi-delta">Sales ÷ total opps</div></div>
+    <div class="kpi-card" data-kpi="opps" onclick="showKPIDetail('opps')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><circle cx="10" cy="10" r="5"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/></svg><span class="label" data-i18n="kpi_opps">Opportunities</span><div class="kpi-value" id="k-opps">0</div><div class="kpi-delta" id="k-opps-d" data-i18n="kpi_opps_d">In pipeline</div></div>
+    <div class="kpi-card" data-kpi="sales" onclick="showKPIDetail('sales')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><path d="M10 5v1.5M10 13.5V15M7.5 12.5c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-2-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2"/></svg><span class="label" data-i18n="kpi_sales">Sales This Period</span><div class="kpi-value gold" id="k-sales">$0</div><div class="kpi-delta" id="k-sales-d" data-i18n="kpi_sales_d">Closed deals</div></div>
+    <div class="kpi-card" data-kpi="pipeline" onclick="showKPIDetail('pipeline')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L5 11h7l-4 7 12-10h-8l4-6z"/></svg><span class="label" data-i18n="kpi_pipe">Weighted Pipeline</span><div class="kpi-value" id="k-pipe">$0</div><div class="kpi-delta" id="k-pipe-d" data-i18n="kpi_pipe_d">Prob-adjusted</div></div>
+    <div class="kpi-card" data-kpi="overdue" onclick="showKPIDetail('overdue')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2L1 18h18L10 2z"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="label" data-i18n="kpi_overdue">Overdue Follow-ups</span><div class="kpi-value red" id="k-overdue">0</div><div class="kpi-delta" data-i18n="kpi_overdue_d">Need attention today</div></div>
+    <div class="kpi-card" data-kpi="conversion" onclick="showKPIDetail('conversion')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 15l5-5 3 3 5-6 3 3"/><path d="M2 18h16"/></svg><span class="label" data-i18n="kpi_conv">Conversion Rate</span><div class="kpi-value" id="k-conv">0%</div><div class="kpi-delta" data-i18n="kpi_conv_d">Opps → Sales</div></div>
+    <div class="kpi-card" data-kpi="homecalls" onclick="showKPIDetail('homecalls')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9l8-7 8 7v9H2z"/><path d="M8 18v-7h4v7"/></svg><span class="label" data-i18n="kpi_hc">Home Calls Done</span><div class="kpi-value" id="k-hc">0</div><div class="kpi-delta" id="k-hc-d" data-i18n="kpi_hc_d">Completed visits</div></div>
+    <div class="kpi-card" data-kpi="avgval" onclick="showKPIDetail('avgval')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l2.2 6.2H18l-4.7 3.5 1.7 6-5-3.5-5 3.5 1.7-6L2 8.2h5.8z"/></svg><span class="label" data-i18n="kpi_avg">Avg Project Value</span><div class="kpi-value gold" id="k-avg">$0</div><div class="kpi-delta" data-i18n="kpi_avg_d">Per closed deal</div></div>
+    <div class="kpi-card" data-kpi="goldcomp" onclick="showKPIDetail('goldcomp')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 1v4M10 15v4M1 10h4M15 10h4M3.4 3.4l2.8 2.8M13.8 13.8l2.8 2.8M16.6 3.4l-2.8 2.8M6.2 13.8L3.4 16.6"/><circle cx="10" cy="10" r="3"/></svg><span class="label" data-i18n="kpi_gc">GoldComp Sales</span><div class="kpi-value" id="k-gc">$0</div><div class="kpi-delta" id="k-gc-d">0% of total</div></div>
+    <div class="kpi-card" data-kpi="probability" onclick="showKPIDetail('probability')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="10" width="3" height="8" rx="1"/><rect x="8.5" y="5" width="3" height="13" rx="1"/><rect x="14" y="2" width="3" height="16" rx="1"/></svg><span class="label" data-i18n="kpi_prob">Avg Probability</span><div class="kpi-value" id="k-prob">0%</div><div class="kpi-delta" data-i18n="kpi_prob_d">Active pipeline</div></div>
+    <div class="kpi-card" data-kpi="hot" onclick="showKPIDetail('hot')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 2c0 3-2 4-2 7a3 3 0 006 0c0-4-4-5-4-5s1 2-1 3c0-3-3-4-1-8 0 0-4 2-4 7a5 5 0 0010 0c0-6-4-7-4-4z"/></svg><span class="label" data-i18n="kpi_hot">Hot Leads (≥75%)</span><div class="kpi-value red" id="k-hot">0</div><div class="kpi-delta" data-i18n="kpi_hot_d">High-probability opps</div></div>
+    <div class="kpi-card" data-kpi="totalest" onclick="showKPIDetail('totalest')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a3 3 0 016 0v2"/><path d="M2 12h16"/></svg><span class="label" data-i18n="kpi_total">Total Est. Pipeline</span><div class="kpi-value" id="k-total-est">$0</div><div class="kpi-delta" data-i18n="kpi_total_d">Sum of all estimates</div></div>
+    <div class="kpi-card" data-kpi="winrate" onclick="showKPIDetail('winrate')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h8v6a4 4 0 01-8 0V3z"/><path d="M6 6H3a2 2 0 002 2M14 6h3a2 2 0 01-3 2M10 13v4M7 17h6"/></svg><span class="label" data-i18n="kpi_winrate">Win Rate (YTD)</span><div class="kpi-value green" id="k-winrate">0%</div><div class="kpi-delta" data-i18n="kpi_winrate_d">Sales ÷ total opps</div></div>
   </div>
 
   <!-- Insights -->
-  <div class="label" style="padding:0 24px;max-width:1320px;margin:0 auto 10px">💡 Insights & Recommendations</div>
+  <div class="label" style="padding:0 24px;max-width:1320px;margin:0 auto 10px"><span data-i18n="insights_title">💡 Insights & Recommendations</span></div>
   <div class="insights-grid" id="insightsGrid"></div>
 
   <div class="dash-grid container">
@@ -735,8 +741,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <!-- ══════ PIPELINE ══════ -->
 <div class="page" id="page-pipeline">
   <div class="pipeline-header container">
-    <div><span class="label" style="display:block;margin-bottom:6px">Sales Pipeline</span>
-      <h2 class="display">ALL OPPORTUNITIES</h2></div>
+    <div><span class="label" style="display:block;margin-bottom:6px" data-i18n="pipe_label">Sales Pipeline</span>
+      <h2 class="display" data-i18n="pipe_header">ALL OPPORTUNITIES</h2></div>
     <div class="search-box">
       <span style="color:var(--ink-40)">🔍</span>
       <input id="searchInput" type="text" placeholder="Search name, project, stage…" oninput="renderPipeline()">
@@ -746,7 +752,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
       Print / PDF
     </button>
-    <button class="btn btn-primary" onclick="openNewLead()">+ New Lead</button>
+    <button class="btn btn-primary" onclick="openNewLead()" data-i18n="btn_new_lead">+ New Lead</button>
   </div>
   </div>
   <div class="filter-row" id="stageFilters"></div>
@@ -768,9 +774,9 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <!-- ══════ PRIORITIES ══════ -->
 <div class="page" id="page-priorities">
   <div class="priorities-header">
-    <span class="label" style="display:block;margin-bottom:6px">Daily Focus</span>
-    <h2 class="display">⚡ PRIORITIES</h2>
-    <p style="font-size:13px;color:var(--ink-40);margin-top:8px" id="prioritiesSubtitle">Clients sorted by urgency score</p>
+    <span class="label" style="display:block;margin-bottom:6px" data-i18n="prio_label">Daily Focus</span>
+    <h2 class="display" data-i18n="prio_header">⚡ PRIORITIES</h2>
+    <p style="font-size:13px;color:var(--ink-40);margin-top:8px" id="prioritiesSubtitle" data-i18n="prio_sub">Clients sorted by urgency score</p>
     <button onclick="printPage('page-priorities')" class="print-btn" style="margin-top:12px" title="Print or Save as PDF">
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
       Print / PDF
@@ -779,21 +785,29 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 
   <div class="container" style="margin-bottom:20px">
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-      <div class="kpi-card"><span class="kpi-icon">🔥</span><span class="label">Overdue</span>
-        <div class="kpi-value red" id="prio-overdue">0</div><div class="kpi-delta">Follow-ups past due</div></div>
-      <div class="kpi-card"><span class="kpi-icon">⚡</span><span class="label">Due Today</span>
-        <div class="kpi-value gold" id="prio-today">0</div><div class="kpi-delta">Follow up today</div></div>
-      <div class="kpi-card"><span class="kpi-icon">📋</span><span class="label">Open Pipeline</span>
-        <div class="kpi-value" id="prio-open">0</div><div class="kpi-delta">Active opportunities</div></div>
+      <div class="kpi-card"><span class="kpi-icon">🔥</span><span class="label" data-i18n="prio_overdue">Overdue</span>
+        <div class="kpi-value red" id="prio-overdue">0</div><div class="kpi-delta" data-i18n="prio_d_overdue">Follow-ups past due</div></div>
+      <div class="kpi-card"><span class="kpi-icon">⚡</span><span class="label" data-i18n="prio_today">Due Today</span>
+        <div class="kpi-value gold" id="prio-today">0</div><div class="kpi-delta" data-i18n="prio_d_today">Follow up today</div></div>
+      <div class="kpi-card"><span class="kpi-icon">📋</span><span class="label" data-i18n="prio_open">Open Pipeline</span>
+        <div class="kpi-value" id="prio-open">0</div><div class="kpi-delta" data-i18n="prio_d_open">Active opportunities</div></div>
     </div>
   </div>
 
   <div class="priority-table-wrap">
     <table>
       <thead><tr>
-        <th>Client</th><th>Project Type</th><th>Stage</th><th>Next Step</th>
-        <th>Prob</th><th>Estimate</th><th>Follow-Up</th>
-        <th>Days Overdue</th><th>Win Tier</th><th>Urgency Score</th><th></th>
+        <th data-i18n="prio_th_client">Client</th>
+        <th data-i18n="prio_th_project">Project Type</th>
+        <th data-i18n="prio_th_stage">Stage</th>
+        <th data-i18n="prio_th_next">Next Step</th>
+        <th data-i18n="prio_th_prob">Prob</th>
+        <th data-i18n="prio_th_est">Estimate</th>
+        <th data-i18n="prio_th_date">Follow-Up</th>
+        <th data-i18n="prio_th_days">Days Overdue</th>
+        <th data-i18n="prio_th_tier">Win Tier</th>
+        <th data-i18n="prio_th_score">Urgency Score</th>
+        <th></th>
       </tr></thead>
       <tbody id="priorityBody"></tbody>
     </table>
@@ -806,8 +820,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <!-- ══════ MAILING ══════ -->
 <div class="page" id="page-mailing">
   <div class="section-header">
-    <span class="label" style="display:block;margin-bottom:6px">Smart Campaign</span>
-    <h2 class="display">📧 MAILING LIST</h2>
+    <span class="label" style="display:block;margin-bottom:6px" data-i18n="mail_label">Smart Campaign</span>
+    <h2 class="display" data-i18n="mail_header">📧 MAILING LIST</h2>
     <p style="font-size:13px;color:var(--ink-40);margin-top:8px">Auto-populated from pipeline. Topics calculated from Stage, Project Type &amp; Probability.</p>
   </div>
   <div style="padding:0 24px;max-width:1320px;margin:0 auto 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -905,44 +919,44 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <input type="hidden" id="leadId">
 
       <div class="form-section">
-        <div class="form-section-title">👤 Contact Information</div>
+        <div class="form-section-title" data-i18n="sec_contact">👤 Contact Information</div>
         <div class="form-grid">
-          <div class="field"><label>First Name *</label><input id="f-firstName" type="text" required placeholder="Maria"></div>
-          <div class="field"><label>Last Name *</label><input id="f-lastName" type="text" required placeholder="Alvarez"></div>
-          <div class="field"><label>Email</label><input id="f-email" type="email" placeholder="maria@email.com"></div>
-          <div class="field"><label>Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000"></div>
-          <div class="field span-2"><label>Address</label><input id="f-address" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
+          <div class="field"><label data-i18n="lbl_first">First Name *</label><input id="f-firstName" type="text" required placeholder="Maria"></div>
+          <div class="field"><label data-i18n="lbl_last">Last Name *</label><input id="f-lastName" type="text" required placeholder="Alvarez"></div>
+          <div class="field"><label data-i18n="lbl_email">Email</label><input id="f-email" type="email" placeholder="maria@email.com"></div>
+          <div class="field"><label data-i18n="lbl_phone">Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000"></div>
+          <div class="field span-2"><label data-i18n="lbl_address">Address</label><input id="f-address" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
         </div>
       </div>
 
       <div class="form-section">
-        <div class="form-section-title">🏠 Project Details</div>
+        <div class="form-section-title" data-i18n="sec_project">🏠 Project Details</div>
         <div class="form-grid">
-          <div class="field"><label>Project Type *</label>
+          <div class="field"><label data-i18n="lbl_project">Project Type *</label>
             <select id="f-projectType" onchange="onFieldChange()"><option value="">Select…</option></select></div>
-          <div class="field"><label>Lead Source</label>
+          <div class="field"><label data-i18n="lbl_source">Lead Source</label>
             <select id="f-leadSource"><option value="">Select…</option></select></div>
-          <div class="field"><label>Stage</label>
+          <div class="field"><label data-i18n="lbl_stage">Stage</label>
             <select id="f-stage" onchange="onFieldChange()"><option value="">Select…</option></select></div>
-          <div class="field"><label>Probability (%)</label>
+          <div class="field"><label data-i18n="lbl_prob">Probability (%)</label>
             <select id="f-probability" onchange="onFieldChange()"><option value="">Select…</option></select></div>
-          <div class="field"><label>Estimate ($)</label>
+          <div class="field"><label data-i18n="lbl_est">Estimate ($)</label>
             <input id="f-estimate" type="number" min="0" step="100" placeholder="15000" oninput="onFieldChange()"></div>
-          <div class="field"><label>Follow-Up Date</label>
+          <div class="field"><label data-i18n="lbl_followup">Follow-Up Date</label>
             <input id="f-followUpDate" type="date" onchange="onFieldChange()"></div>
-          <div class="field"><label>Next Step</label>
+          <div class="field"><label data-i18n="lbl_next">Next Step</label>
             <select id="f-nextStep"><option value="">Select…</option></select></div>
-          <div class="field"><label>Home Call?</label>
+          <div class="field"><label data-i18n="lbl_hc">Home Call?</label>
             <select id="f-homeCall" onchange="onFieldChange()">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
-          <div class="field"><label>Home Call Date</label>
+          <div class="field"><label data-i18n="lbl_hcdate">Home Call Date</label>
             <input id="f-homeCallDate" type="date"></div>
-          <div class="field"><label>Sale Made?</label>
+          <div class="field"><label data-i18n="lbl_sale">Sale Made?</label>
             <select id="f-saleMade" onchange="onFieldChange()">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
-          <div class="field"><label>GoldComp?</label>
+          <div class="field"><label data-i18n="lbl_gc">GoldComp?</label>
             <select id="f-goldComp">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
@@ -988,6 +1002,310 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <button class="add-btn" onclick="openNewLead()" title="Add new lead">+</button>
 
 <script>
+
+/* ══════════════════════════════════════════════════
+   BILINGUAL SYSTEM — EN (US) / PT-BR
+══════════════════════════════════════════════════ */
+const STRINGS = {
+  en: {
+    // Nav
+    nav_dashboard:'Dashboard', nav_pipeline:'Pipeline', nav_priorities:'Priorities',
+    nav_year:'Year', nav_mailing:'Mailing', nav_post30:'Post 30', nav_post60:'Post 60',
+    nav_mileage:'Mileage', nav_tests:'Tests',
+    nav_sub:'Sales Intelligence',
+
+    // Dashboard
+    dash_subtitle:'Sales Intelligence — 2026',
+    dash_title:'PERFORMANCE DASHBOARD',
+    dash_goal:'Monthly Goal',
+    dash_progress:'Progress',
+    btn_print:'Print / PDF', btn_excel:'Export to Excel', btn_sheets:'Copy for Sheets',
+    btn_new_lead:'+ New Lead',
+
+    // KPI labels
+    kpi_opps:'Opportunities',       kpi_opps_d:'In pipeline',
+    kpi_sales:'Sales This Period',  kpi_sales_d:'Closed deals',
+    kpi_pipe:'Weighted Pipeline',   kpi_pipe_d:'Prob-adjusted',
+    kpi_overdue:'Overdue Follow-ups', kpi_overdue_d:'Need attention today',
+    kpi_conv:'Conversion Rate',     kpi_conv_d:'Opps → Sales',
+    kpi_hc:'Home Calls Done',       kpi_hc_d:'Completed visits',
+    kpi_avg:'Avg Project Value',    kpi_avg_d:'Per closed deal',
+    kpi_gc:'GoldComp Sales',
+    kpi_prob:'Avg Probability',     kpi_prob_d:'Active pipeline',
+    kpi_hot:'Hot Leads (≥75%)',     kpi_hot_d:'High-probability opps',
+    kpi_total:'Total Est. Pipeline',kpi_total_d:'Sum of all estimates',
+    kpi_winrate:'Win Rate (YTD)',    kpi_winrate_d:'Sales ÷ total opps',
+
+    // Insights
+    insights_title:'💡 Insights & Recommendations',
+
+    // Priorities
+    prio_header:'PRIORITIES', prio_label:'Daily Focus',
+    prio_sub:'Clients sorted by urgency score',
+    prio_overdue:'Overdue', prio_today:'Due Today', prio_open:'Open Pipeline',
+    prio_d_overdue:'Follow-ups past due', prio_d_today:'Follow up today',
+    prio_d_open:'Active opportunities',
+    prio_th_client:'Client', prio_th_project:'Project Type', prio_th_stage:'Stage',
+    prio_th_next:'Next Step', prio_th_prob:'Prob', prio_th_est:'Estimate',
+    prio_th_date:'Follow-Up', prio_th_days:'Days Overdue', prio_th_tier:'Win Tier',
+    prio_th_score:'Urgency Score',
+    prio_empty:'All follow-ups are on track!',
+
+    // Pipeline
+    pipe_header:'ALL OPPORTUNITIES', pipe_label:'Sales Pipeline',
+
+    // Year
+    year_header:'YEAR AT A GLANCE', year_label:'Annual Overview',
+
+    // Mailing
+    mail_header:'MAILING LIST', mail_label:'Smart Campaign',
+    mail_sub:'Auto-populated from pipeline. Topics calculated from Stage, Project Type & Probability.',
+    mail_csv:'Export CSV for Sheets',
+
+    // Post 30 / 60
+    post30_header:'POST-30 DELIVERY FOLLOW-UP',
+    post60_header:'POST-60 OPPORTUNITY FOLLOW-UP',
+
+    // Mileage
+    mile_header:'MONTHLY HOME CALL MILEAGE',
+    mile_designer:'Designer', mile_month:'Month', mile_year:'Year',
+    mile_rate_label:'Mileage Rate',
+    mile_add:'+ Add Manual Trip', mile_print:'Print / PDF',
+    mile_th_date:'Date', mile_th_client:'Client Name', mile_th_address:'Address',
+    mile_th_home:'Home', mile_th_dc:'DC', mile_th_client_stop:'Client',
+    mile_th_total:'Total Miles Driven', mile_th_commute:'Commute Deduct',
+    mile_th_net:'Net Miles', mile_th_tolls:'Tolls / Parking',
+    mile_th_reimb:'Total Reimb.', mile_th_partner:'Design Partner',
+    mile_th_purpose:'Purpose',
+    mile_subtotal:'Month Subtotal', mile_trips:'trip', mile_trips_p:'trips',
+    mile_warn:'⚠️ If the trip starts or ends at your home, you must deduct your daily commute distance.',
+    mile_irs:'IRS Standard Rate',
+    mile_home_call:'🏠 Home Call',
+    mile_manual:'Manual Trip',
+    mile_sign_designer:'DESIGNER SIGNATURE',
+    mile_sign_dcl:'DCL SIGNATURE',
+    mile_home_ref:'home address for daily commute deduction reference',
+    mile_edit:'Edit Row',
+    mile_edit_title:'Edit Mileage Row',
+    mile_save:'Save Changes',
+    mile_cancel:'Cancel',
+    mile_delete:'Delete Row',
+    mile_no_records:'No trips recorded for this period.',
+    mile_month_all:'All Months',
+    mile_month_nav_prev:'◀ Previous',
+    mile_month_nav_next:'Next ▶',
+
+    // Modal form
+    modal_new:'NEW LEAD', modal_edit:'EDIT LEAD',
+    sec_contact:'👤 Contact Information',
+    sec_project:'🏠 Project Details',
+    sec_notes:'📝 Notes',
+    lbl_first:'First Name *', lbl_last:'Last Name *',
+    lbl_email:'Email', lbl_phone:'Phone', lbl_address:'Address',
+    lbl_project:'Project Type *', lbl_source:'Lead Source',
+    lbl_stage:'Stage', lbl_prob:'Probability (%)',
+    lbl_est:'Estimate ($)', lbl_followup:'Follow-Up Date',
+    lbl_next:'Next Step', lbl_hc:'Home Call?', lbl_hcdate:'Home Call Date',
+    lbl_sale:'Sale Made?', lbl_gc:'GoldComp?',
+    lbl_notes:'Notes / Observations',
+    btn_save:'Save', btn_cancel:'Cancel', btn_delete:'Delete Lead',
+
+    // Tests
+    tests_header:'TEST SUITE', tests_label:'Quality Assurance',
+    tests_sub:'Automated tests covering formulas, DB, UI and business logic.',
+    tests_run:'▶ Run All Tests',
+
+    // Stage display (stored in EN, displayed in selected lang)
+    stage_new:'New Lead', stage_hc:'Home Call',
+    stage_design:'Design in Progress', stage_quote:'Quote Sent',
+    stage_followup:'Follow-up', stage_pending:'Pending Decision',
+    stage_sale:'Sale Made', stage_postponed:'Postponed', stage_canceled:'Canceled',
+
+    // Months
+    months: ['January','February','March','April','May','June',
+             'July','August','September','October','November','December'],
+    months_short: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+
+    // Overdue suffix
+    overdue_suffix: 'd overdue',
+    due_today: 'Today',
+
+    // Toasts
+    toast_saved:'Saved successfully', toast_deleted:'Record deleted',
+    toast_copied:'Copied to clipboard!',
+    toast_excel:'Excel file downloaded!',
+    toast_sheets:'Pipeline data copied! Paste into Google Sheets (Ctrl+V)',
+    toast_no_email:'No email on file',
+  },
+
+  pt: {
+    // Nav
+    nav_dashboard:'Painel', nav_pipeline:'Pipeline', nav_priorities:'Prioridades',
+    nav_year:'Ano', nav_mailing:'E-mail', nav_post30:'Pós 30', nav_post60:'Pós 60',
+    nav_mileage:'Quilometragem', nav_tests:'Testes',
+    nav_sub:'Inteligência de Vendas',
+
+    // Dashboard
+    dash_subtitle:'Inteligência de Vendas — 2026',
+    dash_title:'PAINEL DE DESEMPENHO',
+    dash_goal:'Meta Mensal',
+    dash_progress:'Progresso',
+    btn_print:'Imprimir / PDF', btn_excel:'Exportar para Excel', btn_sheets:'Copiar para Planilhas',
+    btn_new_lead:'+ Novo Lead',
+
+    // KPI labels
+    kpi_opps:'Oportunidades',       kpi_opps_d:'No pipeline',
+    kpi_sales:'Vendas do Período',  kpi_sales_d:'Vendas fechadas',
+    kpi_pipe:'Pipeline Ponderada',  kpi_pipe_d:'Ajustada por probabilidade',
+    kpi_overdue:'Follow-ups Atrasados', kpi_overdue_d:'Atenção necessária hoje',
+    kpi_conv:'Taxa de Conversão',   kpi_conv_d:'Opps → Vendas',
+    kpi_hc:'Visitas Realizadas',    kpi_hc_d:'Visitas domiciliares',
+    kpi_avg:'Valor Médio do Projeto',kpi_avg_d:'Por venda fechada',
+    kpi_gc:'Vendas GoldComp',
+    kpi_prob:'Probabilidade Média', kpi_prob_d:'Pipeline ativo',
+    kpi_hot:'Leads Quentes (≥75%)', kpi_hot_d:'Oportunidades de alta probabilidade',
+    kpi_total:'Pipeline Total Estimada',kpi_total_d:'Soma de todas as estimativas',
+    kpi_winrate:'Taxa de Fechamento (Ano)',kpi_winrate_d:'Vendas ÷ total de oportunidades',
+
+    // Insights
+    insights_title:'💡 Insights & Recomendações',
+
+    // Priorities
+    prio_header:'PRIORIDADES', prio_label:'Foco Diário',
+    prio_sub:'Clientes ordenados por pontuação de urgência',
+    prio_overdue:'Atrasados', prio_today:'Para Hoje', prio_open:'Pipeline Aberto',
+    prio_d_overdue:'Follow-ups em atraso', prio_d_today:'Follow-up hoje',
+    prio_d_open:'Oportunidades ativas',
+    prio_th_client:'Cliente', prio_th_project:'Tipo de Projeto', prio_th_stage:'Etapa',
+    prio_th_next:'Próximo Passo', prio_th_prob:'Prob', prio_th_est:'Estimativa',
+    prio_th_date:'Follow-Up', prio_th_days:'Dias Atraso', prio_th_tier:'Categoria',
+    prio_th_score:'Score de Urgência',
+    prio_empty:'Todos os follow-ups estão em dia!',
+
+    // Pipeline
+    pipe_header:'TODAS AS OPORTUNIDADES', pipe_label:'Pipeline de Vendas',
+
+    // Year
+    year_header:'ANO EM RESUMO', year_label:'Visão Anual',
+
+    // Mailing
+    mail_header:'LISTA DE E-MAILS', mail_label:'Campanha Inteligente',
+    mail_sub:'Gerado automaticamente do pipeline. Tópicos calculados por Etapa, Tipo e Probabilidade.',
+    mail_csv:'Exportar CSV para Planilhas',
+
+    // Post 30 / 60
+    post30_header:'FOLLOW-UP PÓS-ENTREGA 30 DIAS',
+    post60_header:'FOLLOW-UP DE NOVA OPORTUNIDADE 60 DIAS',
+
+    // Mileage
+    mile_header:'QUILOMETRAGEM MENSAL — VISITAS DOMICILIARES',
+    mile_designer:'Consultora', mile_month:'Mês', mile_year:'Ano',
+    mile_rate_label:'Taxa de Quilometragem',
+    mile_add:'+ Adicionar Viagem', mile_print:'Imprimir / PDF',
+    mile_th_date:'Data', mile_th_client:'Nome do Cliente', mile_th_address:'Endereço',
+    mile_th_home:'Casa', mile_th_dc:'DC', mile_th_client_stop:'Cliente',
+    mile_th_total:'Total km Rodados', mile_th_commute:'Dedução Commute',
+    mile_th_net:'km Líquidos', mile_th_tolls:'Pedágios / Estac.',
+    mile_th_reimb:'Total Reemb.', mile_th_partner:'Parceiro de Design',
+    mile_th_purpose:'Finalidade',
+    mile_subtotal:'Subtotal do Mês', mile_trips:'viagem', mile_trips_p:'viagens',
+    mile_warn:'⚠️ Se a viagem começa ou termina em sua casa, é necessário deduzir o percurso diário de commute.',
+    mile_irs:'Taxa Padrão IRS',
+    mile_home_call:'🏠 Visita Domiciliar',
+    mile_manual:'Viagem Manual',
+    mile_sign_designer:'ASSINATURA DA CONSULTORA',
+    mile_sign_dcl:'ASSINATURA DO DCL',
+    mile_home_ref:'endereço residencial para referência de dedução de commute diário',
+    mile_edit:'Editar Linha',
+    mile_edit_title:'Editar Registro de Quilometragem',
+    mile_save:'Salvar Alterações',
+    mile_cancel:'Cancelar',
+    mile_delete:'Excluir',
+    mile_no_records:'Nenhuma viagem registrada para este período.',
+    mile_month_all:'Todos os Meses',
+    mile_month_nav_prev:'◀ Anterior',
+    mile_month_nav_next:'Próximo ▶',
+
+    // Modal form
+    modal_new:'NOVO LEAD', modal_edit:'EDITAR LEAD',
+    sec_contact:'👤 Dados de Contato',
+    sec_project:'🏠 Detalhes do Projeto',
+    sec_notes:'📝 Observações',
+    lbl_first:'Nome *', lbl_last:'Sobrenome *',
+    lbl_email:'E-mail', lbl_phone:'Telefone', lbl_address:'Endereço',
+    lbl_project:'Tipo de Projeto *', lbl_source:'Fonte do Lead',
+    lbl_stage:'Etapa', lbl_prob:'Probabilidade (%)',
+    lbl_est:'Estimativa ($)', lbl_followup:'Data de Follow-Up',
+    lbl_next:'Próximo Passo', lbl_hc:'Visita Domiciliar?', lbl_hcdate:'Data da Visita',
+    lbl_sale:'Venda Realizada?', lbl_gc:'GoldComp?',
+    lbl_notes:'Observações / Notas',
+    btn_save:'Salvar', btn_cancel:'Cancelar', btn_delete:'Excluir Lead',
+
+    // Tests
+    tests_header:'TESTES AUTOMATIZADOS', tests_label:'Controle de Qualidade',
+    tests_sub:'Testes automáticos cobrindo fórmulas, BD, interface e regras de negócio.',
+    tests_run:'▶ Executar Todos os Testes',
+
+    // Stage display
+    stage_new:'Novo Lead', stage_hc:'Visita Domiciliar',
+    stage_design:'Design em Andamento', stage_quote:'Proposta Enviada',
+    stage_followup:'Follow-up', stage_pending:'Decisão Pendente',
+    stage_sale:'Venda Realizada', stage_postponed:'Postergado', stage_canceled:'Cancelado',
+
+    // Months
+    months: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+             'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
+    months_short: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+
+    // Overdue suffix
+    overdue_suffix: 'd de atraso',
+    due_today: 'Hoje',
+
+    // Toasts
+    toast_saved:'Salvo com sucesso', toast_deleted:'Registro excluído',
+    toast_copied:'Copiado!',
+    toast_excel:'Arquivo Excel baixado!',
+    toast_sheets:'Dados copiados! Cole no Google Planilhas (Ctrl+V)',
+    toast_no_email:'Sem e-mail cadastrado',
+  }
+};
+
+/* ── Language state ── */
+let _lang = localStorage.getItem('ea_lang') || 'en';
+function T(key) { return (STRINGS[_lang] && STRINGS[_lang][key]) || STRINGS.en[key] || key; }
+function getLang() { return _lang; }
+function setLang(lang) {
+  _lang = lang;
+  localStorage.setItem('ea_lang', lang);
+  // Update toggle button text
+  const btn = document.getElementById('langToggleBtn');
+  if (btn) btn.textContent = lang === 'en' ? '🇧🇷 PT' : '🇺🇸 EN';
+  // Apply to static data-i18n elements
+  applyI18n();
+  // Re-render current page
+  renderPage(window._currentPage || 'dashboard');
+}
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = T(key);
+    if (val) el.textContent = val;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.getAttribute('data-i18n-ph');
+    const val = T(key);
+    if (val) el.placeholder = val;
+  });
+}
+
+/* ── Stage display name mapping ── */
+const STAGE_KEYS = {
+  'New Lead':'stage_new','Home Call':'stage_hc','Design in Progress':'stage_design',
+  'Quote Sent':'stage_quote','Follow-up':'stage_followup','Pending Decision':'stage_pending',
+  'Sale Made':'stage_sale','Postponed':'stage_postponed','Canceled':'stage_canceled',
+};
+function stageLabel(stage) { return T(STAGE_KEYS[stage] || 'stage_new') || stage; }
+
 'use strict';
 
 /* ══════════════════════════════════════════════════
@@ -999,7 +1317,7 @@ const LOOKUP = {
   nextSteps: ['Schedule Home Visit','Presentation','Presentation / Quote','Follow-Up Call','Send Proposal','Awaiting Decision','Postpone'],
   probabilities: [0,10,25,50,70,75,85,90,100],
   leadSources: ['Referral','Walk-in','Website','Instagram','Repeat Client','Builder'],
-  months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  get months() { return T('months') || ['January','February','March','April','May','June','July','August','September','October','November','December']; },
   monthGoals: [28000,28000,30000,32000,32000,35000,35000,35000,33000,33000,30000,28000],
   stageColors: {
     'New Lead':'#888','Home Call':'#C4933F','Design in Progress':'#4472CA',
@@ -2043,7 +2361,7 @@ async function renderDashboard() {
       <div><div class="alert-days">${BL.getDaysOverdue(o)}</div><div class="alert-days-label">DAYS</div></div>
       <div>
         <div class="alert-name">${esc(o.firstName)} ${esc(o.lastName)}</div>
-        <div class="alert-detail">${esc(o.projectType||'—')} · ${esc(o.stage||'—')}</div>
+        <div class="alert-detail">${esc(o.projectType||'—')} · ${stageLabel(o.stage)||'—'}</div>
       </div>
       <div class="alert-next">${esc(o.nextStep||'—')} →</div>
     </div>`).join('');
@@ -2099,7 +2417,7 @@ async function renderPipeline() {
       </td>
       <td>${esc(o.projectType||'—')}</td>
       <td style="font-size:11px;color:var(--ink-40)">${esc(o.leadSource||'—')}</td>
-      <td><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}">${esc(o.stage||'—')}</span></td>
+      <td><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}">${stageLabel(o.stage)||'—'}</span></td>
       <td style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':'—'}</td>
       <td>${o.estimate?fmt$(Number(o.estimate)):'—'}</td>
       <td style="color:var(--gold)">${w>0?fmt$(w):'—'}</td>
@@ -2127,7 +2445,7 @@ async function renderPriorities() {
   document.getElementById('prio-today').textContent   = dueToday.length;
   document.getElementById('prio-open').textContent    = active.length;
   document.getElementById('prioritiesSubtitle').textContent =
-    `As of ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})} — ${overdue.length} client${overdue.length!==1?'s':''} need follow-up`;
+    `${new Date().toLocaleDateString(getLang()==='pt'?'pt-BR':'en-US',{weekday:'long',month:'long',day:'numeric'})} — ${overdue.length} cliente${overdue.length!==1&&getLang()==='pt'?'s':overdue.length!==1?'s':''} ${getLang()==='pt'?'precisam de follow-up':'need follow-up'}`;
 
   // Show all active opps sorted by urgency score desc
   const sorted = [...active].sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
@@ -2150,12 +2468,12 @@ async function renderPriorities() {
         <div style="font-size:11px;color:var(--ink-40)">${esc(o.email||'')}</div>
       </td>
       <td>${esc(o.projectType||'—')}</td>
-      <td><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}">${esc(o.stage||'—')}</span></td>
+      <td><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}">${stageLabel(o.stage)||'—'}</span></td>
       <td style="font-size:12px">${esc(o.nextStep||'—')}</td>
       <td style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':'—'}</td>
       <td>${o.estimate?fmt$(Number(o.estimate)):'—'}</td>
       <td style="${ovr?'color:var(--red);font-weight:600':today?'color:var(--gold)':''}">${fmtDate(o.followUpDate)}</td>
-      <td style="color:${ovr?'var(--red)':today?'var(--gold)':'var(--ink-40)'};font-weight:${ovr||today?'700':'400'}">${days>0?days+'d overdue':today?'Today':'—'}</td>
+      <td style="color:${ovr?'var(--red)':today?'var(--gold)':'var(--ink-40)'};font-weight:${ovr||today?'700':'400'}">${days>0?days+T('overdue_suffix'):today?T('due_today'):'—'}</td>
       <td><span class="badge ${wt.cls}">${wt.label}</span></td>
       <td style="font-family:var(--font-display);font-size:18px;color:${urg>50?'var(--red)':urg>20?'var(--gold)':'var(--ink-40)'}">${urg}</td>
       <td><button class="btn-icon" onclick="event.stopPropagation();editLead('${o.id}')">✏️</button></td>
@@ -2414,22 +2732,21 @@ function updatePost60(oppId, field, value) {
    Rate: $0.725/mile (2026 IRS)
 ════════════════════════════════════════════════════ */
 async function renderMileage() {
-  const opps      = await DB.getAll();
-  const today     = new Date();
-  const curMonth  = today.getMonth();
-  const curYear   = today.getFullYear();
-  const monthName = today.toLocaleString('default', { month: 'long' });
-  const RATE      = 0.725;
+  const opps    = await DB.getAll();
+  const today   = new Date();
+  const RATE    = 0.725;
 
-  /* ── Auto-seed home calls for this month ── */
+  /* ── State: selected year/month (null = current) ── */
+  if (!window._mileState) window._mileState = {
+    year: today.getFullYear(),
+    month: today.getMonth(),  // 0-based
+    view: 'month'             // 'month' | 'year'
+  };
+  const MS = window._mileState;
+
+  /* ── Auto-seed home calls for ALL months ── */
   let allRecs = getMileageRecords();
-  const homeCalls = opps.filter(o => {
-    if (o.homeCall !== 'Yes' || !o.homeCallDate) return false;
-    const d = new Date(o.homeCallDate + 'T12:00:00');
-    return d.getMonth() === curMonth && d.getFullYear() === curYear;
-  });
-  let seeded = false;
-  homeCalls.forEach(o => {
+  opps.filter(o => o.homeCall === 'Yes' && o.homeCallDate).forEach(o => {
     if (!allRecs.find(r => r.sourceOppId === o.id)) {
       allRecs.push({
         id: uid(), sourceOppId: o.id, isManual: false,
@@ -2439,50 +2756,69 @@ async function renderMileage() {
         stopHome1:'', stopDC1:'', stopClient:'', stopHome2:'', stopDC2:'',
         totalMiles:'', commuteDeduct:'', tollsParking:'', designPartner:'',
       });
-      seeded = true;
     }
   });
-  if (seeded) Store.save('mileage', allRecs);
+  Store.save('mileage', allRecs);
   allRecs = getMileageRecords();
 
-  /* ── Filter + sort to current month ── */
-  const monthRecs = allRecs.filter(r => {
-    if (!r.date) return !!r.isManual;
-    const d = new Date(r.date + 'T12:00:00');
-    return d.getMonth() === curMonth && d.getFullYear() === curYear;
-  }).sort((a,b) => (a.date||'').localeCompare(b.date||''));
+  /* ── Build month groups ── */
+  const grouped = {};  // key: "YYYY-MM"
+  allRecs.forEach(r => {
+    const d    = r.date ? new Date(r.date + 'T12:00:00') : null;
+    const key  = d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` : `${MS.year}-${String(MS.month+1).padStart(2,'0')}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(r);
+  });
 
-  /* ── Totals (max 30 rows = rows 7–36 in Excel) ── */
+  /* ── Sorted month keys ── */
+  const allKeys = Object.keys(grouped).sort();
+  const curKey  = `${MS.year}-${String(MS.month+1).padStart(2,'0')}`;
+
+  /* ── Helper: format month key → display name ── */
+  const keyToLabel = k => {
+    const [y,m] = k.split('-').map(Number);
+    return `${T('months')[m-1]} ${y}`;
+  };
+
+  /* ── Build month selector tabs ── */
+  const keysToShow = allKeys.length ? allKeys : [curKey];
+  const tabHTML = keysToShow.map(k => {
+    const [y,m]  = k.split('-').map(Number);
+    const short  = T('months_short')[m-1];
+    const isAct  = k === curKey;
+    return `<button onclick="window._mileState.month=${m-1};window._mileState.year=${y};renderMileage()"
+      style="padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;
+             cursor:pointer;border:1px solid ${isAct?'var(--gold)':'var(--ink-60)'};
+             background:${isAct?'rgba(196,147,63,.15)':'var(--ink-80)'};
+             color:${isAct?'var(--gold)':'var(--ink-40)'};white-space:nowrap">
+      ${short} ${y}
+    </button>`;
+  }).join('');
+
+  /* ── Records for selected month ── */
+  const monthRecs = (grouped[curKey] || []).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+
+  /* ── Totals for selected month ── */
   let totalNetMiles = 0, totalReimb = 0;
-  monthRecs.slice(0,30).forEach(r => {
+  monthRecs.forEach(r => {
     const net = Math.max((parseFloat(r.totalMiles)||0)-(parseFloat(r.commuteDeduct)||0), 0);
     totalNetMiles += net;
     totalReimb    += net * RATE + (parseFloat(r.tollsParking)||0);
   });
 
-  /* ── Input helper — matches app .field input style ── */
-  const inp = (id, field, val, w='100%', type='text', ph='') =>
-    `<input type="${type}" data-id="${id}" data-field="${field}"
-      value="${esc(val||'')}" placeholder="${ph}"
-      oninput="updateMileage(this.dataset.id,this.dataset.field,this.value)"
-      style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;
-             color:#fff;font-family:var(--font-body);font-size:12px;padding:5px 8px;
-             width:${w};outline:none;transition:border-color .15s;"
-      onfocus="this.style.borderColor='var(--gold)'" 
-      onblur="this.style.borderColor='var(--ink-60)'" />`;
+  /* ── Build table rows ── */
+  const EMPTY_ROWS = Math.max(monthRecs.length, 10);
+  const inp    = (id,f,v,w,type='text',ph='') =>
+    `<input onchange="updateMileage('${id}','${f}',this.value)" value="${esc(String(v||''))}" type="${type}"
+      placeholder="${ph}" style="width:${w};background:var(--ink-80);border:1px solid var(--ink-60);
+      color:var(--ink-10);border-radius:5px;padding:3px 5px;font-size:12px;
+      font-family:var(--font-body)">`;
+  const numInp = (id,f,v,w) =>
+    `<input onchange="updateMileage('${id}','${f}',this.value)" value="${esc(String(v||''))}" type="number"
+      min="0" step="0.1" style="width:${w};background:var(--ink-80);border:1px solid var(--ink-60);
+      color:var(--ink-10);border-radius:5px;padding:3px 5px;font-size:12px;text-align:right;
+      font-family:var(--font-body)">`;
 
-  const numInp = (id, field, val, w='100%') =>
-    `<input type="number" data-id="${id}" data-field="${field}"
-      value="${esc(String(val||''))}" placeholder="0" min="0" step="0.1"
-      onchange="updateMileageCalc(this.dataset.id,this.dataset.field,this.value)"
-      style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;
-             color:#fff;font-family:var(--font-body);font-size:12px;padding:5px 8px;
-             width:${w};text-align:right;outline:none;transition:border-color .15s;"
-      onfocus="this.style.borderColor='var(--gold)'" 
-      onblur="this.style.borderColor='var(--ink-60)'" />`;
-
-  /* ── Build 30 data rows ── */
-  const EMPTY_ROWS = 30;
   const rows = [];
   for (let i = 0; i < EMPTY_ROWS; i++) {
     const r    = monthRecs[i] || null;
@@ -2490,19 +2826,15 @@ async function renderMileage() {
 
     if (!r) {
       rows.push(`<tr style="height:34px;background:${rowBg}">
-        <td style="background:var(--ink-80);padding:3px 6px"></td>
-        <td style="background:var(--ink-80);padding:3px 6px"></td>
-        <td style="background:var(--ink-80);padding:3px 6px"></td>
+        <td style="padding:3px 6px"></td><td style="padding:3px 6px"></td>
+        <td style="padding:3px 6px"></td><td style="padding:3px 5px"></td>
         <td style="padding:3px 5px"></td><td style="padding:3px 5px"></td>
         <td style="padding:3px 5px"></td><td style="padding:3px 5px"></td>
-        <td style="padding:3px 5px"></td>
-        <td style="padding:3px 5px;background:var(--ink-70)"></td>
-        <td style="padding:3px 5px;background:var(--ink-70)"></td>
-        <td style="padding:3px 8px;text-align:right;color:var(--ink-60)">—</td>
-        <td style="padding:3px 5px;background:var(--ink-70)"></td>
+        <td style="padding:3px 5px"></td><td style="padding:3px 5px"></td>
         <td style="padding:3px 8px;text-align:right;color:var(--ink-60)">—</td>
         <td style="padding:3px 5px"></td>
-        <td style="padding:3px 5px"></td>
+        <td style="padding:3px 8px;text-align:right;color:var(--ink-60)">—</td>
+        <td style="padding:3px 5px"></td><td style="padding:3px 5px"></td>
       </tr>`);
       continue;
     }
@@ -2512,231 +2844,211 @@ async function renderMileage() {
     const isAuto = !r.isManual && r.sourceOppId;
 
     rows.push(`<tr style="background:${rowBg}">
-      <td style="background:var(--ink-80);padding:3px 6px;min-width:128px">
-        ${inp(r.id,'date',r.date,'118px','date')}
-      </td>
-      <td style="background:var(--ink-80);padding:3px 6px;min-width:130px">
-        ${inp(r.id,'clientName',r.clientName,'118px','text',isAuto?'':'Client name')}
-      </td>
-      <td style="background:var(--ink-80);padding:3px 6px;min-width:160px">
-        ${inp(r.id,'address',r.address,'148px','text',isAuto?'':'Address')}
-      </td>
-      <td style="padding:3px 5px;min-width:56px">${inp(r.id,'stopHome1',r.stopHome1||'','48px','text','')}</td>
-      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopDC1',r.stopDC1||'','40px','text','')}</td>
-      <td style="padding:3px 5px;min-width:56px">${inp(r.id,'stopClient',r.stopClient||'','48px','text','')}</td>
-      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopHome2',r.stopHome2||'','40px','text','')}</td>
-      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopDC2',r.stopDC2||'','40px','text','')}</td>
-      <td style="padding:3px 5px;min-width:72px;background:var(--ink-70)">
-        ${numInp(r.id,'totalMiles',r.totalMiles,'64px')}
-      </td>
-      <td style="padding:3px 5px;min-width:72px;background:var(--ink-70)">
-        ${numInp(r.id,'commuteDeduct',r.commuteDeduct,'64px')}
-      </td>
+      <td style="padding:3px 6px;min-width:128px">${inp(r.id,'date',r.date,'118px','date')}</td>
+      <td style="padding:3px 6px;min-width:130px">${inp(r.id,'clientName',r.clientName,'118px','text','')}</td>
+      <td style="padding:3px 6px;min-width:160px">${inp(r.id,'address',r.address,'148px','text','')}</td>
+      <td style="padding:3px 5px;min-width:56px">${inp(r.id,'stopHome1',r.stopHome1||'','48px')}</td>
+      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopDC1',r.stopDC1||'','40px')}</td>
+      <td style="padding:3px 5px;min-width:56px">${inp(r.id,'stopClient',r.stopClient||'','48px')}</td>
+      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopHome2',r.stopHome2||'','40px')}</td>
+      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopDC2',r.stopDC2||'','40px')}</td>
+      <td style="padding:3px 5px;min-width:72px">${numInp(r.id,'totalMiles',r.totalMiles,'64px')}</td>
+      <td style="padding:3px 5px;min-width:72px">${numInp(r.id,'commuteDeduct',r.commuteDeduct,'64px')}</td>
       <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;
                  color:${net>0?'var(--gold)':'var(--ink-60)'};min-width:72px">
         ${net>0 ? net.toFixed(1) : '—'}
       </td>
-      <td style="padding:3px 5px;min-width:68px;background:var(--ink-70)">
-        ${numInp(r.id,'tollsParking',r.tollsParking,'60px')}
-      </td>
+      <td style="padding:3px 5px;min-width:68px">${numInp(r.id,'tollsParking',r.tollsParking,'60px')}</td>
       <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;
                  color:${reimb>0?'var(--green)':'var(--ink-60)'};min-width:80px">
         ${reimb>0 ? '$'+reimb.toFixed(2) : '—'}
       </td>
-      <td style="padding:3px 5px;min-width:90px">
-        ${inp(r.id,'designPartner',r.designPartner||'','82px','text','')}
-      </td>
-      <td style="padding:3px 8px;font-size:11px;color:var(--ink-40);min-width:90px;white-space:nowrap">
-        ${isAuto ? '🏠 Home Call' : (r.purpose||'Home Call')}
-        <button onclick="deleteMileageRow('${r.id}')" title="Delete row"
-          style="background:none;border:none;color:var(--red);cursor:pointer;margin-left:4px;
-                 font-size:13px;vertical-align:middle;padding:0;line-height:1">✕</button>
+      <td style="padding:3px 5px;min-width:90px">${inp(r.id,'designPartner',r.designPartner||'','82px')}</td>
+      <td style="padding:3px 8px;font-size:11px;color:var(--ink-40);min-width:110px;white-space:nowrap">
+        ${isAuto ? T('mile_home_call') : (r.purpose||T('mile_manual'))}
+        <div style="display:inline-flex;gap:3px;margin-left:4px">
+          <button onclick="openEditMileage('${r.id}')" title="${T('mile_edit')}"
+            style="background:none;border:none;color:var(--gold);cursor:pointer;font-size:13px;padding:0;line-height:1">✏️</button>
+          <button onclick="deleteMileageRow('${r.id}')" title="${T('mile_delete')}"
+            style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:0;line-height:1">✕</button>
+        </div>
       </td>
     </tr>`);
   }
 
-  /* ── Render page ── */
+  /* ── TH style helper ── */
+  const th  = (txt, align='left', extra='') =>
+    `<th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
+       letter-spacing:.05em;padding:9px 8px;text-align:${align};
+       border-right:1px solid var(--ink-60);border-bottom:2px solid var(--gold-dk);
+       white-space:nowrap;${extra}">${txt}</th>`;
+
+  const displayMonth = keyToLabel(curKey);
+
   document.getElementById('page-mileage').innerHTML = `
-  <div class="container" style="padding-top:24px;padding-bottom:48px">
-
-    <!-- ── HEADER CARD ── -->
-    <div style="background:var(--ink-90);border:1px solid var(--ink-60);
-                border-radius:var(--r-lg) var(--r-lg) 0 0;padding:20px 24px 0;border-bottom:none">
-
-      <!-- Row 1: Title -->
-      <div style="font-family:var(--font-display);font-size:28px;letter-spacing:.12em;
-                  color:white;margin-bottom:14px">MONTHLY HOME CALL MILEAGE</div>
-
-      <!-- Row 3: Designer · Month · Year + Add button -->
-      <div style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;
-                  padding-bottom:14px;border-bottom:1px solid var(--ink-60)">
-        <div>
-          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
-                      text-transform:uppercase;color:var(--ink-40)">Designer</div>
-          <div style="font-weight:700;color:white;font-size:14px;margin-top:2px">CAROL MEDRADO</div>
+    <!-- ══ EDIT MILEAGE MODAL ══ -->
+    <div id="mileEditModal" onclick="if(event.target===this)closeMileEdit()"
+      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;
+             align-items:center;justify-content:center">
+      <div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:var(--r-lg);
+                  padding:28px 32px;width:min(600px,96vw);max-height:90vh;overflow-y:auto">
+        <div style="font-family:var(--font-display);font-size:22px;letter-spacing:.1em;
+                    color:var(--gold);margin-bottom:20px">${T('mile_edit_title')}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="mileEditFields"></div>
+        <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+          <button onclick="deleteMileEditRow()" style="background:rgba(224,82,82,.15);border:1px solid var(--red);
+            color:var(--red);border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer;
+            font-family:var(--font-body);font-size:13px">${T('mile_delete')}</button>
+          <button onclick="closeMileEdit()" style="background:var(--ink-70);border:1px solid var(--ink-60);
+            color:var(--ink-20);border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer;
+            font-family:var(--font-body);font-size:13px">${T('mile_cancel')}</button>
+          <button onclick="saveMileEdit()" style="background:var(--gold);border:none;color:var(--ink);
+            border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer;
+            font-family:var(--font-body);font-size:13px">${T('mile_save')}</button>
         </div>
-        <div style="width:1px;height:32px;background:var(--ink-60)"></div>
-        <div>
-          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
-                      text-transform:uppercase;color:var(--ink-40)">Month</div>
-          <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">${monthName}</div>
-        </div>
-        <div style="width:1px;height:32px;background:var(--ink-60)"></div>
-        <div>
-          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
-                      text-transform:uppercase;color:var(--ink-40)">Year</div>
-          <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">${curYear}</div>
-        </div>
-        <div style="width:1px;height:32px;background:var(--ink-60)"></div>
-        <div>
-          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
-                      text-transform:uppercase;color:var(--ink-40)">Mileage Rate ${curYear}</div>
-          <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">$${RATE.toFixed(3)} / mile</div>
-        </div>
-        <div style="flex:1"></div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button onclick="printMilePage()" class="print-btn" title="Print or Save as PDF">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
-            Print / PDF
-          </button>
-          <button onclick="addMileageRow()"
-            style="background:var(--gold);color:var(--ink);border:none;border-radius:8px;
-                   padding:8px 16px;font-family:var(--font-body);font-weight:700;font-size:13px;
-                   cursor:pointer;letter-spacing:.04em">+ Add Manual Trip</button>
-        </div>
-      </div>
-
-      <!-- Row 5: IRS warning -->
-      <div style="padding:10px 0;font-size:12px;color:var(--gold-lt);font-style:italic">
-        ⚠️ If the trip starts or ends at your home, you must deduct your daily commute
       </div>
     </div>
 
-    <!-- ── TABLE ── -->
-    <div style="overflow-x:auto;border:1px solid var(--ink-60);border-top:none;
-                border-radius:0 0 var(--r-lg) var(--r-lg)">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:1200px">
+    <div class="container" style="padding-top:24px;padding-bottom:48px">
 
-        <!-- Row 6: Headers — Navy group (A B C I J K L M) · Gray group (D E F G H N O) -->
-        <thead>
-          <tr>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:11px;
-                       letter-spacing:.05em;padding:9px 8px;text-align:left;
-                       border-right:1px solid rgba(255,255,255,.08);
-                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Date</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:11px;
-                       letter-spacing:.05em;padding:9px 8px;text-align:left;
-                       border-right:1px solid rgba(255,255,255,.08);
-                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Client Name</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:11px;
-                       letter-spacing:.05em;padding:9px 8px;text-align:left;
-                       border-right:1px solid rgba(255,255,255,.08);
-                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Address</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.05em;padding:9px 6px;text-align:center;
-                       border-right:1px solid var(--ink-60);
-                       border-bottom:2px solid var(--ink-60);white-space:nowrap">Home</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.05em;padding:9px 6px;text-align:center;
-                       border-right:1px solid var(--ink-60);
-                       border-bottom:2px solid var(--ink-60);white-space:nowrap">DC</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.05em;padding:9px 6px;text-align:center;
-                       border-right:1px solid var(--ink-60);
-                       border-bottom:2px solid var(--ink-60);white-space:nowrap">Client</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.05em;padding:9px 6px;text-align:center;
-                       border-right:1px solid var(--ink-60);
-                       border-bottom:2px solid var(--ink-60);white-space:nowrap">Home</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.05em;padding:9px 6px;text-align:center;
-                       border-right:1px solid var(--ink-60);
-                       border-bottom:2px solid var(--ink-60);white-space:nowrap">DC</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.04em;padding:9px 8px;text-align:right;
-                       border-right:1px solid rgba(255,255,255,.08);
-                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Total Miles<br>Driven</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.04em;padding:9px 8px;text-align:right;
-                       border-right:1px solid rgba(255,255,255,.08);
-                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Minus Daily<br>Commute</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.04em;padding:9px 8px;text-align:right;
-                       border-right:1px solid rgba(255,255,255,.08);
-                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Net<br>Miles</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.04em;padding:9px 8px;text-align:right;
-                       border-right:1px solid rgba(255,255,255,.08);
-                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Tolls /<br>Parking</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.04em;padding:9px 8px;text-align:right;
-                       border-right:1px solid rgba(255,255,255,.08);
-                       border-bottom:2px solid var(--gold-dk);white-space:nowrap">Total<br>Reimb.</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.05em;padding:9px 6px;text-align:left;
-                       border-right:1px solid var(--ink-60);
-                       border-bottom:2px solid var(--ink-60);white-space:nowrap">Design Partner</th>
-            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
-                       letter-spacing:.05em;padding:9px 6px;text-align:left;
-                       border-bottom:2px solid var(--ink-60);white-space:nowrap">Purpose</th>
-          </tr>
-        </thead>
+      <!-- ── HEADER CARD ── -->
+      <div style="background:var(--ink-90);border:1px solid var(--ink-60);
+                  border-radius:var(--r-lg) var(--r-lg) 0 0;padding:20px 24px 0;border-bottom:none">
 
-        <!-- Rows 7–36: 30 data rows -->
-        <tbody>${rows.join('')}</tbody>
+        <!-- Title -->
+        <div style="font-family:var(--font-display);font-size:28px;letter-spacing:.12em;
+                    color:var(--gold-lt);margin-bottom:14px">${T('mile_header')}</div>
 
-        <!-- Row 38: Totals footer -->
-        <tfoot>
-          <tr style="background:var(--ink-70);border-top:2px solid var(--gold-dk)">
-            <td colspan="8" style="padding:10px 12px;font-weight:700;font-size:12px;
-                                   color:var(--gold-lt);letter-spacing:.04em">
-              Mileage Rate ${curYear}: $${RATE.toFixed(3)} / Mile &nbsp;·&nbsp;
-              <span style="color:var(--ink-40);font-weight:400">${monthRecs.length} trip${monthRecs.length!==1?'s':''} this month</span>
-            </td>
-            <td colspan="2" style="padding:10px 8px"></td>
-            <td style="padding:10px 10px 10px 5px;text-align:right;font-weight:700;
-                       font-size:14px;color:var(--gold)">
-              ${totalNetMiles.toFixed(1)}
-            </td>
-            <td style="padding:10px 8px"></td>
-            <td style="padding:10px 10px 10px 5px;text-align:right;font-weight:700;
-                       font-size:14px;color:var(--green)">
-              $${totalReimb.toFixed(2)}
-            </td>
-            <td colspan="2"></td>
-          </tr>
+        <!-- Info row -->
+        <div style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;
+                    padding-bottom:14px;border-bottom:1px solid var(--ink-60)">
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
+                        text-transform:uppercase;color:var(--ink-40)">${T('mile_designer')}</div>
+            <div style="font-weight:700;color:white;font-size:14px;margin-top:2px">CAROL MEDRADO</div>
+          </div>
+          <div style="width:1px;height:32px;background:var(--ink-60)"></div>
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
+                        text-transform:uppercase;color:var(--ink-40)">${T('mile_month')}</div>
+            <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">${displayMonth}</div>
+          </div>
+          <div style="width:1px;height:32px;background:var(--ink-60)"></div>
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
+                        text-transform:uppercase;color:var(--ink-40)">${T('mile_rate_label')} ${MS.year}</div>
+            <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">$${RATE.toFixed(3)} / mi</div>
+          </div>
+          <div style="width:1px;height:32px;background:var(--ink-60)"></div>
+          <!-- Totals -->
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
+                        text-transform:uppercase;color:var(--ink-40)">${T('mile_th_net')}</div>
+            <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">${totalNetMiles.toFixed(1)} mi</div>
+          </div>
+          <div style="width:1px;height:32px;background:var(--ink-60)"></div>
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
+                        text-transform:uppercase;color:var(--ink-40)">${T('mile_th_reimb')}</div>
+            <div style="font-weight:700;color:var(--green);font-size:16px;margin-top:2px">$${totalReimb.toFixed(2)}</div>
+          </div>
+          <div style="flex:1"></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button onclick="printMilePage()" class="print-btn" title="${T('btn_print')}">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
+              ${T('mile_print')}
+            </button>
+            <button onclick="addMileageRow()"
+              style="background:var(--gold);color:var(--ink);border:none;border-radius:8px;
+                     padding:8px 16px;font-family:var(--font-body);font-weight:700;font-size:13px;
+                     cursor:pointer;letter-spacing:.04em">${T('mile_add')}</button>
+          </div>
+        </div>
 
-          <!-- Row 39: Commute reference -->
-          <tr style="background:var(--ink-80)">
-            <td style="padding:6px 8px"></td>
-            <td style="padding:6px 8px;font-size:11px;color:var(--ink-40)">Carol Medrado</td>
-            <td style="padding:6px 8px;font-size:11px;color:var(--ink-40)">2007 Florine Dr</td>
-            <td colspan="12" style="padding:6px 8px;font-size:10px;color:var(--ink-60);font-style:italic">
-              — home address for daily commute deduction reference
-            </td>
-          </tr>
+        <!-- IRS warning -->
+        <div style="padding:10px 0;font-size:12px;color:var(--gold-lt);font-style:italic">${T('mile_warn')}</div>
+      </div>
 
-          <!-- Row 40–41: Signatures -->
-          <tr style="background:var(--ink-90);border-top:1px solid var(--ink-60)">
-            <td colspan="8" style="padding:16px 8px"></td>
-            <td colspan="7" style="padding:16px 18px;font-weight:700;font-size:11px;
-                                   letter-spacing:.08em;color:var(--ink-40);
-                                   border-left:1px solid var(--ink-60)">
-              DESIGNER SIGNATURE ___________________________________________
-            </td>
-          </tr>
-          <tr style="background:var(--ink-90)">
-            <td colspan="8" style="padding:16px 8px"></td>
-            <td colspan="7" style="padding:16px 18px;font-weight:700;font-size:11px;
-                                   letter-spacing:.08em;color:var(--ink-40);
-                                   border-left:1px solid var(--ink-60)">
-              DCL SIGNATURE _________________________________________________
-            </td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  </div>`;
+      <!-- ── MONTH SELECTOR TABS ── -->
+      <div style="background:var(--ink-90);border:1px solid var(--ink-60);border-top:none;
+                  padding:12px 16px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.06em;margin-right:6px;text-transform:uppercase">${T('mile_month')}</span>
+        ${tabHTML}
+      </div>
+
+      <!-- ── MILEAGE TABLE ── -->
+      <div style="background:var(--ink-90);border:1px solid var(--ink-60);border-top:none;
+                  border-radius:0 0 var(--r-lg) var(--r-lg);overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:1100px">
+          <thead>
+            <tr>
+              ${th(T('mile_th_date'))}
+              ${th(T('mile_th_client'))}
+              ${th(T('mile_th_address'))}
+              ${th(T('mile_th_home'),'center')}
+              ${th('DC','center')}
+              ${th(T('mile_th_client_stop'),'center')}
+              ${th(T('mile_th_home'),'center')}
+              ${th('DC','center')}
+              ${th(T('mile_th_total'),'right')}
+              ${th(T('mile_th_commute'),'right')}
+              ${th(T('mile_th_net'),'right','color:var(--gold)')}
+              ${th(T('mile_th_tolls'),'right')}
+              ${th(T('mile_th_reimb'),'right','color:var(--green)')}
+              ${th(T('mile_th_partner'))}
+              ${th(T('mile_th_purpose'))}
+            </tr>
+          </thead>
+          <tbody>${rows.join('')}</tbody>
+          <tfoot>
+            <!-- Subtotal row -->
+            <tr style="background:var(--ink-70);border-top:2px solid var(--gold-dk)">
+              <td colspan="8" style="padding:10px 12px;font-weight:700;font-size:12px;
+                                     color:var(--gold-lt);letter-spacing:.04em">
+                ${T('mile_subtotal')} — ${displayMonth} &nbsp;·&nbsp;
+                <span style="color:var(--ink-40);font-weight:400">${monthRecs.length} ${monthRecs.length!==1?T('mile_trips_p'):T('mile_trips')}</span>
+                &nbsp;·&nbsp; $${RATE.toFixed(3)}/mi
+              </td>
+              <td colspan="2" style="padding:10px 8px"></td>
+              <td style="padding:10px 10px 10px 5px;text-align:right;font-weight:700;font-size:14px;color:var(--gold)">
+                ${totalNetMiles.toFixed(1)}
+              </td>
+              <td style="padding:10px 8px"></td>
+              <td style="padding:10px 10px 10px 5px;text-align:right;font-weight:700;font-size:14px;color:var(--green)">
+                $${totalReimb.toFixed(2)}
+              </td>
+              <td colspan="2"></td>
+            </tr>
+            <!-- Commute reference -->
+            <tr style="background:var(--ink-80)">
+              <td style="padding:6px 8px"></td>
+              <td style="padding:6px 8px;font-size:11px;color:var(--ink-40)">Carol Medrado</td>
+              <td style="padding:6px 8px;font-size:11px;color:var(--ink-40)">2007 Florine Dr</td>
+              <td colspan="12" style="padding:6px 8px;font-size:10px;color:var(--ink-60);font-style:italic">
+                — ${T('mile_home_ref')}
+              </td>
+            </tr>
+            <!-- Signatures -->
+            <tr style="background:var(--ink-90);border-top:1px solid var(--ink-60)">
+              <td colspan="8" style="padding:16px 8px"></td>
+              <td colspan="7" style="padding:16px 18px;font-weight:700;font-size:11px;
+                                     letter-spacing:.08em;color:var(--ink-40);
+                                     border-left:1px solid var(--ink-60)">
+                ${T('mile_sign_designer')} ___________________________________________
+              </td>
+            </tr>
+            <tr style="background:var(--ink-90)">
+              <td colspan="8" style="padding:16px 8px"></td>
+              <td colspan="7" style="padding:16px 18px;font-weight:700;font-size:11px;
+                                     letter-spacing:.08em;color:var(--ink-40);
+                                     border-left:1px solid var(--ink-60)">
+                ${T('mile_sign_dcl')} _________________________________________________
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>`;
 }
 
 
@@ -2937,8 +3249,8 @@ async function openEmailPreview(id) {
     document.getElementById('openGmailBtn').onclick = () => window.open(buildGmailUrl(opp), '_blank');
     document.getElementById('openOutlookBtn').onclick = () => window.open(buildOutlookUrl(opp), '_blank');
   } else {
-    document.getElementById('openGmailBtn').onclick = () => toast('No email on file','error');
-    document.getElementById('openOutlookBtn').onclick = () => toast('No email on file','error');
+    document.getElementById('openGmailBtn').onclick = () => toast(T('toast_no_email'),'error');
+    document.getElementById('openOutlookBtn').onclick = () => toast(T('toast_no_email'),'error');
   }
 
   document.getElementById('emailPreviewModal').classList.add('open');
@@ -3461,7 +3773,7 @@ async function showKPIDetail(key) {
             onmouseover="this.style.background='rgba(196,147,63,.08)'" onmouseout="this.style.background=''"
             onclick="closeKPIAndEdit('${o.id}')">
             <td style="padding:8px 10px;font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</td>
-            <td style="padding:8px 10px;font-size:11px;color:var(--ink-20)">${esc(o.stage||'—')}</td>
+            <td style="padding:8px 10px;font-size:11px;color:var(--ink-20)">${stageLabel(o.stage)||'—'}</td>
             <td style="padding:8px 10px"><span style="background:var(--ink-70);border:1px solid ${clr};color:${clr};border-radius:4px;font-size:10px;font-weight:700;padding:2px 6px">${wt.label}</span></td>
             <td style="padding:8px 10px;text-align:right;font-weight:600">${o.probability||0}%</td>
             <td style="padding:8px 10px;text-align:right;color:var(--ink-20)">${fmt$(Number(o.estimate))}</td>
@@ -3809,7 +4121,7 @@ async function showMonthDetail(monthLabel) {
                border-radius:4px;font-size:10px;font-weight:700;padding:2px 7px;
                letter-spacing:.06em">${wt.label}</span>
       </td>
-      <td style="padding:10px 8px;font-size:12px;color:var(--ink-20)">${esc(o.stage||'—')}</td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--ink-20)">${stageLabel(o.stage)||'—'}</td>
       <td style="padding:10px 8px;text-align:right;font-weight:600;
                  color:${o.saleMade==='Yes'?'var(--green)':'var(--ink-20)'};font-size:13px">
         ${o.estimate ? fmt$(Number(o.estimate)) : '—'}
@@ -4056,7 +4368,7 @@ async function exportToExcel() {
   // Save file
   const date = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, `EA_Sales_Carolina_${date}.xlsx`);
-  toast('Excel file downloaded!', 'success');
+  toast(T('toast_excel'), 'success');
 }
 
 /* ══════════════════════════════════════════════════
@@ -4081,18 +4393,93 @@ async function copyForSheets() {
   });
   const tsv = [hdr.join('\t'), ...rows].join('\n');
   navigator.clipboard.writeText(tsv).then(() => {
-    toast('Pipeline data copied! Paste into Google Sheets (Ctrl+V or Cmd+V)', 'success');
+    toast(T('toast_sheets'), 'success');
   }).catch(() => {
-    toast('Could not copy to clipboard — try Chrome or Edge', 'error');
+    toast(getLang()==='pt'?'Não foi possível copiar. Use Chrome ou Edge':'Could not copy to clipboard — try Chrome or Edge', 'error');
   });
 }
+
+/* ══════════════════════════════════════════════════
+   MILEAGE EDIT MODAL
+══════════════════════════════════════════════════ */
+let _editingMileId = null;
+
+function openEditMileage(id) {
+  _editingMileId = id;
+  const recs = getMileageRecords();
+  const r    = recs.find(x => x.id === id);
+  if (!r) return;
+
+  const fld = (label, field, val, type='text') => `
+    <div>
+      <div style="font-size:11px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;
+                  text-transform:uppercase;margin-bottom:5px">${label}</div>
+      <input id="me-${field}" type="${type}" value="${esc(String(val||''))}"
+        style="width:100%;background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-10);
+               border-radius:7px;padding:8px 10px;font-size:13px;font-family:var(--font-body);
+               box-sizing:border-box">
+    </div>`;
+
+  document.getElementById('mileEditFields').innerHTML = `
+    ${fld(T('mile_th_date'), 'date', r.date, 'date')}
+    ${fld(T('mile_th_client'), 'clientName', r.clientName)}
+    ${fld(T('mile_th_address'), 'address', r.address)}
+    ${fld(T('mile_th_home')+' 1 →', 'stopHome1', r.stopHome1)}
+    ${fld('DC 1 →', 'stopDC1', r.stopDC1)}
+    ${fld(T('mile_th_client_stop')+' →', 'stopClient', r.stopClient)}
+    ${fld(T('mile_th_home')+' 2 →', 'stopHome2', r.stopHome2)}
+    ${fld('DC 2 →', 'stopDC2', r.stopDC2)}
+    ${fld(T('mile_th_total'), 'totalMiles', r.totalMiles, 'number')}
+    ${fld(T('mile_th_commute'), 'commuteDeduct', r.commuteDeduct, 'number')}
+    ${fld(T('mile_th_tolls'), 'tollsParking', r.tollsParking, 'number')}
+    ${fld(T('mile_th_partner'), 'designPartner', r.designPartner)}
+  `;
+
+  const modal = document.getElementById('mileEditModal');
+  modal.style.display = 'flex';
+  setTimeout(() => modal.querySelector('input')?.focus(), 50);
+}
+
+function saveMileEdit() {
+  if (!_editingMileId) return;
+  const fields = ['date','clientName','address','stopHome1','stopDC1','stopClient',
+                  'stopHome2','stopDC2','totalMiles','commuteDeduct','tollsParking','designPartner'];
+  const updates = {};
+  fields.forEach(f => {
+    const el = document.getElementById('me-'+f);
+    if (el) updates[f] = el.value;
+  });
+  const recs = getMileageRecords();
+  const idx  = recs.findIndex(r => r.id === _editingMileId);
+  if (idx >= 0) { Object.assign(recs[idx], updates); Store.save('mileage', recs); }
+  closeMileEdit();
+  renderMileage();
+  toast(T('toast_saved'), 'success');
+}
+
+function closeMileEdit() {
+  document.getElementById('mileEditModal').style.display = 'none';
+  _editingMileId = null;
+}
+
+function deleteMileEditRow() {
+  if (!_editingMileId) return;
+  if (!confirm(T('mile_delete') + '?')) return;
+  deleteMileageRecord(_editingMileId);
+  closeMileEdit();
+  renderMileage();
+}
+
 
 async function launchApp(fromSupabase) {
   document.getElementById('configScreen').style.display = 'none';
   initDropdowns();
   if (!fromSupabase) DB.seedDemo();
   await navigate('dashboard');
+  applyI18n();
 }
+// Apply i18n on load
+document.addEventListener("DOMContentLoaded", applyI18n);
 
 async function launchDemoMode() {
   DB.initLocal();
