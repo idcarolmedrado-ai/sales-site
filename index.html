@@ -1,115 +1,3034 @@
--- ══════════════════════════════════════════════════════════════
---  EA SALES INTELLIGENCE — SUPABASE SCHEMA (COMPLETE REBUILD)
---  Carolina Medrado | Ethan Allen | 2026
---  Run this entire file in Supabase → SQL Editor → Run
---  Expected result: "count | 0" with no errors
--- ══════════════════════════════════════════════════════════════
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EA Sales Intelligence — Carolina Medrado</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ── */
+:root {
+  --ink: #0a0a0a; --ink-90: #111; --ink-80: #1a1a1a; --ink-70: #252525;
+  --ink-60: #333; --ink-40: #666; --ink-20: #aaa; --ink-10: #ddd;
+  --gold: #C4933F; --gold-lt: #e8b86d; --gold-dk: #9a7030;
+  --red: #E05252; --green: #4CAF7D; --blue: #4472CA; --purple: #A088E0;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-serif: 'DM Serif Display', serif;
+  --font-body: 'DM Sans', sans-serif;
+  --r: 12px; --r-lg: 20px;
+  --shadow: 0 2px 16px rgba(0,0,0,.45);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body { background: var(--ink); color: #fff; font-family: var(--font-body);
+  min-height: 100vh; overflow-x: hidden; }
 
--- Step 1: Clean slate
-drop table if exists opportunities cascade;
-drop function if exists fn_compute_opp() cascade;
-drop function if exists fn_set_updated_at() cascade;
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--ink-80); }
+::-webkit-scrollbar-thumb { background: var(--ink-60); border-radius: 3px; }
 
--- Step 2: Create opportunities table with ALL columns
-create table opportunities (
-  id              text          primary key default gen_random_uuid()::text,
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,10,10,.95); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--ink-70);
+  display: flex; align-items: center; padding: 0 24px; height: 58px; gap: 16px;
+}
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0; }
+.nav-logo-text { font-family: var(--font-serif); font-size: 15px; color: #fff; letter-spacing: .04em; }
+.nav-logo-sub { font-size: 9px; color: var(--gold); letter-spacing: .18em; text-transform: uppercase; display: block; }
+.nav-tabs { display: flex; gap: 2px; flex: 1; }
+.nav-tab {
+  padding: 6px 14px; border-radius: 8px; border: none;
+  background: transparent; color: var(--ink-20);
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.nav-tab:hover { background: var(--ink-70); color: #fff; }
+.nav-tab.active { background: var(--gold); color: #000; font-weight: 600; }
+.nav-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.conn-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px;
+  border-radius: 20px; font-weight: 600; letter-spacing: .06em; }
+.conn-badge.live { background: rgba(76,175,125,.15); color: var(--green); border: 1px solid rgba(76,175,125,.3); }
+.conn-badge.demo { background: rgba(196,147,63,.12); color: var(--gold); border: 1px solid rgba(196,147,63,.25); }
+.conn-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.nav-badge { background: var(--red); color: #fff; font-size: 10px; font-weight: 700;
+  min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+.nav-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--gold);
+  color: #000; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 
-  -- Contact
-  last_name       text,
-  first_name      text,
-  address         text,
-  phone           text,
-  email           text,
+/* ── LAYOUT ── */
+main { padding-bottom: 80px; }
+.page { display: none; animation: fadeUp .28s ease; }
+.page.active { display: block; }
+.container { max-width: 1320px; margin: 0 auto; padding: 0 24px; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
 
-  -- Project
-  project_type    text,
-  lead_source     text,
-  stage           text,
+/* ── TYPOGRAPHY ── */
+.display { font-family: var(--font-display); letter-spacing: .04em; line-height: 1; }
+.label { font-size: 10px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+.overline { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-40); font-weight: 600; }
+.text-muted { color: var(--ink-40); }
 
-  -- Home call
-  home_call       text,
-  home_call_date  text,
+/* ── HERO ── */
+.dash-hero { padding: 32px 24px 16px; max-width: 1320px; margin: 0 auto;
+  display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+.dash-hero-title { }
+.dash-hero-date { font-size: 12px; color: var(--ink-40); margin-top: 6px; }
+h1.display { font-size: 52px; }
+h2.display { font-size: 40px; }
 
-  -- Sale
-  sale_made       text          default 'No',
-  gold_comp       text          default 'No',
+/* ── GOAL PILL ── */
+.goal-pill {
+  background: var(--ink-80); border: 1px solid var(--ink-60); border-radius: var(--r-lg);
+  padding: 16px 24px; min-width: 220px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.goal-pill-label { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-40); font-weight: 600; }
+.goal-pill-value { font-family: var(--font-display); font-size: 28px; color: var(--gold); }
+.goal-pill-bar { height: 6px; background: var(--ink-60); border-radius: 3px; overflow: hidden; }
+.goal-pill-fill { height: 100%; background: var(--gold); border-radius: 3px; transition: width .6s ease; }
 
-  -- Pipeline
-  next_step       text,
-  probability     integer       default 0,
-  estimate        numeric(12,2) default 0,
-  follow_up_date  text,
-  notes           text,
+/* ── FILTER CHIPS ── */
+.filter-row { padding: 0 24px; max-width: 1320px; margin: 0 auto 16px; display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-chip {
+  padding: 5px 13px; border-radius: 20px; border: 1px solid var(--ink-60);
+  background: transparent; color: var(--ink-20); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+}
+.filter-chip:hover { border-color: var(--gold); color: var(--gold); }
+.filter-chip.active { background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600; }
 
-  -- Computed (updated by trigger)
-  urgency_score   integer       default 0,
-  win_tier        text          default 'COLD',
-  month_auto      text,
+/* ── KPI GRID ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px; padding: 0 24px; max-width: 1320px; margin: 0 auto 24px;
+}
+.kpi-card {
+  background: var(--ink-80); border: 1px solid var(--ink-70); border-radius: var(--r);
+  padding: 18px 16px; display: flex; flex-direction: column; gap: 4px;
+  transition: all .2s; position: relative; overflow: hidden;
+}
+.kpi-card[data-kpi] { cursor: pointer; }
+.kpi-card[data-kpi]:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+.kpi-card[data-kpi]::after { content:'↗'; position:absolute;top:10px;right:10px;font-size:10px;color:var(--gold);opacity:0;transition:opacity .2s; }
+.kpi-card[data-kpi]:hover::after { opacity:1; }
+.kpi-ring { position:absolute;right:10px;bottom:10px;opacity:.12; }
+.kpi-icon { width:20px;height:20px;margin-bottom:6px;color:var(--gold);opacity:.8; }
+.kpi-value { font-family: var(--font-display); font-size: 28px; line-height: 1; }
+.kpi-value.gold { color: var(--gold); }
+.kpi-value.red  { color: var(--red); }
+.kpi-value.green{ color: var(--green); }
+.kpi-delta { font-size: 11px; color: var(--ink-40); }
 
-  -- Timestamps
-  created_at      timestamptz   default now(),
-  updated_at      timestamptz   default now()
-);
+/* ── DASH CARDS ── */
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  max-width: 1320px; margin: 0 auto 16px; padding: 0 24px; }
+@media(max-width: 768px) { .dash-grid { grid-template-columns: 1fr; } }
+.dash-card {
+  background: var(--ink-80); border: 1px solid var(--ink-70); border-radius: var(--r-lg); padding: 24px;
+}
+.dash-card.full { grid-column: 1/-1; }
+.dash-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+.dash-card-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.dash-card-sub { font-size: 11px; color: var(--ink-40); }
 
--- Step 3: Trigger to auto-compute urgency_score, win_tier, month_auto
-create or replace function fn_compute_opp()
-returns trigger language plpgsql as $$
-declare
-  days_over integer := 0;
-  prob_int  integer := coalesce(new.probability, 0);
-  est_k     integer := floor(coalesce(new.estimate, 0) / 1000);
-  fup       date;
-begin
-  -- Win Tier
-  new.win_tier := case
-    when new.sale_made = 'Yes'  then 'SOLD'
-    when new.stage = 'Canceled' then 'CANCELED'
-    when prob_int >= 75         then 'HOT'
-    when prob_int >= 50         then 'WARM'
-    when prob_int >= 25         then 'NURTURE'
-    else                             'COLD'
-  end;
+/* ── INSIGHT CARD ── */
+.insights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px; padding: 0 24px; max-width: 1320px; margin: 0 auto 24px;
+  grid-auto-rows: auto; align-items: start; }
+.insight-card {
+  background: var(--ink-80); border: 1px solid var(--ink-70); border-radius: var(--r);
+  padding: 16px 18px; border-left: 3px solid var(--gold);
+  transition: transform .15s, border-color .15s;
+}
+.insight-card:hover { transform: translateY(-1px); border-color: var(--gold); }
+.insight-card.warn { border-left-color: var(--red); }
+.insight-card.good { border-left-color: var(--green); }
+.insight-card.priority-1 { grid-column: 1 / -1; display: flex; gap: 16px; align-items: flex-start; }
+.insight-card.priority-1 .insight-body { margin-top: 0; }
+.insight-priority-bar { height: 3px; border-radius: 2px; margin-top: 10px; }
+.insight-priority-bar.p1 { background: var(--red); }
+.insight-priority-bar.p2 { background: var(--gold); }
+.insight-priority-bar.p3 { background: #4472CA; }
+.insight-score { font-family: var(--font-display); font-size: 11px; color: var(--ink-40);
+  letter-spacing: .08em; margin-top: 8px; }
+.insight-icon { font-size: 20px; margin-bottom: 8px; }
+.insight-icon-text { font-family:var(--font-display);font-size:22px;color:var(--gold);margin-bottom:8px;letter-spacing:.05em; }
+.insight-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.insight-body { font-size: 12px; color: var(--ink-20); line-height: 1.5; }
 
-  -- Urgency Score (0 for Sold/Canceled)
-  if new.sale_made = 'Yes' or new.stage = 'Canceled' then
-    new.urgency_score := 0;
-  else
-    begin
-      fup := new.follow_up_date::date;
-      days_over := greatest(current_date - fup, 0);
-    exception when others then
-      days_over := 0;
-    end;
-    new.urgency_score := (days_over * 3) + (prob_int * 2) + est_k;
-  end if;
+/* ── BAR CHART ── */
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.bar-label { font-size: 12px; color: var(--ink-20); width: 120px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { flex: 1; height: 8px; background: var(--ink-70); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--gold); border-radius: 4px; transition: width .5s ease; }
+.bar-fill.green { background: var(--green); }
+.bar-val { font-size: 12px; color: var(--ink-20); min-width: 60px; text-align: right; }
 
-  -- Month Auto (from home_call_date, else follow_up_date)
-  new.month_auto := null;
-  begin
-    if new.home_call_date is not null and new.home_call_date != '' then
-      new.month_auto := to_char(new.home_call_date::date, 'Month YYYY');
-    elsif new.follow_up_date is not null and new.follow_up_date != '' then
-      new.month_auto := to_char(new.follow_up_date::date, 'Month YYYY');
-    end if;
-  exception when others then
-    null;
-  end;
+/* ── STAGE LIST ── */
+.stage-row { display: flex; align-items: center; gap: 10px; padding: 7px 0;
+  border-bottom: 1px solid var(--ink-70); }
+.stage-row:last-child { border-bottom: none; }
+.stage-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.stage-name { flex: 1; font-size: 12px; color: var(--ink-20); }
+.stage-count { font-size: 12px; font-weight: 600; min-width: 24px; text-align: center; }
+.stage-pipe { font-size: 11px; color: var(--gold); min-width: 70px; text-align: right; }
 
-  new.updated_at := now();
-  return new;
-end;
-$$;
+/* ── MONTHLY BAR CHART ── */
+.month-chart { padding: 0 24px; max-width: 1320px; margin: 0 auto 16px; }
+.month-bars { display: flex; gap: 4px; align-items: flex-end; height: 140px; padding: 0 4px; }
+.month-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; position: relative; }
+.month-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; position: relative; }
+.month-bar {
+  width: 100%; background: var(--ink-70); border-radius: 4px 4px 0 0;
+  position: relative; cursor: pointer; transition: background .2s; min-height: 3px;
+}
+.month-bar:hover { background: var(--gold-dk); }
+.month-bar.current { background: var(--gold); }
+.month-bar.has-sales { background: var(--gold-dk); }
+.month-bar:hover .month-bar-tooltip { display: block; }
+.month-bar-tooltip {
+  display: none; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+  background: var(--ink-60); border: 1px solid var(--gold); border-radius: 8px;
+  padding: 8px 10px; font-size: 11px; white-space: nowrap; z-index: 10; min-width: 120px;
+  text-align: center; line-height: 1.6;
+}
+.month-label { font-size: 10px; color: var(--ink-40); font-weight: 500; }
+.month-sales { font-size: 9px; color: var(--gold); font-weight: 600; }
 
-create trigger trg_opp_compute
-  before insert or update on opportunities
-  for each row execute function fn_compute_opp();
+/* ── ALERT LIST ── */
+.alert-row {
+  display: flex; align-items: center; gap: 14px; padding: 12px 0;
+  border-bottom: 1px solid var(--ink-70); cursor: pointer;
+  transition: background .15s; border-radius: 8px; padding: 10px 8px;
+}
+.alert-row:hover { background: var(--ink-70); }
+.alert-days { font-family: var(--font-display); font-size: 28px; color: var(--red); line-height: 1; }
+.alert-days-label { font-size: 9px; letter-spacing: .1em; color: var(--red); text-transform: uppercase; }
+.alert-name { font-weight: 600; font-size: 14px; }
+.alert-detail { font-size: 11px; color: var(--ink-40); margin-top: 2px; }
+.alert-next { font-size: 12px; color: var(--gold); margin-left: auto; white-space: nowrap; }
 
--- Step 4: Row Level Security
-alter table opportunities enable row level security;
+/* ── PIPELINE ── */
+.pipeline-header {
+  padding: 28px 24px 16px; max-width: 1320px; margin: 0 auto;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.search-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--ink-80); border: 1px solid var(--ink-60);
+  border-radius: 10px; padding: 8px 14px; flex: 1; min-width: 220px;
+}
+.search-box input { background: none; border: none; color: #fff; font-size: 13px;
+  font-family: var(--font-body); outline: none; width: 100%; }
+.table-wrap { overflow-x: auto; padding: 0 24px; max-width: 1320px; margin: 0 auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  padding: 10px 12px; font-size: 10px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-40); border-bottom: 1px solid var(--ink-60);
+  text-align: left; white-space: nowrap;
+}
+tbody tr {
+  border-bottom: 1px solid var(--ink-70); cursor: pointer; transition: background .1s;
+}
+tbody tr:hover { background: var(--ink-80); }
+tbody tr.overdue { background: rgba(224,82,82,.06); }
+tbody tr.sold { background: rgba(76,175,125,.05); }
+tbody tr.hot { background: rgba(196,147,63,.05); }
+tbody td { padding: 11px 12px; font-size: 13px; }
 
-drop policy if exists "anon_all" on opportunities;
-create policy "anon_all" on opportunities
-  for all to anon using (true) with check (true);
+/* ── BADGES ── */
+.badge {
+  display: inline-flex; align-items: center; padding: 3px 8px;
+  border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  white-space: nowrap;
+}
+.badge-stage-new        { background: rgba(136,136,136,.15); color: #aaa; }
+.badge-stage-homecall   { background: rgba(196,147,63,.15); color: var(--gold); }
+.badge-stage-design     { background: rgba(68,114,202,.15); color: #7ba4e8; }
+.badge-stage-quote      { background: rgba(232,160,48,.15); color: #e8b050; }
+.badge-stage-followup   { background: rgba(255,165,0,.15); color: #ffb833; }
+.badge-stage-pending    { background: rgba(255,136,68,.15); color: #ff9955; }
+.badge-stage-sale       { background: rgba(76,175,125,.2); color: var(--green); }
+.badge-stage-postponed  { background: rgba(160,136,224,.15); color: var(--purple); }
+.badge-stage-canceled   { background: rgba(224,80,80,.12); color: var(--red); }
+.badge-sold    { background: rgba(76,175,125,.2); color: var(--green); }
+.badge-high    { background: rgba(224,82,82,.15); color: #ff7070; }
+.badge-warm    { background: rgba(196,147,63,.15); color: var(--gold); }
+.badge-nurture { background: rgba(68,114,202,.15); color: #7ba4e8; }
+.badge-cold    { background: rgba(136,136,136,.12); color: #888; }
+.badge-canceled{ background: rgba(224,82,82,.1); color: #c06060; }
+.win-tier-SOLD     { color: var(--green); font-weight: 700; }
+.win-tier-HOT      { color: #ff7070; font-weight: 700; }
+.win-tier-WARM     { color: var(--gold); font-weight: 700; }
+.win-tier-NURTURE  { color: #7ba4e8; }
+.win-tier-COLD     { color: var(--ink-40); }
+.win-tier-CANCELED { color: var(--red); }
 
--- Step 5: Verify
-select count(*) from opportunities;
+/* ── MAILING ── */
+.section-header { padding: 28px 24px 16px; max-width: 1320px; margin: 0 auto; }
+.mailing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px; padding: 0 24px; max-width: 1320px; margin: 0 auto; }
+.mail-card {
+  background: var(--ink-80); border: 1px solid var(--ink-70); border-radius: var(--r);
+  padding: 20px; transition: all .2s; cursor: pointer; position: relative;
+}
+.mail-card:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.4); }
+.mail-card.sold { border-left: 3px solid var(--green); }
+.mail-card.hot  { border-left: 3px solid var(--red); }
+.mail-card.warm { border-left: 3px solid var(--gold); }
+.mail-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.mail-open-hint { position:absolute;top:12px;right:12px;font-size:10px;color:var(--gold);
+  opacity:0;transition:opacity .2s;letter-spacing:.06em;font-weight:600; }
+.mail-card:hover .mail-open-hint { opacity:1; }
+.mail-actions { display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--ink-70); }
+.mail-action-btn { flex:1;padding:7px;border-radius:8px;border:1px solid var(--ink-60);
+  background:transparent;color:var(--ink-20);font-size:11px;font-weight:600;cursor:pointer;
+  font-family:var(--font-body);transition:all .15s;letter-spacing:.04em;
+  display:flex;align-items:center;justify-content:center;gap:5px; }
+.mail-action-btn.gmail { border-color:rgba(196,147,63,.3);color:var(--gold); }
+.mail-action-btn.gmail:hover { background:rgba(196,147,63,.12); }
+.mail-action-btn.outlook { border-color:rgba(68,114,202,.3);color:#7ba4e8; }
+.mail-action-btn.outlook:hover { background:rgba(68,114,202,.1); }
+.mail-action-btn.preview { border-color:var(--ink-60);color:var(--ink-20); }
+.mail-action-btn.preview:hover { border-color:var(--ink-20);color:#fff; }
+.mail-prob-ring { width:36px;height:36px;flex-shrink:0; }
+.mail-avatar {
+  width: 38px; height: 38px; border-radius: 50%; background: var(--gold);
+  color: #000; font-weight: 700; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mail-name { font-weight: 600; font-size: 14px; }
+.mail-email { font-size: 11px; color: var(--ink-40); margin-top: 2px; }
+.mail-topic {
+  font-size: 12px; color: var(--ink-20); line-height: 1.5;
+  background: var(--ink-70); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;
+  border-left: 2px solid var(--gold);
+}
+.mail-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* ── PRIORITIES ── */
+.priorities-header { padding: 28px 24px 16px; max-width: 1320px; margin: 0 auto; }
+.priority-table-wrap { padding: 0 24px; max-width: 1320px; margin: 0 auto; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px; border-radius: 10px; border: none;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.btn-primary { background: var(--gold); color: #000; }
+.btn-primary:hover { background: var(--gold-lt); }
+.btn-secondary { background: var(--ink-70); color: #fff; }
+.btn-secondary:hover { background: var(--ink-60); }
+.btn-danger { background: rgba(224,82,82,.15); color: var(--red); border: 1px solid rgba(224,82,82,.3); }
+.btn-danger:hover { background: rgba(224,82,82,.25); }
+.btn-ghost { background: transparent; color: var(--ink-20); border: 1px solid var(--ink-60); }
+.btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 15px; opacity: .6; }
+.btn-icon:hover { opacity: 1; }
+.add-btn {
+  position: fixed; bottom: 28px; right: 28px; z-index: 200;
+  width: 56px; height: 56px; border-radius: 50%; border: none;
+  background: var(--gold); color: #000; font-size: 28px; font-weight: 300;
+  cursor: pointer; box-shadow: 0 4px 20px rgba(196,147,63,.5);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.add-btn:hover { background: var(--gold-lt); transform: scale(1.08); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.75); backdrop-filter: blur(4px);
+  align-items: center; justify-content: center; padding: 24px;
+}
+.modal-overlay.open { display: flex; }
+.modal-panel {
+  background: var(--ink-90); border: 1px solid var(--ink-60);
+  border-radius: 20px; width: 100%; max-width: 720px;
+  max-height: 92vh; overflow-y: auto; padding: 28px;
+  animation: fadeScaleIn .25s ease;
+}
+@keyframes fadeScaleIn { from { transform: scale(.96) translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-handle { width: 36px; height: 4px; background: var(--ink-60); border-radius: 2px;
+  margin: 0 auto 20px; }
+.modal-title { font-family: var(--font-display); font-size: 28px; letter-spacing: .06em; margin-bottom: 20px; }
+.form-section { margin-bottom: 22px; }
+.form-section-title { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 12px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field.span-2 { grid-column: span 2; }
+.field label { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--ink-20); text-transform: uppercase; }
+.field input, .field select, .field textarea {
+  background: var(--ink-80); border: 1px solid var(--ink-60); border-radius: 8px;
+  color: #fff; font-family: var(--font-body); font-size: 13px; padding: 9px 12px; outline: none;
+  transition: border-color .15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--gold); }
+.field select option { background: var(--ink-80); }
+.field textarea { resize: vertical; min-height: 72px; }
+.field-auto {
+  background: var(--ink-80); border: 1px solid var(--ink-70); border-radius: 8px;
+  padding: 10px 12px; display: flex; align-items: center; gap: 8px;
+}
+.form-actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 8px; }
+
+/* ── TOAST ── */
+.toast-container { position: fixed; bottom: 24px; left: 24px; z-index: 999;
+  display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  padding: 11px 18px; border-radius: 10px; font-size: 13px; font-weight: 500;
+  color: #fff; min-width: 200px; transition: all .3s; box-shadow: var(--shadow);
+}
+.toast.success { background: rgba(76,175,125,.9); }
+.toast.error   { background: rgba(224,82,82,.9); }
+.toast.info    { background: rgba(68,114,202,.8); }
+
+/* ── TESTS ── */
+.test-container { padding: 28px 24px; max-width: 900px; margin: 0 auto; }
+.test-hero { margin-bottom: 24px; }
+.run-tests-btn { font-size: 15px; padding: 12px 28px; margin-bottom: 24px; }
+.test-summary { display: flex; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+.test-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.test-stat .num { font-family: var(--font-display); font-size: 40px; }
+.test-stat .num.pass { color: var(--green); }
+.test-stat .num.fail { color: var(--red); }
+.test-stat .num.total { color: var(--gold); }
+.test-stat .label { font-size: 11px; color: var(--ink-40); font-weight: 600; letter-spacing: .08em; }
+.test-list { display: flex; flex-direction: column; gap: 8px; }
+.test-item {
+  background: var(--ink-80); border: 1px solid var(--ink-70); border-radius: 10px;
+  padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+  animation: fadeUp .2s ease both;
+}
+.test-item.pass { border-left: 3px solid var(--green); }
+.test-item.fail { border-left: 3px solid var(--red); }
+.test-name { font-size: 13px; font-weight: 500; }
+.test-detail { font-size: 11px; color: var(--ink-40); margin-top: 2px; }
+.test-result { font-size: 10px; font-weight: 800; letter-spacing: .1em; margin-left: auto; flex-shrink: 0; }
+.test-result.ok  { color: var(--green); }
+.test-result.err { color: var(--red); }
+.test-icon { font-size: 16px; flex-shrink: 0; }
+
+/* ── EMPTY STATE ── */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--ink-40); }
+.empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+
+/* ── YEAR MONTH CARD ── */
+.month-kpi-card {
+  background: var(--ink-80); border: 1px solid var(--ink-70); border-radius: var(--r);
+  padding: 20px; cursor: pointer; transition: border-color .2s, transform .15s;
+  position: relative; overflow: hidden;
+}
+.month-kpi-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+.month-kpi-card.on-track { border-left: 3px solid var(--green); }
+.month-kpi-card.below { border-left: 3px solid var(--ink-60); }
+.month-kpi-card.current-month { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.month-kpi-card .m-name { font-family:var(--font-display);font-size:22px;letter-spacing:.06em;margin-bottom:2px; }
+.month-kpi-card .m-revenue { font-family:var(--font-display);font-size:32px;color:var(--gold);line-height:1; }
+.month-kpi-card .m-goal-bar { height:4px;background:var(--ink-60);border-radius:2px;margin:10px 0 6px;overflow:hidden; }
+.month-kpi-card .m-goal-fill { height:100%;border-radius:2px;transition:width .5s ease; }
+.month-kpi-card .m-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px; }
+.month-kpi-card .m-stat { }
+.month-kpi-card .m-stat-val { font-size:15px;font-weight:600; }
+.month-kpi-card .m-stat-lbl { font-size:10px;color:var(--ink-40);letter-spacing:.08em;text-transform:uppercase;margin-top:1px; }
+.month-kpi-card .m-badge { position:absolute;top:14px;right:14px;font-size:10px;font-weight:700;
+  letter-spacing:.06em;padding:3px 8px;border-radius:20px; }
+.month-kpi-card .m-badge.hit { background:rgba(76,175,125,.2);color:var(--green); }
+.month-kpi-card .m-badge.miss { background:rgba(136,136,136,.1);color:var(--ink-40); }
+.month-kpi-card .m-badge.future { background:rgba(68,114,202,.12);color:#7ba4e8; }
+.month-kpi-card.empty-month { opacity:.45; }
+
+/* ── CONFIG SCREEN (hidden by default) ── */
+#configScreen {
+  position: fixed; inset: 0; z-index: 9999; background: var(--ink);
+  display: none; align-items: center; justify-content: center;
+}
+.config-card { background: var(--ink-80); border: 1px solid var(--ink-60); border-radius: 20px;
+  padding: 36px; max-width: 480px; width: 100%; margin: 20px; }
+.config-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.config-title { font-family: var(--font-display); font-size: 26px; margin-bottom: 8px; }
+.config-sub { font-size: 13px; color: var(--ink-40); margin-bottom: 24px; line-height: 1.5; }
+.config-field { margin-bottom: 14px; }
+.config-field label { display: block; font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-20); margin-bottom: 6px; }
+.config-field input { width: 100%; background: var(--ink-70); border: 1px solid var(--ink-60);
+  border-radius: 8px; color: #fff; font-size: 13px; padding: 10px 13px; outline: none;
+  font-family: var(--font-body); }
+.config-field input:focus { border-color: var(--gold); }
+.config-hint { font-size: 11px; color: var(--ink-40); margin-top: 4px; }
+.config-error { color: var(--red); font-size: 12px; margin-bottom: 12px; min-height: 16px; display: none; }
+.config-actions { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 24px; }
+.config-demo-btn { padding: 10px 20px; border-radius: 10px; border: 1px solid var(--ink-60);
+  background: transparent; color: var(--ink-20); font-size: 14px; cursor: pointer; font-family: var(--font-body); }
+.config-connect-btn { padding: 10px 24px; border-radius: 10px; border: none;
+  background: var(--gold); color: #000; font-size: 14px; font-weight: 700; cursor: pointer; font-family: var(--font-body); }
+</style>
+</head>
+<body>
+
+<!-- Config Screen (hidden — auto-connect on load) -->
+<div id="configScreen">
+  <div class="config-card" style="max-width:520px">
+    <div class="config-logo">
+      <svg width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">EA</text></svg>
+      <div>
+        <div style="font-family:var(--font-serif);font-size:16px;color:white">Ethan Allen</div>
+        <div style="font-size:9px;color:var(--gold);letter-spacing:.2em;text-transform:uppercase">Sales Intelligence</div>
+      </div>
+    </div>
+
+    <!-- Loading state -->
+    <div id="cfg-loading" style="text-align:center;padding:12px 0">
+      <div class="cfg-spinner"></div>
+      <div style="margin-top:12px;font-size:13px;color:var(--ink-40)" id="cfg-loading-msg">Connecting to database…</div>
+    </div>
+
+    <!-- Error state (hidden initially) -->
+    <div id="cfg-error-block" style="display:none">
+      <h2 class="config-title" style="color:var(--red);font-size:22px;margin-bottom:8px">Connection Error</h2>
+      <div id="cfg-error-msg" style="font-size:13px;color:var(--ink-20);line-height:1.6;margin-bottom:16px;padding:12px 14px;background:rgba(255,80,80,.07);border:1px solid rgba(255,80,80,.2);border-radius:10px"></div>
+
+      <!-- Smart fix steps -->
+      <div id="cfg-fix-steps" style="margin-bottom:20px;font-size:12px;color:var(--ink-40)"></div>
+
+      <!-- Auto-fallback countdown -->
+      <div id="cfg-countdown" style="font-size:12px;color:var(--ink-40);text-align:center;margin-bottom:16px"></div>
+
+      <div class="config-actions">
+        <button class="config-demo-btn" onclick="launchDemoMode()" style="flex:1">
+          Use Demo Mode
+        </button>
+        <button class="config-connect-btn" onclick="location.reload()" style="flex:1">
+          🔄 Retry Connection
+        </button>
+      </div>
+      <div style="margin-top:16px;padding:12px;background:var(--ink-80);border-radius:8px;font-size:11px;color:var(--ink-40)">
+        <strong style="color:var(--ink-20)">Demo Mode</strong> loads 20 sample clients so you can use every feature right now. Your real data syncs automatically when the database reconnects.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#" onclick="navigate('dashboard');return false;">
+    <svg width="30" height="30" viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">EA</text></svg>
+    <div><span class="nav-logo-text">Ethan Allen</span><span class="nav-logo-sub">Sales Intelligence</span></div>
+  </a>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="navigate('dashboard')" data-page="dashboard">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-tab" onclick="navigate('pipeline')" data-page="pipeline">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 2h14M3 6h10M5 10h6M7 14h2"/></svg>
+      Pipeline
+    </button>
+    <button class="nav-tab" onclick="navigate('priorities')" data-page="priorities">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1l2 5h5l-4 3 1.5 5L8 11l-4.5 3L5 9 1 6h5z"/></svg>
+      Priorities
+    </button>
+    <button class="nav-tab" onclick="navigate('year')" data-page="year">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M5 1v4M11 1v4M1 8h14"/></svg>
+      Year
+    </button>
+    <button class="nav-tab" onclick="navigate('mailing')" data-page="mailing">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M1 4l7 5 7-5"/></svg>
+      Mailing
+    </button>
+    <button class="nav-tab" onclick="navigate('tests')" data-page="tests">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="7"/><path d="M5 8l2 2 4-4"/></svg>
+      Tests
+    </button>
+  </div>
+  <div class="nav-right">
+    <span id="connBadge" class="conn-badge demo"><span class="dot"></span>Demo</span>
+    <span class="nav-badge" id="overdueCount" title="Overdue follow-ups">0</span>
+    <div class="nav-avatar" title="Carolina Medrado">CM</div>
+  </div>
+</nav>
+
+<main>
+
+<!-- ══════ DASHBOARD ══════ -->
+<div class="page active" id="page-dashboard">
+  <div class="dash-hero container">
+    <div class="dash-hero-title">
+      <span class="label">Sales Intelligence — 2026</span>
+      <h1 class="display">PERFORMANCE<br>DASHBOARD</h1>
+      <p class="dash-hero-date" id="dashDate"></p>
+    </div>
+    <div class="goal-pill">
+      <div><div class="goal-pill-label">Monthly Goal</div>
+        <div class="goal-pill-value" id="goalValue">$30,000</div></div>
+      <div><div class="goal-pill-label" style="margin-bottom:6px">Progress</div>
+        <div class="goal-pill-bar"><div class="goal-pill-fill" id="goalFill" style="width:0%"></div></div>
+        <div style="font-size:11px;color:var(--gold);margin-top:4px;text-align:right" id="goalPct">0%</div></div>
+    </div>
+  </div>
+
+  <div class="filter-row" id="monthFilter"></div>
+
+  <div class="kpi-grid" id="kpiGrid">
+    <div class="kpi-card" data-kpi="opps" onclick="showKPIDetail('opps')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><circle cx="10" cy="10" r="5"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/></svg><span class="label">Opportunities</span><div class="kpi-value" id="k-opps">0</div><div class="kpi-delta" id="k-opps-d">In pipeline</div></div>
+    <div class="kpi-card" data-kpi="sales" onclick="showKPIDetail('sales')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><path d="M10 5v1.5M10 13.5V15M7.5 12.5c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-2-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2"/></svg><span class="label">Sales This Period</span><div class="kpi-value gold" id="k-sales">$0</div><div class="kpi-delta" id="k-sales-d">Closed deals</div></div>
+    <div class="kpi-card" data-kpi="pipeline" onclick="showKPIDetail('pipeline')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L5 11h7l-4 7 12-10h-8l4-6z"/></svg><span class="label">Weighted Pipeline</span><div class="kpi-value" id="k-pipe">$0</div><div class="kpi-delta" id="k-pipe-d">Prob-adjusted</div></div>
+    <div class="kpi-card" data-kpi="overdue" onclick="showKPIDetail('overdue')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2L1 18h18L10 2z"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="label">Overdue Follow-ups</span><div class="kpi-value red" id="k-overdue">0</div><div class="kpi-delta">Need attention today</div></div>
+    <div class="kpi-card" data-kpi="conversion" onclick="showKPIDetail('conversion')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 15l5-5 3 3 5-6 3 3"/><path d="M2 18h16"/></svg><span class="label">Conversion Rate</span><div class="kpi-value" id="k-conv">0%</div><div class="kpi-delta">Opps → Sales</div></div>
+    <div class="kpi-card" data-kpi="homecalls" onclick="showKPIDetail('homecalls')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9l8-7 8 7v9H2z"/><path d="M8 18v-7h4v7"/></svg><span class="label">Home Calls Done</span><div class="kpi-value" id="k-hc">0</div><div class="kpi-delta" id="k-hc-d">Completed visits</div></div>
+    <div class="kpi-card" data-kpi="avgval" onclick="showKPIDetail('avgval')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l2.2 6.2H18l-4.7 3.5 1.7 6-5-3.5-5 3.5 1.7-6L2 8.2h5.8z"/></svg><span class="label">Avg Project Value</span><div class="kpi-value gold" id="k-avg">$0</div><div class="kpi-delta">Per closed deal</div></div>
+    <div class="kpi-card" data-kpi="goldcomp" onclick="showKPIDetail('goldcomp')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 1v4M10 15v4M1 10h4M15 10h4M3.4 3.4l2.8 2.8M13.8 13.8l2.8 2.8M16.6 3.4l-2.8 2.8M6.2 13.8L3.4 16.6"/><circle cx="10" cy="10" r="3"/></svg><span class="label">GoldComp Sales</span><div class="kpi-value" id="k-gc">$0</div><div class="kpi-delta" id="k-gc-d">0% of total</div></div>
+    <div class="kpi-card" data-kpi="probability" onclick="showKPIDetail('probability')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="10" width="3" height="8" rx="1"/><rect x="8.5" y="5" width="3" height="13" rx="1"/><rect x="14" y="2" width="3" height="16" rx="1"/></svg><span class="label">Avg Probability</span><div class="kpi-value" id="k-prob">0%</div><div class="kpi-delta">Active pipeline</div></div>
+    <div class="kpi-card" data-kpi="hot" onclick="showKPIDetail('hot')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 2c0 3-2 4-2 7a3 3 0 006 0c0-4-4-5-4-5s1 2-1 3c0-3-3-4-1-8 0 0-4 2-4 7a5 5 0 0010 0c0-6-4-7-4-4z"/></svg><span class="label">Hot Leads (≥75%)</span><div class="kpi-value red" id="k-hot">0</div><div class="kpi-delta">High-probability opps</div></div>
+    <div class="kpi-card" data-kpi="totalest" onclick="showKPIDetail('totalest')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a3 3 0 016 0v2"/><path d="M2 12h16"/></svg><span class="label">Total Est. Pipeline</span><div class="kpi-value" id="k-total-est">$0</div><div class="kpi-delta">Sum of all estimates</div></div>
+    <div class="kpi-card" data-kpi="winrate" onclick="showKPIDetail('winrate')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h8v6a4 4 0 01-8 0V3z"/><path d="M6 6H3a2 2 0 002 2M14 6h3a2 2 0 01-3 2M10 13v4M7 17h6"/></svg><span class="label">Win Rate (YTD)</span><div class="kpi-value green" id="k-winrate">0%</div><div class="kpi-delta">Sales ÷ total opps</div></div>
+  </div>
+
+  <!-- Insights -->
+  <div class="label" style="padding:0 24px;max-width:1320px;margin:0 auto 10px">💡 Insights & Recommendations</div>
+  <div class="insights-grid" id="insightsGrid"></div>
+
+  <div class="dash-grid container">
+    <div class="dash-card">
+      <div class="dash-card-header"><div><div class="dash-card-title">Sales by Project Type</div><div class="dash-card-sub">Revenue from closed deals</div></div></div>
+      <div id="projectTypeChart"></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-header"><div><div class="dash-card-title">Pipeline by Stage</div><div class="dash-card-sub">Count &amp; weighted value</div></div></div>
+      <div class="stage-list" id="stageChart"></div>
+    </div>
+  </div>
+
+  <div class="dash-card month-chart container">
+    <div class="dash-card-header"><div><div class="dash-card-title">2026 Monthly Revenue vs Goal</div><div class="dash-card-sub">Hover bars for details</div></div></div>
+    <div class="month-bars" id="monthChart"></div>
+  </div>
+
+  <div class="container" style="margin-bottom:24px">
+    <div class="dash-card">
+      <div class="dash-card-header">
+        <div><div class="dash-card-title">🔔 Overdue Follow-ups</div><div class="dash-card-sub">Clients needing immediate attention</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('priorities')">View All →</button>
+      </div>
+      <div class="alert-list" id="alertList">
+        <div class="empty-state"><div class="icon">✅</div><p>No overdue follow-ups</p></div>
+      </div>
+    </div>
+  </div>
+</div><!-- /dashboard -->
+
+<!-- ══════ PIPELINE ══════ -->
+<div class="page" id="page-pipeline">
+  <div class="pipeline-header container">
+    <div><span class="label" style="display:block;margin-bottom:6px">Sales Pipeline</span>
+      <h2 class="display">ALL OPPORTUNITIES</h2></div>
+    <div class="search-box">
+      <span style="color:var(--ink-40)">🔍</span>
+      <input id="searchInput" type="text" placeholder="Search name, project, stage…" oninput="renderPipeline()">
+    </div>
+    <button class="btn btn-primary" onclick="openNewLead()">+ New Lead</button>
+  </div>
+  <div class="filter-row" id="stageFilters"></div>
+  <div class="table-wrap">
+    <table id="pipelineTable">
+      <thead><tr>
+        <th>Client</th><th>Project Type</th><th>Lead Source</th>
+        <th>Stage</th><th>Prob</th><th>Estimate</th><th>Weighted</th>
+        <th>Follow-Up</th><th>Win Tier</th><th>Score</th><th></th>
+      </tr></thead>
+      <tbody id="pipelineBody"></tbody>
+    </table>
+  </div>
+  <div class="empty-state" id="pipelineEmpty" style="display:none">
+    <div class="icon">🎯</div><p>No opportunities yet. Add your first lead!</p>
+  </div>
+</div><!-- /pipeline -->
+
+<!-- ══════ PRIORITIES ══════ -->
+<div class="page" id="page-priorities">
+  <div class="priorities-header">
+    <span class="label" style="display:block;margin-bottom:6px">Daily Focus</span>
+    <h2 class="display">⚡ PRIORITIES</h2>
+    <p style="font-size:13px;color:var(--ink-40);margin-top:8px" id="prioritiesSubtitle">Clients sorted by urgency score</p>
+  </div>
+
+  <div class="container" style="margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div class="kpi-card"><span class="kpi-icon">🔥</span><span class="label">Overdue</span>
+        <div class="kpi-value red" id="prio-overdue">0</div><div class="kpi-delta">Follow-ups past due</div></div>
+      <div class="kpi-card"><span class="kpi-icon">⚡</span><span class="label">Due Today</span>
+        <div class="kpi-value gold" id="prio-today">0</div><div class="kpi-delta">Follow up today</div></div>
+      <div class="kpi-card"><span class="kpi-icon">📋</span><span class="label">Open Pipeline</span>
+        <div class="kpi-value" id="prio-open">0</div><div class="kpi-delta">Active opportunities</div></div>
+    </div>
+  </div>
+
+  <div class="priority-table-wrap">
+    <table>
+      <thead><tr>
+        <th>Client</th><th>Project Type</th><th>Stage</th><th>Next Step</th>
+        <th>Prob</th><th>Estimate</th><th>Follow-Up</th>
+        <th>Days Overdue</th><th>Win Tier</th><th>Urgency Score</th><th></th>
+      </tr></thead>
+      <tbody id="priorityBody"></tbody>
+    </table>
+    <div class="empty-state" id="priorityEmpty" style="display:none">
+      <div class="icon">✅</div><p>All follow-ups are on track!</p>
+    </div>
+  </div>
+</div><!-- /priorities -->
+
+<!-- ══════ MAILING ══════ -->
+<div class="page" id="page-mailing">
+  <div class="section-header">
+    <span class="label" style="display:block;margin-bottom:6px">Smart Campaign</span>
+    <h2 class="display">📧 MAILING LIST</h2>
+    <p style="font-size:13px;color:var(--ink-40);margin-top:8px">Auto-populated from pipeline. Topics calculated from Stage, Project Type &amp; Probability.</p>
+  </div>
+  <div style="padding:0 24px;max-width:1320px;margin:0 auto 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div id="mailFilters" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="exportMailingToCSV()" style="flex-shrink:0">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1v9M5 7l3 3 3-3"/><rect x="2" y="11" width="12" height="4" rx="1.5"/></svg>
+      Export CSV for Sheets
+    </button>
+  </div>
+  <div class="mailing-grid" id="mailingGrid"></div>
+</div><!-- /mailing -->
+
+<!-- ══════ TESTS ══════ -->
+<div class="page" id="page-tests">
+  <div class="test-container">
+    <div class="test-hero">
+      <span class="label" style="display:block;margin-bottom:8px">Quality Assurance</span>
+      <h2 class="display" style="font-size:48px">TEST SUITE</h2>
+      <p style="color:var(--ink-40);margin-top:8px;font-size:13px">20 automated tests covering formulas, DB, UI and business logic.</p>
+    </div>
+    <button class="btn btn-primary run-tests-btn" onclick="runAllTests()">▶ Run All Tests</button>
+    <div class="test-summary" id="testSummary"></div>
+    <div class="test-list" id="testList"></div>
+  </div>
+</div><!-- /tests -->
+
+<!-- ══════ YEAR VIEW ══════ -->
+<div class="page" id="page-year">
+  <div class="dash-hero container">
+    <div class="dash-hero-title">
+      <span class="label">Annual Overview</span>
+      <h1 class="display">2026 AT A GLANCE</h1>
+      <p class="dash-hero-date" id="yearSubtitle"></p>
+    </div>
+    <div class="goal-pill" id="ytdPill">
+      <div><div class="goal-pill-label">YTD Revenue</div>
+        <div class="goal-pill-value" id="ytd-revenue">$0</div></div>
+      <div><div class="goal-pill-label" style="margin-bottom:6px">vs YTD Goal</div>
+        <div class="goal-pill-bar"><div class="goal-pill-fill" id="ytd-fill" style="width:0%"></div></div>
+        <div style="font-size:11px;color:var(--gold);margin-top:4px;text-align:right" id="ytd-pct">0%</div></div>
+    </div>
+  </div>
+
+  <!-- YTD Summary KPIs -->
+  <div class="kpi-grid" id="yearKpiGrid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))"></div>
+
+  <!-- Month grid header -->
+  <div class="container" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <div class="label">Monthly Breakdown</div>
+      <div style="font-size:12px;color:var(--ink-40);margin-top:3px">Click any month to filter dashboard</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--ink-40)">
+      <div style="width:10px;height:10px;background:var(--gold);border-radius:2px;display:inline-block"></div> On/Exceeded Goal &nbsp;
+      <div style="width:10px;height:10px;background:var(--ink-60);border-radius:2px;display:inline-block"></div> Below Goal
+    </div>
+  </div>
+
+  <!-- 12-month card grid -->
+  <div class="container">
+    <div id="yearMonthGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;padding-bottom:32px"></div>
+  </div>
+</div><!-- /year -->
+
+</main>
+
+<!-- ══════ MODAL: ADD / EDIT LEAD ══════ -->
+<div class="modal-overlay" id="leadModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-panel">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">NEW LEAD</div>
+
+    <div id="leadForm">
+      <input type="hidden" id="leadId">
+
+      <div class="form-section">
+        <div class="form-section-title">👤 Contact Information</div>
+        <div class="form-grid">
+          <div class="field"><label>First Name *</label><input id="f-firstName" type="text" required placeholder="Maria"></div>
+          <div class="field"><label>Last Name *</label><input id="f-lastName" type="text" required placeholder="Alvarez"></div>
+          <div class="field"><label>Email</label><input id="f-email" type="email" placeholder="maria@email.com"></div>
+          <div class="field"><label>Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000"></div>
+          <div class="field span-2"><label>Address</label><input id="f-address" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">🏠 Project Details</div>
+        <div class="form-grid">
+          <div class="field"><label>Project Type *</label>
+            <select id="f-projectType" onchange="onFieldChange()"><option value="">Select…</option></select></div>
+          <div class="field"><label>Lead Source</label>
+            <select id="f-leadSource"><option value="">Select…</option></select></div>
+          <div class="field"><label>Stage</label>
+            <select id="f-stage" onchange="onFieldChange()"><option value="">Select…</option></select></div>
+          <div class="field"><label>Probability (%)</label>
+            <select id="f-probability" onchange="onFieldChange()"><option value="">Select…</option></select></div>
+          <div class="field"><label>Estimate ($)</label>
+            <input id="f-estimate" type="number" min="0" step="100" placeholder="15000" oninput="onFieldChange()"></div>
+          <div class="field"><label>Follow-Up Date</label>
+            <input id="f-followUpDate" type="date" onchange="onFieldChange()"></div>
+          <div class="field"><label>Next Step</label>
+            <select id="f-nextStep"><option value="">Select…</option></select></div>
+          <div class="field"><label>Home Call?</label>
+            <select id="f-homeCall" onchange="onFieldChange()">
+              <option value="">—</option><option>Yes</option><option>No</option>
+            </select></div>
+          <div class="field"><label>Home Call Date</label>
+            <input id="f-homeCallDate" type="date"></div>
+          <div class="field"><label>Sale Made?</label>
+            <select id="f-saleMade" onchange="onFieldChange()">
+              <option value="">—</option><option>Yes</option><option>No</option>
+            </select></div>
+          <div class="field"><label>GoldComp?</label>
+            <select id="f-goldComp">
+              <option value="">—</option><option>Yes</option><option>No</option>
+            </select></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">⚡ Auto-Calculated</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div>
+            <div class="overline" style="margin-bottom:6px">Weighted Value</div>
+            <div class="field-auto"><span>⚡</span><span id="auto-weighted" style="font-family:var(--font-display);font-size:20px">$0</span></div>
+          </div>
+          <div>
+            <div class="overline" style="margin-bottom:6px">Win Tier</div>
+            <div id="auto-wintier" class="badge badge-cold" style="display:inline-flex;padding:6px 12px;font-size:12px">❄️ COLD</div>
+          </div>
+          <div>
+            <div class="overline" style="margin-bottom:6px">Urgency Score</div>
+            <div class="field-auto"><span>🎯</span><span id="auto-urgency" style="font-family:var(--font-display);font-size:20px">0</span></div>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="overline" style="margin-bottom:6px">Smart Email Topic</div>
+          <div class="mail-topic" id="auto-topic" style="margin:0">Select Stage and Project Type…</div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">📝 Notes</div>
+        <div class="field"><textarea id="f-notes" placeholder="Context about this opportunity…"></textarea></div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-danger btn-sm" id="deleteBtn" onclick="deleteLead()" style="display:none;margin-right:auto">🗑 Delete</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveLead()">💾 Save Lead</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="add-btn" onclick="openNewLead()" title="Add new lead">+</button>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════
+   CONSTANTS & LOOKUP DATA (from Excel Lookup sheet)
+══════════════════════════════════════════════════ */
+const LOOKUP = {
+  stages: ['New Lead','Home Call','Design in Progress','Quote Sent','Follow-up','Pending Decision','Sale Made','Postponed','Canceled'],
+  projectTypes: ['Living Room','Dining','Bedroom','Home Office','Outdoor','Lighting','Rugs & Flooring','Decor','Clearance','Mix'],
+  nextSteps: ['Schedule Home Visit','Presentation','Presentation / Quote','Follow-Up Call','Send Proposal','Awaiting Decision','Postpone'],
+  probabilities: [0,10,25,50,70,75,85,90,100],
+  leadSources: ['Referral','Walk-in','Website','Instagram','Repeat Client','Builder'],
+  months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  monthGoals: [28000,28000,30000,32000,32000,35000,35000,35000,33000,33000,30000,28000],
+  stageColors: {
+    'New Lead':'#888','Home Call':'#C4933F','Design in Progress':'#4472CA',
+    'Quote Sent':'#E8A030','Follow-up':'#FFA500','Pending Decision':'#FF8844',
+    'Sale Made':'#4CAF7D','Postponed':'#A088E0','Canceled':'#E05252'
+  },
+  stageBadgeClass: {
+    'New Lead':'badge-stage-new','Home Call':'badge-stage-homecall',
+    'Design in Progress':'badge-stage-design','Quote Sent':'badge-stage-quote',
+    'Follow-up':'badge-stage-followup','Pending Decision':'badge-stage-pending',
+    'Sale Made':'badge-stage-sale','Postponed':'badge-stage-postponed',
+    'Canceled':'badge-stage-canceled'
+  }
+};
+
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ══════════════════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════════════════ */
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+}
+
+function fmt$(n, compact=false) {
+  if (!n && n !== 0) return '$0';
+  const rounded = Math.round(Number(n));
+  if (compact && rounded >= 1000) return '$' + (rounded/1000).toFixed(1).replace('.0','') + 'k';
+  return '$' + rounded.toLocaleString('en-US');
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  } catch { return dateStr; }
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function localDateStr(d) {
+  const dt = d || new Date();
+  return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+}
+
+function toast(msg, type='info') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(30px)'; t.style.transition='all .3s'; }, 2800);
+  setTimeout(() => t.remove(), 3200);
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ══════════════════════════════════════════════════
+   BUSINESS LOGIC (mirrors Excel formulas exactly)
+══════════════════════════════════════════════════ */
+const BL = {
+
+  /* Win Tier — from Excel _WinTier column formula */
+  getWinTier(opp) {
+    if (opp.saleMade === 'Yes') return { key:'SOLD',    label:'✅ SOLD',    cls:'badge-sold' };
+    if (opp.stage === 'Canceled') return { key:'CANCELED', label:'❌ CANCELED', cls:'badge-canceled' };
+    const p = Number(opp.probability)||0;
+    if (p >= 75) return { key:'HOT',     label:'🔥 HOT',    cls:'badge-high' };
+    if (p >= 50) return { key:'WARM',    label:'🌡️ WARM',   cls:'badge-warm' };
+    if (p >= 25) return { key:'NURTURE', label:'📋 NURTURE', cls:'badge-nurture' };
+    return         { key:'COLD',    label:'❄️ COLD',   cls:'badge-cold' };
+  },
+
+  /* Urgency Score — Excel: 3pts/day overdue + 2pts/prob% + 1pt/$1k estimate */
+  getUrgencyScore(opp) {
+    if (opp.saleMade === 'Yes' || opp.stage === 'Canceled') return 0;
+    const prob = Number(opp.probability)||0;
+    const est  = Number(opp.estimate)||0;
+    const daysOver = this.getDaysOverdue(opp);
+    return (daysOver * 3) + (prob * 2) + Math.floor(est / 1000);
+  },
+
+  /* Days overdue */
+  getDaysOverdue(opp) {
+    if (!opp.followUpDate) return 0;
+    // Use noon local time on both sides to avoid DST/UTC edge cases
+    const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); };
+    const today = parse(localDateStr(new Date()));
+    const fup   = parse(opp.followUpDate);
+    const diff  = Math.floor((today - fup) / 86400000);
+    return diff > 0 ? diff : 0;
+  },
+
+  isOverdue(opp) {
+    if (opp.saleMade === 'Yes' || opp.stage === 'Canceled') return false;
+    return this.getDaysOverdue(opp) > 0;
+  },
+
+  isDueToday(opp) {
+    if (opp.saleMade === 'Yes' || opp.stage === 'Canceled') return false;
+    if (!opp.followUpDate) return false;
+    return opp.followUpDate === todayStr() && this.getDaysOverdue(opp) === 0;  // todayStr() is now TZ-safe
+  },
+
+  /* Weighted pipeline value */
+  getWeighted(opp) {
+    return ((Number(opp.probability)||0) / 100) * (Number(opp.estimate)||0);
+  },
+
+  /* Month auto — from home_call_date or follow_up_date */
+  getMonthAuto(opp) {
+    const src = opp.homeCallDate || opp.followUpDate || opp.createdAt || '';
+    if (!src) return '';
+    try {
+      const d = new Date(src + 'T12:00:00');
+      return LOOKUP.months[d.getMonth()] + ' ' + d.getFullYear();
+    } catch { return ''; }
+  },
+
+  /* Email topic — Excel Mailing tab 9-level nested IF */
+  getEmailTopic(opp) {
+    return this.generatePersuasionEmail(opp).subject;
+  },
+
+  /* ════════════════════════════════════════════════════
+     PERSUASION EMAIL ENGINE
+     Frameworks: Corporate Visions (Why Change/You/Now/Pay)
+     SPIN Selling · Mirroring · Neuromarketing · FOMO
+  ════════════════════════════════════════════════════ */
+  generatePersuasionEmail(opp) {
+    const fn   = opp.firstName || 'there';
+    const pt   = opp.projectType || 'home';
+    const prob = Number(opp.probability) || 0;
+    const est  = Number(opp.estimate)    || 0;
+    const notes = opp.notes || '';
+    const today = new Date();
+    const month = LOOKUP.months[today.getMonth()];
+    const season = ['Winter','Winter','Spring','Spring','Spring','Summer','Summer','Summer','Fall','Fall','Fall','Winter'][today.getMonth()];
+
+    // Scarcity anchors (neuromarketing — specificity builds credibility)
+    const slots     = [2,3][Math.floor(Math.random()*2)];
+    const days      = [3,5,7][Math.floor(Math.random()*3)];
+    const anchorPct = Math.min(Math.round(est * 0.12), 4800);  // GoldComp hook
+
+    // Social proof snippets
+    const socialProof = {
+      'Living Room': 'three families in your area recently transformed their living spaces',
+      'Dining':      'several clients this season upgraded their dining rooms before the holidays',
+      'Bedroom':     'our most popular bedroom collections are moving quickly this quarter',
+      'Home Office': 'demand for our home office collections has doubled this year',
+      'Outdoor':     'our outdoor collections typically sell out before peak season',
+      default:       'our design consultants are fully booked most weeks',
+    };
+    const proof = socialProof[pt] || socialProof.default;
+
+    // Stage-specific frameworks
+    if (opp.saleMade === 'Yes') {
+      return {
+        subject: `Your ${pt} Journey Begins — Welcome to the Ethan Allen Family`,
+        techniques: ['Corporate Visions: Why Pay confirmed','Neuromarketing: Ownership language','FOMO: Delivery timeline','Positive Selling: Future pacing'],
+        body: `Dear ${fn},
+
+What a wonderful decision you've made. Your new ${pt.toLowerCase()} isn't just furniture — it's the foundation of how your home will feel, function, and tell your story for years to come.
+
+Here's what happens next: our production team has received your order, and your pieces are being crafted with the same attention to detail that has made Ethan Allen a trusted name in American homes for over 90 years.
+
+You'll receive a delivery confirmation within the next few days. In the meantime, I'd love to share a few styling ideas for your space — small details that will make everything feel truly complete.
+
+Thank you for trusting me with your home. This is the beginning of something beautiful.
+
+Warmly,
+Carolina Medrado
+Interior Design Consultant | Ethan Allen`
+      };
+    }
+
+    switch (opp.stage) {
+      case 'New Lead':
+        return {
+          subject: `${fn}, your complimentary design vision session — this week only`,
+          techniques: ['Corporate Visions: Why Change (status quo bias)','SPIN: Situation→Problem','Neuromarketing: Scarcity + anchoring','FOMO: Time-limited offer'],
+          body: `Dear ${fn},
+
+Most people live with furniture that "works" — functional, familiar, but never quite right. They walk into their ${pt.toLowerCase()} every day and feel that subtle sense of something missing. Sound familiar?
+
+That's exactly what I help clients change. In a single 45-minute design vision session — complimentary, no obligation — I can show you how your ${pt.toLowerCase()} could look, feel, and function at its absolute best.
+
+I only have ${slots} consultation slots available this week, and given that ${proof}, I wanted to reach out to you first.
+
+${(notes ? 'I noticed you mentioned: "${notes.slice(0,80)}${notes.length>80?\'…\':\'\'}" — this tells me we have a clear direction to work from.' : 'A quick conversation is all it takes to see what\'s possible.')}
+
+Would Tuesday or Thursday work for you? Reply to this email and I'll hold your spot.
+
+Warmly,
+Carolina Medrado
+Interior Design Consultant | Ethan Allen`
+        };
+
+      case 'Home Call':
+        return {
+          subject: `${fn}, I'm still thinking about your ${pt.toLowerCase()} — here's what I see`,
+          techniques: ['Corporate Visions: Why You (differentiation)','SPIN: Implication (cost of inaction)','Mirroring: Repeating client language','Neuromarketing: Visualization + sensory language'],
+          body: `Dear ${fn},
+
+Walking through your home with you gave me a clear picture — and I haven't stopped thinking about the potential your ${pt.toLowerCase()} has.
+
+${(notes ? 'You mentioned ${notes.slice(0,100).toLowerCase()}${notes.length>100?\'…\':\'\'} — that told me everything I needed to know about what you\'re really looking for.' : 'The space has incredible bones. The right pieces would pull it together in a way that photographs rarely capture — you have to feel it in person.')}
+
+Here's what I want you to consider: every month that passes is a month you spend in a space that isn't quite working for you. The cost of waiting isn't just financial — it's the daily friction of a room that doesn't feel right.
+
+What's holding you back? If it's timing, budget, or just not seeing the full picture yet, I can work with all of that. Let's talk for 20 minutes.
+
+${est > 0 ? `Your investment starting at ${Math.round(est*0.7).toLocaleString('en-US', {style:'currency',currency:'USD',maximumFractionDigits:0})} could transform how you experience your home every single day.` : ''}
+
+I'm here when you're ready,
+Carolina Medrado
+Interior Design Consultant | Ethan Allen`
+        };
+
+      case 'Design in Progress':
+        return {
+          subject: `${fn} — your ${pt.toLowerCase()} design is taking shape (and it's beautiful)`,
+          techniques: ['Corporate Visions: Why Now (momentum)','Neuromarketing: Future pacing + ownership language','Positive Selling: Progress confirmation','FOMO: Collection availability'],
+          body: `Dear ${fn},
+
+The designs for your ${pt.toLowerCase()} are coming together — and I want to share what I've been building for you.
+
+${season} is the perfect moment to finalize. Our ${season.toLowerCase()} collections are at full availability right now, but ${proof}, so the pieces you love most may not be available at this price point by next month.
+
+${(est > 0 ? 'Your project is scoped at approximately ${est.toLocaleString(\'en-US\', {style:\'currency\',currency:\'USD\',maximumFractionDigits:0})}. Did you know our GoldComp program could add ${anchorPct.toLocaleString(\'en-US\',{style:\'currency\',currency:\'USD\',maximumFractionDigits:0})} in additional value — essentially a gift with your purchase?' : 'Your design represents our best work this season.')}
+
+I'd love to walk you through the final board. Can we schedule 30 minutes this week — over coffee or a quick call?
+
+With excitement,
+Carolina Medrado
+Interior Design Consultant | Ethan Allen`
+        };
+
+      case 'Quote Sent':
+        return {
+          subject: `${fn}, a question about your ${pt.toLowerCase()} proposal`,
+          techniques: ['SPIN: Need-Payoff question','Mirroring: Softening language','Corporate Visions: Why Pay (ROI)','Objection handling: Preemptive reframe'],
+          body: `Dear ${fn},
+
+I wanted to follow up on the proposal I sent for your ${pt.toLowerCase()}.
+
+A quick question: when you picture your space after it's complete — the way the light falls on the pieces, the way the room feels when you walk in — does it match what we discussed?
+
+If so, I want to make sure nothing is standing between you and that outcome.
+
+Some clients at this stage have concerns about the investment. Here's how I think about it: ${(est > 0 ? 'your ${pt.toLowerCase()} at ${est.toLocaleString(\'en-US\', {style:\'currency\',currency:\'USD\',maximumFractionDigits:0})} averages out to less than ${Math.round(est/365).toLocaleString(\'en-US\', {style:\'currency\',currency:\'USD\',maximumFractionDigits:0})} per day for a year of enjoying a space that genuinely elevates your life.' : 'quality pieces hold their value and meaning for decades.')} That's not an expense — that's an investment in how you live.
+
+Is there anything in the proposal that needs clarification? I can adjust, explain, or simplify anything — just say the word.
+
+Here for you,
+Carolina Medrado
+Interior Design Consultant | Ethan Allen`
+        };
+
+      case 'Follow-up':
+        return {
+          subject: `Still thinking, ${fn}? That makes sense — here's what I want you to know`,
+          techniques: ['Mirroring: Validating hesitation','SPIN: Implication surfacing','FOMO: Dual scarcity (time + inventory)','Neuromarketing: Loss aversion framing'],
+          body: `Dear ${fn},
+
+Still thinking — that makes sense. A decision like this deserves careful consideration.
+
+But I want to be honest with you: the ${pt.toLowerCase()} pieces we discussed have limited availability, and I'm seeing movement on similar items this week. I would hate for you to make the final decision after the window has closed.
+
+Here's what I know from working with clients like you: the hesitation almost never comes from the pieces themselves. It comes from uncertainty — is this the right time? Is this the right choice? Am I getting full value?
+
+${(notes ? 'You mentioned ${notes.slice(0,80).toLowerCase()} — and that tells me you already know what you want. The question is just whether now is the moment.' : 'In my experience, when someone has come this far in the process, they already know the answer.')}
+
+What would it take to move forward? I'm asking genuinely — because I want to find a way to make this work for you.
+
+Carolina Medrado
+Interior Design Consultant | Ethan Allen`
+        };
+
+      case 'Pending Decision':
+        return {
+          subject: `${fn} — one thing before you decide`,
+          techniques: ['Corporate Visions: Why Now (urgency crystallization)','SPIN: Need-Payoff close','Neuromarketing: Anchoring + commitment','FOMO: Peak urgency'],
+          body: `Dear ${fn},
+
+You're at the finish line. Before you make your final decision, I want to share one thing.
+
+${proof.charAt(0).toUpperCase() + proof.slice(1)}. I'm currently holding your selections, but I can only do so for ${days} more days before I need to release them for other consultations.
+
+${(est > 0 ? 'At ${est.toLocaleString(\'en-US\', {style:\'currency\',currency:\'USD\',maximumFractionDigits:0})}, your ${pt.toLowerCase()} transformation represents an investment that will shape how your home feels every day. Clients who move forward consistently tell me the same thing: "I wish I\'d done this sooner."' : 'The pieces we selected together are the right ones. I can feel it, and I believe you can too.')}
+
+If there's one remaining question — about timeline, financing, delivery, or anything else — I want to answer it today.
+
+This is your moment,
+Carolina Medrado
+Interior Design Consultant | Ethan Allen`
+        };
+
+      case 'Postponed':
+        return {
+          subject: `${fn}, whenever you're ready — I've kept your vision safe`,
+          techniques: ['Positive Selling: No pressure reactivation','Neuromarketing: Ownership language','FOMO: Seasonal hook','Corporate Visions: Why Change (renewed)'],
+          body: `Dear ${fn},
+
+Life moves fast, and timing isn't always in our control. I completely understand.
+
+I'm reaching out because ${season} is arriving and I'm refreshing my client projects — and I couldn't help but think about the ${pt.toLowerCase()} vision we built together. It's still compelling. In fact, some of the pieces we discussed have actually become more sought-after.
+
+When the timing feels right again, I want you to know that I remember exactly where we were, what you love, and what would make your space feel like you. We don't have to start over.
+
+${(notes ? 'You shared that ${notes.slice(0,80).toLowerCase()} — I haven\'t forgotten.' : 'Your project is still here, waiting for its moment.')}
+
+No pressure. Just a reminder that I'm here when you're ready, and the door is always open.
+
+Carolina Medrado
+Interior Design Consultant | Ethan Allen`
+        };
+
+      case 'Canceled':
+        return {
+          subject: `${fn}, we've missed you — something new is here for you`,
+          techniques: ['Win-back: Low friction re-entry','Neuromarketing: Curiosity gap','Corporate Visions: Why Change (new stimulus)','Positive Selling: No-blame reconnection'],
+          body: `Dear ${fn},
+
+It's been a while, and I've been thinking about you.
+
+A lot has changed at Ethan Allen — new collections, new design perspectives, and honestly, a renewed sense of what luxury living at home can look and feel like in ${today.getFullYear()}.
+
+I'm not going to pretend our timing was perfect last time. What I will say is this: if there's any part of you that's still thinking about your ${pt.toLowerCase()}, I'd love a fresh conversation — no pressure, no history, just a new starting point.
+
+We have several new arrivals that weren't available before. And I have one complimentary design session available this month that I'd love to offer you.
+
+Would you be open to 20 minutes?
+
+With warmth,
+Carolina Medrado
+Interior Design Consultant | Ethan Allen`
+        };
+
+      default:
+        return {
+          subject: `${fn} — a personal note from your Ethan Allen designer`,
+          techniques: ['Positive Selling: Relationship maintenance','Neuromarketing: Personal touch','Corporate Visions: Ambient awareness'],
+          body: `Dear ${fn},
+
+I wanted to reach out personally — not with a pitch or a proposal, but just to stay in touch.
+
+If you've been thinking about your home at all — what's working, what isn't, or even just what you'd love it to feel like — I'm always here for a conversation. No agenda, no pressure.
+
+${proof.charAt(0).toUpperCase() + proof.slice(1)}, and I always want my longtime clients to have first access to new arrivals.
+
+Wishing you a beautiful ${season},
+Carolina Medrado
+Interior Design Consultant | Ethan Allen`
+        };
+    }
+  },
+
+  /* Campaign priority for mailing */
+  getCampaignPriority(opp) {
+    if (opp.saleMade === 'Yes') return { label:'✅ SOLD',   cls:'badge-sold' };
+    const p = Number(opp.probability)||0;
+    if (p >= 70) return { label:'🔥 HIGH',   cls:'badge-high' };
+    if (p >= 50) return { label:'⚡ MEDIUM', cls:'badge-warm' };
+    return              { label:'📋 NURTURE', cls:'badge-nurture' };
+  },
+
+  /* Auto-suggest next step from stage */
+  suggestNextStep(stage) {
+    const map = {
+      'New Lead':'Schedule Home Visit','Home Call':'Presentation',
+      'Design in Progress':'Presentation / Quote','Quote Sent':'Awaiting Decision',
+      'Follow-up':'Follow-Up Call','Pending Decision':'Awaiting Decision',
+      'Sale Made':'Awaiting Decision','Postponed':'Follow-Up Call'
+    };
+    return map[stage] || '';
+  },
+
+  /* Auto-suggest probability from stage */
+  suggestProbability(stage) {
+    const map = {
+      'New Lead':10,'Home Call':25,'Design in Progress':50,
+      'Quote Sent':75,'Follow-up':50,'Pending Decision':85,'Sale Made':100
+    };
+    return map[stage] !== undefined ? map[stage] : null;
+  },
+
+  /* KPIs (mirrors Dashboard sheet) */
+  calcKPIs(opps, monthFilter=null) {
+    const src = monthFilter ? opps.filter(o => this.getMonthAuto(o) === monthFilter) : opps;
+    const sold   = src.filter(o => o.saleMade === 'Yes');
+    const active = src.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+    const overdue = opps.filter(o => this.isOverdue(o));
+    const dueToday = opps.filter(o => this.isDueToday(o));
+    const hot = opps.filter(o => o.saleMade !== 'Yes' && (Number(o.probability)||0) >= 75);
+
+    const totalSales   = sold.reduce((s,o) => s + (Number(o.estimate)||0), 0);
+    const gcSales      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+    const weightedPipe = active.reduce((s,o)=>s+this.getWeighted(o),0);
+    const totalEst     = active.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+    const homeCalls    = src.filter(o=>o.homeCall==='Yes').length;
+    const avgVal       = sold.length ? totalSales/sold.length : 0;
+    const convRate     = src.length ? (sold.length/src.length)*100 : 0;
+    const gcPct        = totalSales ? (gcSales/totalSales)*100 : 0;
+    const avgProb      = active.length ? active.reduce((s,o)=>s+(Number(o.probability)||0),0)/active.length : 0;
+    const winRate      = opps.length ? (opps.filter(o=>o.saleMade==='Yes').length/opps.length)*100 : 0;
+
+    return {
+      opps: src.length, sold: sold.length, active: active.length,
+      totalSales, gcSales, gcPct, weightedPipe, totalEst,
+      overdue: overdue.length, dueToday: dueToday.length,
+      homeCalls, avgVal, convRate, avgProb, winRate,
+      hotCount: hot.length,
+      overdueList: overdue.sort((a,b)=>this.getUrgencyScore(b)-this.getUrgencyScore(a)).slice(0,6)
+    };
+  },
+
+  /* Per-month KPI breakdown for Year view */
+  calcAllMonthsKPIs(opps) {
+    const year = new Date().getFullYear();
+    return LOOKUP.months.map((m, i) => {
+      const key  = m + ' ' + year;
+      const src  = opps.filter(o => this.getMonthAuto(o) === key);
+      const sold = src.filter(o => o.saleMade === 'Yes');
+      const active = src.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+      const totalSales  = sold.reduce((s,o) => s+(Number(o.estimate)||0), 0);
+      const gcSales     = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+      const weightedPipe= active.reduce((s,o)=>s+this.getWeighted(o),0);
+      const goal        = LOOKUP.monthGoals[i];
+      const convRate    = src.length ? (sold.length/src.length)*100 : 0;
+      const overdue     = src.filter(o=>this.isOverdue(o)).length;
+      const homeCalls   = src.filter(o=>o.homeCall==='Yes').length;
+      return {
+        month:m, short:MONTHS_SHORT[i], idx:i, goal,
+        totalSales, gcSales, gcPct: totalSales ? (gcSales/totalSales)*100 : 0,
+        weightedPipe, deals:sold.length, totalOpps:src.length,
+        convRate, overdue, homeCalls,
+        pctToGoal: goal ? Math.min((totalSales/goal)*100, 999) : 0,
+        onTrack: totalSales >= goal,
+      };
+    });
+  },
+
+  salesByProjectType(opps, monthFilter=null) {
+    const src  = monthFilter ? opps.filter(o=>this.getMonthAuto(o)===monthFilter) : opps;
+    const sold = src.filter(o=>o.saleMade==='Yes');
+    return LOOKUP.projectTypes.map(pt => ({
+      pt,
+      val: sold.filter(o=>o.projectType===pt).reduce((s,o)=>s+(Number(o.estimate)||0),0)
+    })).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
+  },
+
+  pipelineByStage(opps) {
+    return LOOKUP.stages.map(stage => ({
+      stage,
+      count: opps.filter(o=>o.stage===stage).length,
+      weighted: opps.filter(o=>o.stage===stage).reduce((s,o)=>s+this.getWeighted(o),0)
+    }));
+  },
+
+  monthlyRevenue(opps) {
+    return LOOKUP.months.map((m,i) => {
+      const key = `${m} ${new Date().getFullYear()}`;
+      const sold = opps.filter(o=>o.saleMade==='Yes' && this.getMonthAuto(o)===key);
+      return { month:m, short:MONTHS_SHORT[i], revenue:sold.reduce((s,o)=>s+(Number(o.estimate)||0),0), goal:LOOKUP.monthGoals[i], count:sold.length };
+    });
+  },
+
+  /* Priority-sorted insights — scored by urgency × value */
+  generateInsights(kpis, opps) {
+    const today    = new Date();
+    const curGoal  = LOOKUP.monthGoals[today.getMonth()];
+    const pctToGoal = curGoal ? (kpis.totalSales / curGoal) * 100 : 0;
+    const gap      = Math.max(curGoal - kpis.totalSales, 0);
+    const candidates = [];
+
+    // Score = urgencyWeight * valueWeight → higher = shown first, potentially full-width
+    const add = (type, icon, title, body, urgency, value) => {
+      candidates.push({ type, icon, title, body,
+        score: urgency * 10 + value,
+        urgency, value,
+        barCls: urgency >= 3 ? 'p1' : urgency >= 2 ? 'p2' : 'p3'
+      });
+    };
+
+    // Overdue — highest urgency (time is actively decaying)
+    if (kpis.overdue > 0) {
+      const worst = opps.filter(o=>this.isOverdue(o))
+        .sort((a,b) => (this.getDaysOverdue(b)*100 + Number(b.estimate||0)/1000) - (this.getDaysOverdue(a)*100 + Number(a.estimate||0)/1000))[0];
+      const days  = worst ? this.getDaysOverdue(worst) : 0;
+      const val   = worst ? Number(worst.estimate||0) : 0;
+      add('warn','!',
+        `${kpis.overdue} Overdue — Act Now`,
+        `Most urgent: ${worst?worst.firstName+' '+worst.lastName:'—'} (${days}d overdue${val>0?', '+fmt$(val):''}). Every day without contact reduces close rate. Call before noon.`,
+        5, kpis.overdue * 2);
+    }
+
+    // Hot leads — high probability, high value
+    if (kpis.hotCount > 0) {
+      const hotVal = opps.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)>=75)
+        .reduce((s,o)=>s+(Number(o.estimate)||0),0);
+      add('warn','↑',
+        `${kpis.hotCount} HOT Lead${kpis.hotCount>1?'s':''} — Close This Week`,
+        `${fmt$(hotVal)} in high-probability (≥75%) pipeline. These are your highest-ROI opportunities. Do not let them go cold.`,
+        4, Math.round(hotVal/1000));
+    }
+
+    // Monthly goal progress
+    if (pctToGoal >= 100) {
+      add('good','◆','Monthly Goal Crushed',
+        `${fmt$(kpis.totalSales)} vs ${fmt$(curGoal)} goal. You're at ${Math.round(pctToGoal)}%. Push for ${fmt$(Math.round(curGoal*1.1))} (+10%) — overachievement compounds over the year.`,
+        1, 5);
+    } else if (pctToGoal >= 70) {
+      add('gold','○',`${Math.round(pctToGoal)}% to Goal — ${fmt$(gap)} Gap`,
+        `${fmt$(gap)} away from your ${fmt$(curGoal)} goal. ${kpis.hotCount} hot leads × average close value could cover it this week.`,
+        3, Math.round(gap/1000));
+    } else if (pctToGoal > 0) {
+      add('warn','↓',`Behind Goal — ${fmt$(gap)} Needed`,
+        `Only ${Math.round(pctToGoal)}% reached. ${fmt$(gap)} remains. Convert existing pipeline or generate ${Math.ceil(gap / Math.max(kpis.avgVal||1, 1))} more deals at avg value.`,
+        4, Math.round(gap/1000));
+    } else {
+      add('warn','↓','No Sales This Period Yet',
+        `Goal is ${fmt$(curGoal)}. Schedule home calls with your top ${Math.min(kpis.active,3)} active leads this week.`,
+        3, curGoal/1000);
+    }
+
+    // Due today
+    if (kpis.dueToday > 0) {
+      add('gold','▷',`${kpis.dueToday} Follow-Up${kpis.dueToday>1?'s':''} Due Today`,
+        `Act before close of business. Leads contacted on their follow-up date convert at 3× the rate of delayed follow-ups.`,
+        4, kpis.dueToday);
+    }
+
+    // Weighted pipeline health
+    if (kpis.weightedPipe >= curGoal) {
+      add('good','$',`Strong Weighted Pipeline — ${fmt$(kpis.weightedPipe)}`,
+        `Your probability-adjusted pipeline is ${Math.round(kpis.weightedPipe/curGoal*100)}% of monthly goal. Strong position — execute on your HOT leads.`,
+        1, Math.round(kpis.weightedPipe/1000));
+    } else if (kpis.active > 0 && kpis.weightedPipe < curGoal * 0.5) {
+      add('warn','⚠',`Thin Weighted Pipeline — Add Higher-Prob Leads`,
+        `${fmt$(kpis.weightedPipe)} weighted vs ${fmt$(curGoal)} goal. Qualify existing leads more aggressively — schedule home calls to move stage and probability up.`,
+        3, 3);
+    }
+
+    // GoldComp
+    if (kpis.totalSales > 0) {
+      const gcMsg = kpis.gcPct >= 50
+        ? `Excellent ${Math.round(kpis.gcPct)}% GoldComp — keep pushing premium in every presentation.`
+        : `GoldComp at ${Math.round(kpis.gcPct)}% of sales. Target 50%+ by leading with GoldComp value in your next ${kpis.active} presentations.`;
+      add(kpis.gcPct>=50?'good':'gold','★',`GoldComp Mix: ${Math.round(kpis.gcPct)}%`, gcMsg, 2, Math.round(kpis.gcSales/1000));
+    }
+
+    // Avg probability low
+    if (kpis.avgProb > 0 && kpis.avgProb < 35) {
+      add('warn','~',`Low Avg Probability — ${Math.round(kpis.avgProb)}%`,
+        `Pipeline average is weak. Move leads to Home Call stage — in-person visits are the single biggest driver of probability increase.`,
+        2, 2);
+    }
+
+    // Home call rate
+    if (kpis.active > 3 && kpis.homeCalls < kpis.active * 0.4) {
+      add('gold','⌂',`Only ${kpis.homeCalls} Home Calls vs ${kpis.active} Active Leads`,
+        `Home call rate is ${Math.round(kpis.homeCalls/kpis.active*100)}%. Aim for 60%+ — clients who receive home visits close at 2.4× the rate.`,
+        2, 3);
+    }
+
+    // Healthy state
+    if (candidates.length === 0) {
+      add('good','✓','Pipeline Looks Healthy', 'No urgent alerts. Add more leads to grow your pipeline and hit your targets.', 0, 0);
+    }
+
+    // Sort by score descending
+    candidates.sort((a,b) => b.score - a.score);
+    // Mark top insight as priority-1 (full width)
+    if (candidates[0]) candidates[0].isPriority1 = true;
+    return candidates.slice(0, 7);
+  }
+};
+
+/* ══════════════════════════════════════════════════
+   DATABASE LAYER
+══════════════════════════════════════════════════ */
+const DB = {
+  client: null,
+  mode: 'local',
+  LOCAL_KEY: 'ea_sales_v4',
+
+  initSupabase(url, key) {
+    this.client = window.supabase.createClient(url, key);
+    this.mode = 'supabase';
+    this._setBadge('live');
+  },
+
+  initLocal() {
+    this.mode = 'local';
+    this._setBadge('demo');
+  },
+
+  _setBadge(type) {
+    const b = document.getElementById('connBadge');
+    if (!b) return;
+    b.className = `conn-badge ${type}`;
+    b.innerHTML = `<span class="dot"></span>${type === 'live' ? 'Live' : 'Demo'}`;
+  },
+
+  /* ── READ ── */
+  async getAll() {
+    if (this.mode === 'supabase') {
+      try {
+        const { data, error } = await this.client
+          .from('opportunities').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        return (data || []).map(r => this._fromDB(r));
+      } catch(e) {
+        console.error('DB.getAll error:', e);
+        return this._localLoad();
+      }
+    }
+    return this._localLoad();
+  },
+
+  /* ── SAVE (insert or update) ── */
+  async save(opp) {
+    // Ensure ID
+    if (!opp.id) opp.id = uid();
+
+    if (this.mode === 'supabase') {
+      const row = this._toDB(opp);
+      const isNew = !opp._isExisting;
+
+      try {
+        if (isNew) {
+          const { data, error } = await this.client
+            .from('opportunities').insert(row).select().single();
+          if (error) throw error;
+          // Use the DB-returned id as canonical id
+          opp.id = data.id;
+          opp._isExisting = true;
+        } else {
+          const { error } = await this.client
+            .from('opportunities').update(row).eq('id', opp.id);
+          if (error) throw error;
+        }
+      } catch(e) {
+        console.error('DB.save Supabase error:', e);
+        toast('Saved locally (Supabase error: ' + e.message + ')', 'error');
+      }
+    }
+    // Always mirror locally for offline resilience
+    this._localSave(opp);
+    return opp;
+  },
+
+  /* ── DELETE ── */
+  async delete(id) {
+    if (this.mode === 'supabase') {
+      try {
+        const { error } = await this.client.from('opportunities').delete().eq('id', id);
+        if (error) throw error;
+      } catch(e) {
+        console.error('DB.delete error:', e);
+      }
+    }
+    const d = this._getRaw();
+    d.opportunities = (d.opportunities||[]).filter(o => o.id !== id);
+    this._setRaw(d);
+  },
+
+  /* ── MAPPING ── */
+  _fromDB(row) {
+    return {
+      id:           row.id,
+      _isExisting:  true,
+      firstName:    row.first_name   || '',
+      lastName:     row.last_name    || '',
+      email:        row.email        || '',
+      phone:        row.phone        || '',
+      address:      row.address      || '',
+      projectType:  row.project_type || '',
+      leadSource:   row.lead_source  || '',
+      stage:        row.stage        || '',
+      homeCall:     row.home_call    || '',
+      homeCallDate: row.home_call_date || '',
+      saleMade:     row.sale_made    || '',
+      goldComp:     row.gold_comp    || '',
+      probability:  Number(row.probability) || 0,
+      estimate:     Number(row.estimate)    || 0,
+      followUpDate: row.follow_up_date || '',
+      nextStep:     row.next_step    || '',
+      notes:        row.notes        || '',
+      createdAt:    (row.created_at||'').split('T')[0],
+    };
+  },
+
+  _toDB(o) {
+    return {
+      id:              o.id,
+      first_name:      o.firstName  || null,
+      last_name:       o.lastName   || null,
+      email:           o.email      || null,
+      phone:           o.phone      || null,
+      address:         o.address    || null,
+      project_type:    o.projectType|| null,
+      lead_source:     o.leadSource || null,
+      stage:           o.stage      || null,
+      home_call:       o.homeCall   || null,
+      home_call_date:  o.homeCallDate || null,
+      sale_made:       o.saleMade   || null,
+      gold_comp:       o.goldComp   || null,
+      probability:     Number(o.probability) || 0,
+      estimate:        Number(o.estimate)    || 0,
+      follow_up_date:  o.followUpDate || null,
+      next_step:       o.nextStep   || null,
+      notes:           o.notes      || null,
+    };
+  },
+
+  /* ── LOCAL STORAGE ── */
+  _getRaw()    { try { return JSON.parse(localStorage.getItem(this.LOCAL_KEY)) || {opportunities:[]}; } catch { return {opportunities:[]}; } },
+  _setRaw(d)   { localStorage.setItem(this.LOCAL_KEY, JSON.stringify(d)); },
+  _localLoad() { return (this._getRaw().opportunities || []); },
+  _localSave(opp) {
+    const d = this._getRaw();
+    if (!d.opportunities) d.opportunities = [];
+    const idx = d.opportunities.findIndex(o => o.id === opp.id);
+    if (idx >= 0) d.opportunities[idx] = opp;
+    else d.opportunities.unshift(opp);
+    this._setRaw(d);
+  },
+
+  /* ── DEMO SEED DATA ── */
+  seedDemo() {
+    if ((this._localLoad()).length > 0) return;
+    const today = new Date();
+    const off = (n) => { const d=new Date(today); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; };
+    const dm  = (m,d) => `2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const opps = [
+      {id:uid(),firstName:'Maria',  lastName:'Alvarez',  email:'malvarez@email.com', phone:'305-111-0001',address:'100 Brickell Ave',   projectType:'Living Room', leadSource:'Referral',      stage:'Sale Made',         homeCall:'Yes',homeCallDate:dm(1,5), saleMade:'Yes',goldComp:'No', probability:100,estimate:18500,followUpDate:dm(1,20),nextStep:'Delivery Scheduled',notes:'Jan sale - LR full set',   createdAt:dm(1,5)},
+      {id:uid(),firstName:'David',  lastName:'Chen',     email:'dchen@email.com',    phone:'305-111-0002',address:'200 Coral Way',       projectType:'Dining',      leadSource:'Walk-in',       stage:'Sale Made',         homeCall:'Yes',homeCallDate:dm(1,10),saleMade:'Yes',goldComp:'Yes',probability:100,estimate:9800, followUpDate:dm(1,25),nextStep:'In Production',      notes:'Jan sale - GoldComp',     createdAt:dm(1,10)},
+      {id:uid(),firstName:'Priya',  lastName:'Patel',    email:'ppatel@email.com',   phone:'305-111-0003',address:'300 SW 8th St',       projectType:'Bedroom',     leadSource:'Instagram',     stage:'Quote Sent',        homeCall:'Yes',homeCallDate:dm(2,3), saleMade:'No', goldComp:'No', probability:75, estimate:14200,followUpDate:off(-3),  nextStep:'Follow-Up Call',    notes:'Hot - waiting on quote',  createdAt:dm(2,3)},
+      {id:uid(),firstName:'Carlos', lastName:'Torres',   email:'ctorres@email.com',  phone:'305-111-0004',address:'400 NW 2nd Ave',      projectType:'Home Office', leadSource:'Repeat Client', stage:'Sale Made',         homeCall:'No', homeCallDate:'',     saleMade:'Yes',goldComp:'No', probability:100,estimate:7600, followUpDate:dm(2,18),nextStep:'SO Made',            notes:'Feb sale - home office',  createdAt:dm(2,10)},
+      {id:uid(),firstName:'Sarah',  lastName:'Kim',      email:'skim@email.com',     phone:'305-111-0005',address:'500 NE 1st St',       projectType:'Outdoor',     leadSource:'Website',       stage:'Design in Progress',homeCall:'Yes',homeCallDate:dm(2,12),saleMade:'No', goldComp:'No', probability:50, estimate:21000,followUpDate:off(5),   nextStep:'Send Proposal',     notes:'Big outdoor project',     createdAt:dm(2,12)},
+      {id:uid(),firstName:'Thomas', lastName:'Williams', email:'twilliams@email.com',phone:'561-555-4004',address:'321 Elm Blvd',        projectType:'Home Office', leadSource:'Referral',      stage:'Follow-up',         homeCall:'Yes',homeCallDate:dm(3,1), saleMade:'No', goldComp:'No', probability:50, estimate:5500, followUpDate:off(-8),  nextStep:'Follow-Up Call',    notes:'Needs nudge',             createdAt:dm(3,1)},
+      {id:uid(),firstName:'Linda',  lastName:'Brown',    email:'lbrown@email.com',   phone:'305-555-5005',address:'654 Cedar Ln',        projectType:'Outdoor',     leadSource:'Walk-in',       stage:'New Lead',          homeCall:'No', homeCallDate:'',     saleMade:'No', goldComp:'No', probability:25, estimate:7200, followUpDate:off(3),   nextStep:'Schedule Home Visit',notes:'Store walk-in',           createdAt:dm(3,5)},
+      {id:uid(),firstName:'Lily',   lastName:'Nguyen',   email:'lnguyen@email.com',  phone:'786-111-0008',address:'600 SW 36th Ave',     projectType:'Bedroom',     leadSource:'Referral',      stage:'Sale Made',         homeCall:'Yes',homeCallDate:dm(3,8), saleMade:'Yes',goldComp:'No', probability:100,estimate:11300,followUpDate:dm(3,20),nextStep:'Delivery Scheduled',notes:'Mar sale - master bedroom',createdAt:dm(3,8)},
+      {id:uid(),firstName:'Isabel', lastName:'Reyes',    email:'ireyes@email.com',   phone:'305-111-0009',address:'700 Collins Ave',     projectType:'Living Room', leadSource:'Instagram',     stage:'Pending Decision',  homeCall:'Yes',homeCallDate:dm(4,2), saleMade:'No', goldComp:'No', probability:90, estimate:28000,followUpDate:off(-1),  nextStep:'Awaiting Decision', notes:'Very close - follow up!', createdAt:dm(4,2)},
+      {id:uid(),firstName:'James',  lastName:'Park',     email:'jpark@email.com',    phone:'305-111-0010',address:'800 Ocean Dr',        projectType:'Mix',         leadSource:'Builder',       stage:'Sale Made',         homeCall:'Yes',homeCallDate:dm(4,5), saleMade:'Yes',goldComp:'Yes',probability:100,estimate:35000,followUpDate:dm(4,15),nextStep:'In Production',      notes:'Biggest April sale',      createdAt:dm(4,5)},
+      {id:uid(),firstName:'Ana',    lastName:'Rodriguez',email:'arodriguez@email.com',phone:'305-111-0011',address:'900 Alhambra Cir',   projectType:'Dining',      leadSource:'Walk-in',       stage:'Quote Sent',        homeCall:'No', homeCallDate:'',     saleMade:'No', goldComp:'No', probability:75, estimate:8900, followUpDate:off(2),   nextStep:'Send Proposal',     notes:'Waiting approval',        createdAt:dm(5,1)},
+      {id:uid(),firstName:'Sofia',  lastName:'Hernandez',email:'shernandez@email.com',phone:'305-111-0013',address:'1100 Ponce de Leon', projectType:'Mix',         leadSource:'Repeat Client', stage:'Sale Made',         homeCall:'Yes',homeCallDate:dm(6,1), saleMade:'Yes',goldComp:'Yes',probability:100,estimate:52000,followUpDate:dm(6,10),nextStep:'Delivery Scheduled',notes:'Big June sale',           createdAt:dm(6,1)},
+      {id:uid(),firstName:'Elena',  lastName:'Martinez', email:'emartinez@email.com',phone:'305-111-0015',address:'1300 SW 107th Ave',  projectType:'Bedroom',     leadSource:'Referral',      stage:'Follow-up',         homeCall:'Yes',homeCallDate:dm(7,7), saleMade:'No', goldComp:'No', probability:75, estimate:16500,followUpDate:off(-5),  nextStep:'Follow-Up Call',    notes:'Almost there',            createdAt:dm(7,7)},
+      {id:uid(),firstName:'Kevin',  lastName:'Davis',    email:'kdavis@email.com',   phone:'786-111-0016',address:'1400 Bird Rd',        projectType:'Living Room', leadSource:'Walk-in',       stage:'Sale Made',         homeCall:'Yes',homeCallDate:dm(7,10),saleMade:'Yes',goldComp:'No', probability:100,estimate:22000,followUpDate:dm(7,20),nextStep:'Delivery Scheduled',notes:'July LR sale',            createdAt:dm(7,10)},
+      {id:uid(),firstName:'Patricia',lastName:'Wilson',  email:'pwilson@email.com',  phone:'305-111-0017',address:'1500 Kendall Dr',    projectType:'Home Office', leadSource:'Builder',       stage:'Quote Sent',        homeCall:'No', homeCallDate:'',     saleMade:'No', goldComp:'No', probability:90, estimate:9800, followUpDate:off(0),   nextStep:'Awaiting Decision', notes:'Corporate HO',            createdAt:dm(8,1)},
+      {id:uid(),firstName:'Marcus', lastName:'Taylor',   email:'mtaylor@email.com',  phone:'305-111-0018',address:'1600 Flagler St',    projectType:'Decor',       leadSource:'Instagram',     stage:'Sale Made',         homeCall:'Yes',homeCallDate:dm(9,3), saleMade:'Yes',goldComp:'No', probability:100,estimate:6700, followUpDate:dm(9,12),nextStep:'In Production',      notes:'Sep decor',               createdAt:dm(9,3)},
+      {id:uid(),firstName:'Claire', lastName:'Anderson', email:'canderson@email.com',phone:'305-111-0019',address:'1700 SW 8th',        projectType:'Dining',      leadSource:'Website',       stage:'Pending Decision',  homeCall:'Yes',homeCallDate:dm(10,1),saleMade:'No', goldComp:'No', probability:75, estimate:11400,followUpDate:off(1),   nextStep:'Awaiting Decision', notes:'Holiday timing',          createdAt:dm(10,1)},
+      {id:uid(),firstName:'Brian',  lastName:'Jackson',  email:'bjackson@email.com', phone:'786-111-0020',address:'1800 NW 7th',        projectType:'Living Room', leadSource:'Walk-in',       stage:'New Lead',          homeCall:'No', homeCallDate:'',     saleMade:'No', goldComp:'No', probability:25, estimate:19000,followUpDate:off(14),  nextStep:'Schedule Home Visit',notes:'Holiday rush',            createdAt:dm(11,5)},
+      {id:uid(),firstName:'Rosa',   lastName:'Gonzalez', email:'rgonzalez@email.com',phone:'305-111-0021',address:'1900 Coral Gables',  projectType:'Lighting',    leadSource:'Referral',      stage:'Design in Progress',homeCall:'Yes',homeCallDate:dm(3,2), saleMade:'No', goldComp:'No', probability:50, estimate:4500, followUpDate:off(7),   nextStep:'Presentation / Quote',notes:'Lighting redesign',       createdAt:dm(3,2)},
+      {id:uid(),firstName:'Marco',  lastName:'Perez',    email:'mperez@email.com',   phone:'305-111-0022',address:'2000 Brickell Key',  projectType:'Living Room', leadSource:'Instagram',     stage:'Home Call',         homeCall:'Yes',homeCallDate:off(-2),saleMade:'No', goldComp:'No', probability:25, estimate:32000,followUpDate:off(3),   nextStep:'Presentation',      notes:'New relationship',        createdAt:off(-5)},
+    ].map(o => ({...o, _isExisting:false}));
+    const d = this._getRaw();
+    d.opportunities = opps;
+    this._setRaw(d);
+  }
+};
+
+/* ══════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════ */
+let state = {
+  page: 'dashboard',
+  monthFilter: null,
+  stageFilter: null,
+  mailFilter: null,
+  editingId: null,
+};
+
+/* ══════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════ */
+async function navigate(page) {
+  state.page = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.page === page));
+  const el = document.getElementById(`page-${page}`);
+  if (el) el.classList.add('active');
+  await renderPage(page);
+}
+
+async function renderPage(page) {
+  switch(page) {
+    case 'dashboard':  await renderDashboard(); break;
+    case 'pipeline':   await renderPipeline();  break;
+    case 'priorities': await renderPriorities(); break;
+    case 'year':       await renderYear();       break;
+    case 'mailing':    await renderMailing();    break;
+    case 'tests': break;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER: DASHBOARD
+══════════════════════════════════════════════════ */
+async function renderDashboard() {
+  const opps = await DB.getAll();
+  const today = new Date();
+
+  document.getElementById('dashDate').textContent =
+    today.toLocaleDateString('en-US', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  const kpis = BL.calcKPIs(opps, state.monthFilter);
+
+  // Goal progress
+  const goal = LOOKUP.monthGoals[today.getMonth()];
+  const pct  = goal ? Math.min(Math.round(kpis.totalSales / goal * 100), 100) : 0;
+  document.getElementById('goalValue').textContent = fmt$(goal);
+  document.getElementById('goalFill').style.width = pct + '%';
+  document.getElementById('goalPct').textContent = pct + '% of goal';
+
+  // Month filter chips
+  const months = [...new Set(opps.map(o=>BL.getMonthAuto(o)).filter(Boolean))].sort();
+  document.getElementById('monthFilter').innerHTML =
+    `<button class="filter-chip ${!state.monthFilter?'active':''}" onclick="setMonthFilter(null)">All Months</button>` +
+    months.map(m=>`<button class="filter-chip ${state.monthFilter===m?'active':''}" onclick="setMonthFilter('${m}')">${m}</button>`).join('');
+
+  // KPI values
+  document.getElementById('k-opps').textContent    = kpis.opps;
+  document.getElementById('k-opps-d').textContent  = `${kpis.sold} sold / ${kpis.active} active`;
+  document.getElementById('k-sales').textContent   = fmt$(kpis.totalSales);
+  document.getElementById('k-sales-d').textContent = `${kpis.sold} closed deal${kpis.sold!==1?'s':''}`;
+  document.getElementById('k-pipe').textContent    = fmt$(kpis.weightedPipe);
+  document.getElementById('k-pipe-d').textContent  = `${kpis.active} active opps`;
+  document.getElementById('k-overdue').textContent = kpis.overdue;
+  document.getElementById('k-conv').textContent    = Math.round(kpis.convRate) + '%';
+  document.getElementById('k-hc').textContent      = kpis.homeCalls;
+  document.getElementById('k-hc-d').textContent    = 'Completed visits';
+  document.getElementById('k-avg').textContent     = fmt$(kpis.avgVal);
+  document.getElementById('k-gc').textContent      = fmt$(kpis.gcSales);
+  document.getElementById('k-gc-d').textContent    = Math.round(kpis.gcPct) + '% of sales';
+  document.getElementById('k-prob').textContent    = Math.round(kpis.avgProb) + '%';
+  document.getElementById('k-hot').textContent     = kpis.hotCount;
+  document.getElementById('k-total-est').textContent = fmt$(kpis.totalEst);
+  document.getElementById('k-winrate').textContent = Math.round(kpis.winRate) + '%';
+
+  // Overdue badge in nav
+  document.getElementById('overdueCount').textContent = kpis.overdue;
+
+  // Insights
+  const insights = BL.generateInsights(kpis, opps);
+  document.getElementById('insightsGrid').innerHTML = insights.map((ins,i) => {
+    const cls = [
+      ins.type==='warn'?'warn':ins.type==='good'?'good':'',
+      ins.isPriority1 ? 'priority-1' : ''
+    ].join(' ').trim();
+    return `<div class="insight-card ${cls}">
+      <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="font-family:var(--font-display);font-size:18px;color:${ins.type==='warn'?'var(--red)':ins.type==='good'?'var(--green)':'var(--gold)'}">
+            ${ins.icon}</div>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+            color:${ins.type==='warn'?'var(--red)':ins.type==='good'?'var(--green)':'var(--gold)'}">
+            ${ins.type==='warn'?'URGENT':ins.type==='good'?'GREAT':'NOTE'}</span>
+        </div>
+        <div class="insight-title">${esc(ins.title)}</div>
+        <div class="insight-body">${esc(ins.body)}</div>
+        <div class="insight-priority-bar ${ins.barCls}"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Project type chart
+  const ptData = BL.salesByProjectType(opps, state.monthFilter);
+  const ptMax  = Math.max(...ptData.map(x=>x.val), 1);
+  document.getElementById('projectTypeChart').innerHTML = ptData.length
+    ? ptData.map(x=>`<div class="bar-row">
+        <div class="bar-label">${esc(x.pt)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(x.val/ptMax*100)}%"></div></div>
+        <div class="bar-val">${fmt$(x.val)}</div>
+      </div>`).join('')
+    : '<div class="text-muted" style="font-size:13px;padding:20px 0">No sales data yet</div>';
+
+  // Stage chart
+  const stages = BL.pipelineByStage(opps).filter(s=>s.count>0);
+  document.getElementById('stageChart').innerHTML = stages.length
+    ? stages.map(s=>`<div class="stage-row">
+        <div class="stage-dot" style="background:${LOOKUP.stageColors[s.stage]||'#888'}"></div>
+        <div class="stage-name">${esc(s.stage)}</div>
+        <div class="stage-count">${s.count}</div>
+        <div class="stage-pipe">${s.weighted>0?fmt$(s.weighted):''}</div>
+      </div>`).join('')
+    : '<div class="text-muted" style="font-size:13px;padding:20px 0">No pipeline data</div>';
+
+  // Monthly revenue chart
+  const mRev  = BL.monthlyRevenue(opps);
+  const maxRev = Math.max(...mRev.map(m=>Math.max(m.revenue, m.goal)), 1);
+  const curMIdx = today.getMonth();
+  document.getElementById('monthChart').innerHTML = mRev.map((m,i)=>{
+    const barH  = m.revenue ? Math.max(Math.round(m.revenue/maxRev*90), 4) : 3;
+    const goalH = Math.round(m.goal/maxRev*90);
+    const isCur = i === curMIdx;
+    return `<div class="month-col">
+      <div class="month-bar-wrap">
+        <div class="month-bar ${isCur?'current':m.revenue>0?'has-sales':''}" style="height:${barH}%">
+          <div class="month-bar-tooltip">${m.short}: ${fmt$(m.revenue)}<br>Goal: ${fmt$(m.goal)}<br>${m.count} sale${m.count!==1?'s':''}</div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:${goalH}%;height:1px;background:rgba(255,255,255,.15);pointer-events:none"></div>
+      </div>
+      <div class="month-label">${m.short}</div>
+      <div class="month-sales">${m.revenue>0?fmt$(m.revenue,true):''}</div>
+    </div>`;
+  }).join('');
+
+  // Overdue alerts
+  const alertEl = document.getElementById('alertList');
+  if (kpis.overdueList.length) {
+    alertEl.innerHTML = kpis.overdueList.map(o=>`<div class="alert-row" onclick="editLead('${o.id}')">
+      <div><div class="alert-days">${BL.getDaysOverdue(o)}</div><div class="alert-days-label">DAYS</div></div>
+      <div>
+        <div class="alert-name">${esc(o.firstName)} ${esc(o.lastName)}</div>
+        <div class="alert-detail">${esc(o.projectType||'—')} · ${esc(o.stage||'—')}</div>
+      </div>
+      <div class="alert-next">${esc(o.nextStep||'—')} →</div>
+    </div>`).join('');
+  } else {
+    alertEl.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>No overdue follow-ups — great work!</p></div>';
+  }
+}
+
+function setMonthFilter(m) { state.monthFilter = m; renderDashboard(); }
+
+/* ══════════════════════════════════════════════════
+   RENDER: PIPELINE
+══════════════════════════════════════════════════ */
+async function renderPipeline() {
+  const opps   = await DB.getAll();
+  const search = (document.getElementById('searchInput')?.value||'').toLowerCase().trim();
+
+  // Stage filter pills
+  document.getElementById('stageFilters').innerHTML =
+    `<button class="filter-chip ${!state.stageFilter?'active':''}" onclick="setStageFilter(null)">All</button>` +
+    LOOKUP.stages.map(s=>{
+      const cnt = opps.filter(o=>o.stage===s).length;
+      return cnt ? `<button class="filter-chip ${state.stageFilter===s?'active':''}" onclick="setStageFilter('${s}')">${s} <span style="opacity:.5">(${cnt})</span></button>` : '';
+    }).join('');
+
+  let list = opps;
+  if (state.stageFilter) list = list.filter(o=>o.stage===state.stageFilter);
+  if (search) list = list.filter(o=>`${o.firstName} ${o.lastName} ${o.projectType} ${o.stage} ${o.email} ${o.leadSource} ${o.notes}`.toLowerCase().includes(search));
+
+  // Sort: overdue first, then by urgency score desc
+  list.sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
+
+  const tbody = document.getElementById('pipelineBody');
+  const empty = document.getElementById('pipelineEmpty');
+
+  if (!list.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = list.map(o=>{
+    const wt  = BL.getWinTier(o);
+    const urg = BL.getUrgencyScore(o);
+    const ovr = BL.isOverdue(o);
+    const w   = BL.getWeighted(o);
+    const trCls = ovr?'overdue':(o.saleMade==='Yes'?'sold':(Number(o.probability)>=75?'hot':''));
+    return `<tr class="${trCls}" onclick="editLead('${o.id}')">
+      <td>
+        <div style="font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</div>
+        <div style="font-size:11px;color:var(--ink-40)">${esc(o.email||'')}</div>
+      </td>
+      <td>${esc(o.projectType||'—')}</td>
+      <td style="font-size:11px;color:var(--ink-40)">${esc(o.leadSource||'—')}</td>
+      <td><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}">${esc(o.stage||'—')}</span></td>
+      <td style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':'—'}</td>
+      <td>${o.estimate?fmt$(Number(o.estimate)):'—'}</td>
+      <td style="color:var(--gold)">${w>0?fmt$(w):'—'}</td>
+      <td style="${ovr?'color:var(--red);font-weight:600':''}">${fmtDate(o.followUpDate)}${ovr?` <span style="font-size:10px">(${BL.getDaysOverdue(o)}d)</span>`:''}</td>
+      <td><span class="badge ${wt.cls}">${wt.label}</span></td>
+      <td style="font-size:11px;color:var(--ink-40)">${urg}</td>
+      <td><button class="btn-icon" onclick="event.stopPropagation();editLead('${o.id}')">✏️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function setStageFilter(s) { state.stageFilter = s; renderPipeline(); }
+function probColor(p) { return p>=90?'var(--green)':p>=75?'var(--gold)':p>=50?'#FFA500':'var(--ink-40)'; }
+
+/* ══════════════════════════════════════════════════
+   RENDER: PRIORITIES
+══════════════════════════════════════════════════ */
+async function renderPriorities() {
+  const opps = await DB.getAll();
+  const active = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+  const overdue = active.filter(o => BL.isOverdue(o));
+  const dueToday = active.filter(o => BL.isDueToday(o));
+
+  document.getElementById('prio-overdue').textContent = overdue.length;
+  document.getElementById('prio-today').textContent   = dueToday.length;
+  document.getElementById('prio-open').textContent    = active.length;
+  document.getElementById('prioritiesSubtitle').textContent =
+    `As of ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})} — ${overdue.length} client${overdue.length!==1?'s':''} need follow-up`;
+
+  // Show all active opps sorted by urgency score desc
+  const sorted = [...active].sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
+  const tbody = document.getElementById('priorityBody');
+  const empty = document.getElementById('priorityEmpty');
+
+  if (!sorted.length) { tbody.innerHTML = ''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = sorted.map(o=>{
+    const days = BL.getDaysOverdue(o);
+    const urg  = BL.getUrgencyScore(o);
+    const wt   = BL.getWinTier(o);
+    const ovr  = BL.isOverdue(o);
+    const today = BL.isDueToday(o);
+    const trCls = ovr?'overdue':(today?'hot':'');
+    return `<tr class="${trCls}" onclick="editLead('${o.id}')">
+      <td>
+        <div style="font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</div>
+        <div style="font-size:11px;color:var(--ink-40)">${esc(o.email||'')}</div>
+      </td>
+      <td>${esc(o.projectType||'—')}</td>
+      <td><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}">${esc(o.stage||'—')}</span></td>
+      <td style="font-size:12px">${esc(o.nextStep||'—')}</td>
+      <td style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':'—'}</td>
+      <td>${o.estimate?fmt$(Number(o.estimate)):'—'}</td>
+      <td style="${ovr?'color:var(--red);font-weight:600':today?'color:var(--gold)':''}">${fmtDate(o.followUpDate)}</td>
+      <td style="color:${ovr?'var(--red)':today?'var(--gold)':'var(--ink-40)'};font-weight:${ovr||today?'700':'400'}">${days>0?days+'d overdue':today?'Today':'—'}</td>
+      <td><span class="badge ${wt.cls}">${wt.label}</span></td>
+      <td style="font-family:var(--font-display);font-size:18px;color:${urg>50?'var(--red)':urg>20?'var(--gold)':'var(--ink-40)'}">${urg}</td>
+      <td><button class="btn-icon" onclick="event.stopPropagation();editLead('${o.id}')">✏️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER: MAILING — with full persuasion email generation
+══════════════════════════════════════════════════ */
+async function renderMailing() {
+  const opps = await DB.getAll();
+  const all  = opps.filter(o => o.firstName && o.lastName);
+
+  // Sort by campaign priority: overdue > hot > pending decision > warm > nurture
+  all.sort((a,b) => {
+    const pScore = o => {
+      if (BL.isOverdue(o)) return 100 + BL.getDaysOverdue(o)*10;
+      const p = Number(o.probability)||0;
+      if (p >= 75) return 80;
+      if (p >= 50) return 50;
+      if (o.saleMade === 'Yes') return 30;
+      return 10;
+    };
+    return pScore(b) - pScore(a);
+  });
+
+  document.getElementById('mailFilters').innerHTML =
+    `<button class="filter-chip ${!state.mailFilter?'active':''}" onclick="setMailFilter(null)">All (${all.length})</button>
+     <button class="filter-chip ${state.mailFilter==='overdue'?'active':''}" onclick="setMailFilter('overdue')">⚠ Overdue (${all.filter(o=>BL.isOverdue(o)).length})</button>
+     <button class="filter-chip ${state.mailFilter==='high'?'active':''}" onclick="setMailFilter('high')">Hot ≥75% (${all.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)>=75).length})</button>
+     <button class="filter-chip ${state.mailFilter==='sold'?'active':''}" onclick="setMailFilter('sold')">Sold (${all.filter(o=>o.saleMade==='Yes').length})</button>
+     <button class="filter-chip ${state.mailFilter==='nurture'?'active':''}" onclick="setMailFilter('nurture')">Nurture (${all.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)<50).length})</button>`;
+
+  let list = all;
+  if (state.mailFilter==='overdue') list = list.filter(o=>BL.isOverdue(o));
+  if (state.mailFilter==='high')    list = list.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)>=75);
+  if (state.mailFilter==='sold')    list = list.filter(o=>o.saleMade==='Yes');
+  if (state.mailFilter==='nurture') list = list.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)<50);
+
+  const grid = document.getElementById('mailingGrid');
+  if (!list.length) { grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon"></div><p>No contacts in this segment</p></div>'; return; }
+
+  grid.innerHTML = list.map(o=>{
+    const email  = BL.generatePersuasionEmail(o);
+    const prio   = BL.getCampaignPriority(o);
+    const wt     = BL.getWinTier(o);
+    const init   = ((o.firstName||'')[0]+(o.lastName||'')[0]).toUpperCase();
+    const prob   = Number(o.probability)||0;
+    const ovr    = BL.isOverdue(o);
+    const cardCls = o.saleMade==='Yes'?'sold':prob>=75?'hot':prob>=50?'warm':'';
+    // Probability ring
+    const r=14, circ=2*Math.PI*r;
+    const dash=circ*(prob/100), gap=circ-dash;
+    const ringColor = prob>=75?'var(--red)':prob>=50?'var(--gold)':'var(--ink-60)';
+
+    return `<div class="mail-card ${cardCls}" onclick="openEmailPreview('${o.id}')">
+      <span class="mail-open-hint">CLICK TO DRAFT →</span>
+      <div class="mail-card-header">
+        <div class="mail-avatar">${init}</div>
+        <div style="flex:1;min-width:0">
+          <div class="mail-name">${esc(o.firstName)} ${esc(o.lastName)}</div>
+          <div class="mail-email">${esc(o.email||'No email on file')}</div>
+          ${ovr?`<div style="font-size:10px;color:var(--red);font-weight:700;margin-top:2px">${BL.getDaysOverdue(o)}d OVERDUE</div>`:''}
+        </div>
+        <svg class="mail-prob-ring" viewBox="0 0 34 34">
+          <circle cx="17" cy="17" r="${r}" fill="none" stroke="var(--ink-60)" stroke-width="2.5"/>
+          <circle cx="17" cy="17" r="${r}" fill="none" stroke="${ringColor}" stroke-width="2.5"
+            stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}"
+            stroke-dashoffset="${(circ/4).toFixed(1)}" stroke-linecap="round"/>
+          <text x="17" y="20" text-anchor="middle" font-size="7" font-weight="700" fill="${ringColor}"
+            font-family="system-ui,sans-serif">${prob}%</text>
+        </svg>
+      </div>
+      <div class="mail-topic">${esc(email.subject)}</div>
+      <div class="mail-meta" style="margin-bottom:0">
+        <span class="badge ${prio.cls}">${prio.label}</span>
+        <span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}" style="font-size:10px">${esc(o.stage||'No Stage')}</span>
+        ${o.estimate>0?`<span style="font-size:11px;color:var(--ink-40)">${fmt$(Number(o.estimate))}</span>`:''}
+        ${o.notes?`<span style="font-size:10px;color:var(--ink-40);font-style:italic;width:100%;display:block;margin-top:4px">${esc(o.notes.slice(0,55))}${o.notes.length>55?'…':''}</span>`:''}
+      </div>
+      <div class="mail-actions" onclick="event.stopPropagation()">
+        <button class="mail-action-btn gmail" onclick="openInGmail('${o.id}')">
+          <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="18" height="14" rx="2"/><path d="M1 4l9 7 9-7"/></svg>
+          Gmail
+        </button>
+        <button class="mail-action-btn outlook" onclick="openInOutlook('${o.id}')">
+          <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="18" height="14" rx="2"/><path d="M1 4l9 7 9-7"/></svg>
+          Outlook
+        </button>
+        <button class="mail-action-btn preview" onclick="openEmailPreview('${o.id}')">
+          Preview Draft
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setMailFilter(f) { state.mailFilter = f; renderMailing(); }
+
+/* ══════════════════════════════════════════════════
+   EMAIL DRAFT OPENERS
+══════════════════════════════════════════════════ */
+async function getOppById(id) {
+  const opps = await DB.getAll();
+  return opps.find(o => o.id === id);
+}
+
+function buildGmailUrl(opp) {
+  const email = BL.generatePersuasionEmail(opp);
+  const to   = encodeURIComponent(opp.email || '');
+  const subj = encodeURIComponent(email.subject);
+  const body = encodeURIComponent(email.body);
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subj}&body=${body}`;
+}
+
+function buildOutlookUrl(opp) {
+  const email = BL.generatePersuasionEmail(opp);
+  const to   = encodeURIComponent(opp.email || '');
+  const subj = encodeURIComponent(email.subject);
+  const body = encodeURIComponent(email.body);
+  return `https://outlook.live.com/mail/0/deeplink/compose?to=${to}&subject=${subj}&body=${body}`;
+}
+
+async function openInGmail(id) {
+  const opp = await getOppById(id);
+  if (!opp) return;
+  if (!opp.email) { toast('No email address on file for this contact', 'error'); return; }
+  window.open(buildGmailUrl(opp), '_blank');
+}
+
+async function openInOutlook(id) {
+  const opp = await getOppById(id);
+  if (!opp) return;
+  if (!opp.email) { toast('No email address on file for this contact', 'error'); return; }
+  window.open(buildOutlookUrl(opp), '_blank');
+}
+
+async function openEmailPreview(id) {
+  const opp = await getOppById(id);
+  if (!opp) return;
+  const email = BL.generatePersuasionEmail(opp);
+
+  document.getElementById('emailPreviewTitle').textContent = `${opp.firstName} ${opp.lastName}`;
+  document.getElementById('emailPreviewSubject').textContent = email.subject;
+  document.getElementById('emailPreviewBody').textContent = email.body;
+
+  // Framework badges
+  document.getElementById('emailFrameworkBadges').innerHTML = (email.techniques||[]).map(t =>
+    `<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:.06em;
+      background:rgba(196,147,63,.12);color:var(--gold);border:1px solid rgba(196,147,63,.25)">${esc(t)}</span>`
+  ).join('');
+
+  // Techniques list
+  document.getElementById('emailTechniquesList').innerHTML = (email.techniques||[]).map(t => `• ${t}`).join('<br>');
+
+  // Wire buttons
+  if (opp.email) {
+    document.getElementById('openGmailBtn').onclick = () => window.open(buildGmailUrl(opp), '_blank');
+    document.getElementById('openOutlookBtn').onclick = () => window.open(buildOutlookUrl(opp), '_blank');
+  } else {
+    document.getElementById('openGmailBtn').onclick = () => toast('No email on file','error');
+    document.getElementById('openOutlookBtn').onclick = () => toast('No email on file','error');
+  }
+
+  document.getElementById('emailPreviewModal').classList.add('open');
+}
+
+function closeEmailPreview() {
+  document.getElementById('emailPreviewModal').classList.remove('open');
+}
+
+function copyEmailToClipboard() {
+  const body = document.getElementById('emailPreviewBody').textContent;
+  navigator.clipboard.writeText(body).then(() => toast('Email body copied to clipboard', 'success'));
+}
+
+/* ══════════════════════════════════════════════════
+   MODAL: NEW / EDIT LEAD
+══════════════════════════════════════════════════ */
+function initDropdowns() {
+  const sel = (id, items) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const first = el.options[0];
+    el.innerHTML = '';
+    if (first) el.appendChild(first);
+    items.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); });
+  };
+  sel('f-stage', LOOKUP.stages);
+  sel('f-projectType', LOOKUP.projectTypes);
+  sel('f-nextStep', LOOKUP.nextSteps);
+  sel('f-leadSource', LOOKUP.leadSources);
+  sel('f-probability', LOOKUP.probabilities.map(String));
+}
+
+function openNewLead() {
+  state.editingId = null;
+  document.getElementById('modalTitle').textContent = 'NEW LEAD';
+  document.getElementById('leadId').value = '';
+  // Reset all fields
+  ['f-firstName','f-lastName','f-email','f-phone','f-address','f-notes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['f-stage','f-projectType','f-probability','f-nextStep','f-leadSource','f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-followUpDate','f-estimate'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('deleteBtn').style.display = 'none';
+  updateAutoFields();
+  document.getElementById('leadModal').classList.add('open');
+}
+
+async function editLead(id) {
+  const opps = await DB.getAll();
+  const o = opps.find(x => x.id === id);
+  if (!o) { toast('Lead not found', 'error'); return; }
+  state.editingId = id;
+
+  document.getElementById('modalTitle').textContent = `EDIT — ${o.firstName} ${o.lastName}`;
+  document.getElementById('leadId').value         = o.id;
+  document.getElementById('f-firstName').value    = o.firstName || '';
+  document.getElementById('f-lastName').value     = o.lastName  || '';
+  document.getElementById('f-email').value        = o.email     || '';
+  document.getElementById('f-phone').value        = o.phone     || '';
+  document.getElementById('f-address').value      = o.address   || '';
+  document.getElementById('f-projectType').value  = o.projectType || '';
+  document.getElementById('f-leadSource').value   = o.leadSource  || '';
+  document.getElementById('f-stage').value        = o.stage       || '';
+  document.getElementById('f-probability').value  = String(o.probability || '');
+  document.getElementById('f-estimate').value     = o.estimate    || '';
+  document.getElementById('f-nextStep').value     = o.nextStep    || '';
+  document.getElementById('f-followUpDate').value = o.followUpDate || '';
+  document.getElementById('f-homeCall').value     = o.homeCall    || '';
+  document.getElementById('f-homeCallDate').value = o.homeCallDate || '';
+  document.getElementById('f-saleMade').value     = o.saleMade    || '';
+  document.getElementById('f-goldComp').value     = o.goldComp    || '';
+  document.getElementById('f-notes').value        = o.notes       || '';
+  document.getElementById('deleteBtn').style.display = 'inline-flex';
+  updateAutoFields();
+  document.getElementById('leadModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('leadModal').classList.remove('open');
+  state.editingId = null;
+}
+
+function onFieldChange() { updateAutoFields(); }
+
+function updateAutoFields() {
+  const stage    = document.getElementById('f-stage')?.value || '';
+  const pt       = document.getElementById('f-projectType')?.value || '';
+  const est      = Number(document.getElementById('f-estimate')?.value) || 0;
+  const prob     = Number(document.getElementById('f-probability')?.value) || 0;
+  const saleMade = document.getElementById('f-saleMade')?.value || '';
+  const fupDate  = document.getElementById('f-followUpDate')?.value || '';
+  const mock = { stage, projectType:pt, estimate:est, probability:prob, saleMade, followUpDate:fupDate, firstName:'X', lastName:'X' };
+
+  const weighted = BL.getWeighted(mock);
+  const wt       = BL.getWinTier(mock);
+  const urg      = BL.getUrgencyScore(mock);
+  const topic    = BL.getEmailTopic(mock);
+
+  document.getElementById('auto-weighted').textContent = fmt$(weighted);
+  document.getElementById('auto-urgency').textContent  = urg;
+  document.getElementById('auto-topic').textContent    = topic || 'Select Stage and Project Type…';
+
+  const tierEl = document.getElementById('auto-wintier');
+  tierEl.textContent = wt.label;
+  tierEl.className   = `badge ${wt.cls}`;
+
+  // Auto-suggest next step
+  const nsField = document.getElementById('f-nextStep');
+  if (nsField && !nsField.value) {
+    const suggested = BL.suggestNextStep(stage);
+    if (suggested) nsField.value = suggested;
+  }
+  // Auto-suggest probability
+  const probField = document.getElementById('f-probability');
+  if (probField && !probField.value) {
+    const suggested = BL.suggestProbability(stage);
+    if (suggested !== null) probField.value = String(suggested);
+  }
+}
+
+async function saveLead() {
+  const firstName = document.getElementById('f-firstName').value.trim();
+  const lastName  = document.getElementById('f-lastName').value.trim();
+  if (!firstName || !lastName) { toast('First and last name are required', 'error'); return; }
+
+  const existingId = document.getElementById('leadId').value;
+  const opp = {
+    id:           existingId || uid(),
+    _isExisting:  !!existingId,
+    firstName,
+    lastName,
+    email:        document.getElementById('f-email').value.trim(),
+    phone:        document.getElementById('f-phone').value.trim(),
+    address:      document.getElementById('f-address').value.trim(),
+    projectType:  document.getElementById('f-projectType').value,
+    leadSource:   document.getElementById('f-leadSource').value,
+    stage:        document.getElementById('f-stage').value,
+    probability:  Number(document.getElementById('f-probability').value) || 0,
+    estimate:     Number(document.getElementById('f-estimate').value) || 0,
+    nextStep:     document.getElementById('f-nextStep').value,
+    followUpDate: document.getElementById('f-followUpDate').value,
+    homeCall:     document.getElementById('f-homeCall').value,
+    homeCallDate: document.getElementById('f-homeCallDate').value,
+    saleMade:     document.getElementById('f-saleMade').value,
+    goldComp:     document.getElementById('f-goldComp').value,
+    notes:        document.getElementById('f-notes').value.trim(),
+    createdAt:    existingId ? undefined : todayStr(),
+  };
+
+  // Preserve createdAt for edits
+  if (existingId) {
+    const all = await DB.getAll();
+    const existing = all.find(o => o.id === existingId);
+    if (existing) opp.createdAt = existing.createdAt;
+  }
+
+  const btn = document.querySelector('#leadForm .btn-primary');
+  if (btn) { btn.textContent = '⏳ Saving…'; btn.disabled = true; }
+
+  try {
+    await DB.save(opp);
+    closeModal();
+    toast(existingId ? `✅ Updated ${firstName} ${lastName}` : `✅ Added ${firstName} ${lastName}`, 'success');
+    await renderPage(state.page);
+  } catch(e) {
+    toast('Save failed: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.textContent = '💾 Save Lead'; btn.disabled = false; }
+  }
+}
+
+async function deleteLead() {
+  if (!state.editingId) return;
+  const opps = await DB.getAll();
+  const opp  = opps.find(o => o.id === state.editingId);
+  if (!opp) return;
+  if (!confirm(`Delete ${opp.firstName} ${opp.lastName}? This cannot be undone.`)) return;
+
+  await DB.delete(state.editingId);
+  closeModal();
+  toast(`Deleted ${opp.firstName} ${opp.lastName}`, 'info');
+  await renderPage(state.page);
+}
+
+/* ══════════════════════════════════════════════════
+   TEST SUITE (20 tests — all must pass before publish)
+══════════════════════════════════════════════════ */
+async function runAllTests() {
+  const listEl    = document.getElementById('testList');
+  const summaryEl = document.getElementById('testSummary');
+  listEl.innerHTML = summaryEl.innerHTML = '<div style="color:var(--ink-40);font-size:13px">Running tests…</div>';
+
+  const results = [];
+
+  function test(name, fn, note='') {
+    try {
+      const r = fn();
+      // Strict: only true or undefined = PASS. Any string or false = FAIL with detail.
+      const ok  = r === true || r === undefined;
+      const msg = typeof r === 'string' ? r : (r === false ? 'returned false' : '');
+      results.push({ name, ok, actual: msg, note });
+    } catch(e) {
+      results.push({ name, ok:false, actual: e.message, note });
+    }
+  }
+
+  // ── 1: Win Tier — SOLD when saleMade=Yes
+  test('Win Tier: saleMade=Yes → SOLD',
+    () => BL.getWinTier({saleMade:'Yes',probability:0}).key === 'SOLD');
+
+  // ── 2: Win Tier — HOT when prob>=75
+  test('Win Tier: prob=75 → HOT',
+    () => BL.getWinTier({saleMade:'No',stage:'Follow-up',probability:75}).key === 'HOT');
+
+  // ── 3: Win Tier — WARM when prob=50
+  test('Win Tier: prob=50 → WARM',
+    () => BL.getWinTier({saleMade:'No',stage:'Follow-up',probability:50}).key === 'WARM');
+
+  // ── 4: Win Tier — NURTURE when prob=25
+  test('Win Tier: prob=25 → NURTURE',
+    () => BL.getWinTier({saleMade:'No',stage:'Follow-up',probability:25}).key === 'NURTURE');
+
+  // ── 5: Win Tier — COLD when prob<25
+  test('Win Tier: prob=10 → COLD',
+    () => BL.getWinTier({saleMade:'No',stage:'New Lead',probability:10}).key === 'COLD');
+
+  // ── 6: Win Tier — CANCELED overrides prob
+  test('Win Tier: Canceled stage → CANCELED (overrides prob)',
+    () => BL.getWinTier({saleMade:'No',stage:'Canceled',probability:90}).key === 'CANCELED');
+
+  // ── 7: Urgency Score — formula: days*3 + prob*2 + floor(est/1000)
+  test('Urgency Score: formula correctness',
+    () => {
+      // 5 days overdue, prob=75, est=22000 → 15+150+22=187
+      // Must use localDateStr (not toISOString) to avoid UTC timezone drift
+      const past = new Date(); past.setDate(past.getDate()-5);
+      const o = { saleMade:'No', stage:'Follow-up', probability:75, estimate:22000,
+                  followUpDate: localDateStr(past) };
+      const score = BL.getUrgencyScore(o);
+      return score === 187 ? true : `Expected 187 got ${score}`;
+    }, '3×5days + 2×75prob + 22k = 187');
+
+  // ── 8: Urgency Score — SOLD = 0
+  test('Urgency Score: SOLD → always 0',
+    () => {
+      const past = new Date(); past.setDate(past.getDate()-10);
+      return BL.getUrgencyScore({saleMade:'Yes',probability:100,estimate:50000,
+        followUpDate:localDateStr(past)}) === 0;
+    });
+
+  // ── 9: Urgency Score — Canceled = 0
+  test('Urgency Score: Canceled → always 0',
+    () => {
+      const past = new Date(); past.setDate(past.getDate()-5);
+      return BL.getUrgencyScore({saleMade:'No',stage:'Canceled',probability:50,estimate:10000,
+        followUpDate:localDateStr(past)}) === 0;
+    });
+
+  // ── 10: Weighted value = prob/100 × estimate
+  test('Weighted Pipeline: prob=75, est=$20k → $15k',
+    () => BL.getWeighted({probability:75,estimate:20000}) === 15000);
+
+  // ── 11: Weighted value with prob=100
+  test('Weighted Pipeline: prob=100 = estimate',
+    () => BL.getWeighted({probability:100,estimate:18500}) === 18500);
+
+  // ── 12: getDaysOverdue — future = 0
+  test('Days Overdue: future date → 0',
+    () => { const f=new Date(); f.setDate(f.getDate()+5); return BL.getDaysOverdue({followUpDate:localDateStr(f)}) === 0; });
+
+  // ── 13: getDaysOverdue — past = correct count
+  test('Days Overdue: 3 days past → 3',
+    () => {
+      const p = new Date(); p.setDate(p.getDate()-3);
+      const got = BL.getDaysOverdue({ followUpDate:localDateStr(p), saleMade:'No', stage:'Follow-up' });
+      return got === 3 ? true : `Expected 3, got ${got} (followUpDate=${localDateStr(p)})`;
+    });
+
+  // ── 14: isOverdue — false for sold
+  test('isOverdue: SOLD → false even if past due',
+    () => { const p=new Date(); p.setDate(p.getDate()-5);
+      return BL.isOverdue({saleMade:'Yes',followUpDate:localDateStr(p)}) === false; });
+
+  // ── 15: isOverdue — false for canceled
+  test('isOverdue: Canceled stage → false',
+    () => { const p=new Date(); p.setDate(p.getDate()-3);
+      return BL.isOverdue({saleMade:'No',stage:'Canceled',followUpDate:localDateStr(p)}) === false; });
+
+  // ── 16: Email topic — SOLD
+  test('Email Topic: Sale Made=Yes → "Welcome"',
+    () => BL.getEmailTopic({saleMade:'Yes',projectType:'Living Room',lastName:'X',firstName:'X'}).includes('Welcome'));
+
+  // ── 17: Email topic — Pending Decision
+  test('Email Topic: Pending Decision → "before you decide"',
+    () => {
+      const subject = BL.getEmailTopic({saleMade:'No',stage:'Pending Decision',
+        projectType:'Bedroom',lastName:'X',firstName:'X'});
+      return subject.includes('before you decide') || subject.includes('decide') ? true
+        : `Subject was: "${subject}"`;
+    });
+
+  // ── 18: KPI calcKPIs — sold/active counts
+  test('KPIs: calcKPIs counts sold vs active correctly',
+    () => {
+      const mock = [
+        {saleMade:'Yes',estimate:10000,probability:100,homeCall:'Yes',stage:'Sale Made',goldComp:'No'},
+        {saleMade:'No', estimate:5000, probability:50, homeCall:'No', stage:'Follow-up', goldComp:'No',
+          followUpDate:localDateStr(new Date(Date.now()-86400000))},
+      ];
+      const k = BL.calcKPIs(mock);
+      return k.sold===1 && k.active===1 && k.totalSales===10000 ? true : `sold=${k.sold} active=${k.active} sales=${k.totalSales}`;
+    });
+
+  // ── 19: KPI — weighted pipeline calculation
+  test('KPIs: weighted pipeline = sum(prob/100 × est) for active only',
+    () => {
+      const mock = [
+        {saleMade:'No',estimate:10000,probability:50,stage:'Follow-up'},
+        {saleMade:'No',estimate:20000,probability:25,stage:'New Lead'},
+        {saleMade:'Yes',estimate:15000,probability:100,stage:'Sale Made'},
+      ];
+      const k = BL.calcKPIs(mock);
+      const expected = 5000+5000; // sold excluded
+      return k.weightedPipe === expected ? true : `Expected ${expected} got ${k.weightedPipe}`;
+    });
+
+  // ── 20: LOCAL DB — save and retrieve
+  test('DB Local: save → getAll retrieves correctly',
+    () => {
+      const prevMode = DB.mode;
+      DB.mode = 'local';
+      const testOpp = { id:'__t20__', firstName:'Test', lastName:'DB', stage:'New Lead', saleMade:'No', probability:50, estimate:1000, _isExisting:false };
+      DB._localSave(testOpp);
+      const found = DB._localLoad().find(o=>o.id==='__t20__');
+      DB.delete('__t20__');
+      DB.mode = prevMode;
+      return found && found.firstName === 'Test' ? true : 'Not found in local storage';
+    });
+
+  // ── 21: Urgency — 1 day overdue, prob=50, est=10000 → 3+100+10=113
+  test('Urgency Score: 1 day overdue → 3+100+10=113',
+    () => {
+      const p = new Date(); p.setDate(p.getDate()-1);
+      const o = { saleMade:'No', stage:'Follow-up', probability:50, estimate:10000, followUpDate:localDateStr(p) };
+      const got = BL.getUrgencyScore(o);
+      return got === 113 ? true : `Expected 113, got ${got}`;
+    });
+
+  // ── 22: Win Tier boundary — prob=74 = WARM not HOT
+  test('Win Tier boundary: prob=74 → WARM not HOT',
+    () => {
+      const t = BL.getWinTier({probability:74,saleMade:'No',stage:'Follow-up'});
+      return t.key === 'WARM' ? true : `Expected WARM, got ${t.key}`;
+    });
+
+  // ── 23: Weighted pipeline — sold opp = 0
+  test('Weighted: sold opp excluded (returns 0)',
+    () => {
+      const got = BL.getWeighted({probability:100,estimate:50000,saleMade:'Yes',stage:'Sale Made'});
+      return got === 0 ? true : `Expected 0, got ${got}`;
+    });
+
+  // ── 24: calcKPIs — canceled excluded from active
+  test('KPIs: canceled stage excluded from active count',
+    () => {
+      const mock = [
+        {saleMade:'No',stage:'Canceled',estimate:20000,probability:60,homeCall:'No',goldComp:'No'},
+        {saleMade:'No',stage:'Follow-up',estimate:10000,probability:50,homeCall:'No',goldComp:'No',
+          followUpDate:localDateStr(new Date())},
+      ];
+      const k = BL.calcKPIs(mock);
+      return k.active === 1 && k.sold === 0 ? true : `active=${k.active} sold=${k.sold}`;
+    });
+
+  // ── 25: getDaysOverdue — today = 0 (not overdue yet)
+  test('Days Overdue: today = 0 (not yet overdue)',
+    () => {
+      const got = BL.getDaysOverdue({followUpDate:localDateStr(new Date()),saleMade:'No',stage:'Follow-up'});
+      return got === 0 ? true : `Expected 0, got ${got}`;
+    });
+
+  await new Promise(r => setTimeout(r, 100));
+
+  // ── Render results ──
+  const passed = results.filter(r=>r.ok).length;
+  const failed = results.length - passed;
+
+  summaryEl.innerHTML = `
+    <div class="test-stat"><div class="num total">${results.length}</div><div class="label">Total</div></div>
+    <div class="test-stat"><div class="num pass">${passed}</div><div class="label">Passed</div></div>
+    <div class="test-stat"><div class="num fail">${failed}</div><div class="label">Failed</div></div>
+    <div class="test-stat"><div class="num ${failed===0?'pass':'fail'}">${Math.round(passed/results.length*100)}%</div><div class="label">Pass Rate</div></div>`;
+
+  listEl.innerHTML = '';
+  results.forEach((r,i) => {
+    const el = document.createElement('div');
+    el.className = `test-item ${r.ok?'pass':'fail'}`;
+    el.style.animationDelay = (i * 0.03) + 's';
+    el.innerHTML = `
+      <div class="test-icon">${r.ok?'✅':'❌'}</div>
+      <div style="flex:1">
+        <div class="test-name">${esc(r.name)}</div>
+        ${r.note?`<div class="test-detail">${esc(r.note)}</div>`:''}
+        ${r.actual?`<div class="test-detail" style="color:var(--red)">${esc(r.actual)}</div>`:''}
+      </div>
+      <div class="test-result ${r.ok?'ok':'err'}">${r.ok?'PASS':'FAIL'}</div>`;
+    listEl.appendChild(el);
+  });
+
+  if (failed===0) toast(`🎉 All ${results.length} tests passed!`, 'success');
+  else toast(`❌ ${failed} test${failed>1?'s':''} failed`, 'error');
+}
+
+/* ══════════════════════════════════════════════════
+   LAUNCH
+══════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════
+   KPI DETAIL MODAL
+══════════════════════════════════════════════════ */
+async function showKPIDetail(key) {
+  const opps = await DB.getAll();
+  const kpis = BL.calcKPIs(opps, state.monthFilter);
+  const modal = document.getElementById('kpiModal');
+  const title = document.getElementById('kpiModalTitle');
+  const body  = document.getElementById('kpiModalBody');
+  modal.classList.add('open');
+
+  const sold   = opps.filter(o => o.saleMade === 'Yes');
+  const active = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+
+  const barChart = (items, max, fmt) => items.map(x =>
+    `<div class="bar-row">
+      <div class="bar-label">${esc(x.label)}</div>
+      <div class="bar-track"><div class="bar-fill ${x.green?'green':''}" style="width:${Math.round((x.val/(max||1))*100)}%"></div></div>
+      <div class="bar-val">${fmt(x.val)}</div>
+    </div>`).join('');
+
+  const ring = (pct, color='var(--gold)', size=80) => {
+    const r=size*0.38, c=2*Math.PI*r, d=c*(pct/100), g=c-d;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--ink-60)" stroke-width="${size*0.1}"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${size*0.1}"
+        stroke-dasharray="${d.toFixed(1)} ${g.toFixed(1)}" stroke-dashoffset="${(c/4).toFixed(1)}" stroke-linecap="round"/>
+      <text x="${size/2}" y="${size/2+5}" text-anchor="middle" font-size="${size*0.18}" font-weight="700"
+        fill="${color}" font-family="system-ui,sans-serif">${Math.round(pct)}%</text>
+    </svg>`
+  };
+
+  const miniTable = (rows) => `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    ${rows.map((r,i) => `<tr style="border-bottom:1px solid var(--ink-70);${i===0?'font-weight:700;color:var(--gold)':''}">
+      ${r.map(c=>`<td style="padding:7px 8px;${typeof c==='number'||String(c).startsWith('$')?'text-align:right':''}">${c}</td>`).join('')}
+    </tr>`).join('')}
+  </table>`;
+
+  const configs = {
+    opps: {
+      label: 'Opportunities',
+      render: () => {
+        const byStage = LOOKUP.stages.map(s=>({label:s,val:opps.filter(o=>o.stage===s).length})).filter(x=>x.val>0);
+        const max = Math.max(...byStage.map(x=>x.val),1);
+        return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div><div class="label" style="margin-bottom:12px">By Stage</div>${barChart(byStage,max,v=>v)}</div>
+          <div><div class="label" style="margin-bottom:12px">By Project Type</div>
+            ${barChart(LOOKUP.projectTypes.map(pt=>({label:pt,val:opps.filter(o=>o.projectType===pt).length})).filter(x=>x.val>0),
+              Math.max(...LOOKUP.projectTypes.map(pt=>opps.filter(o=>o.projectType===pt).length),1), v=>v)}
+          </div></div>`;
+      }
+    },
+    sales: {
+      label: 'Sales This Period',
+      render: () => {
+        const byPT = LOOKUP.projectTypes.map(pt=>({label:pt,val:sold.filter(o=>o.projectType===pt).reduce((s,o)=>s+(Number(o.estimate)||0),0)})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
+        const max = Math.max(...byPT.map(x=>x.val),1);
+        return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div><div class="label" style="margin-bottom:12px">Revenue by Project Type</div>${barChart(byPT,max,fmt$)}</div>
+          <div><div class="label" style="margin-bottom:12px">Top Deals</div>
+            ${miniTable([['Client','Project','Value'],...sold.sort((a,b)=>(Number(b.estimate)||0)-(Number(a.estimate)||0)).slice(0,8).map(o=>[o.firstName+' '+o.lastName,o.projectType||'—',fmt$(Number(o.estimate))])])}
+          </div></div>`;
+      }
+    },
+    pipeline: {
+      label: 'Weighted Pipeline',
+      render: () => {
+        const byStage = LOOKUP.stages.map(s=>({label:s,val:active.filter(o=>o.stage===s).reduce((sum,o)=>sum+BL.getWeighted(o),0)})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
+        const max = Math.max(...byStage.map(x=>x.val),1);
+        return `<div>
+          <div class="label" style="margin-bottom:12px">Weighted Value by Stage (prob × estimate)</div>
+          ${barChart(byStage, max, v=>fmt$(v))}
+          <div class="label" style="margin-bottom:12px;margin-top:20px">Top Weighted Opportunities</div>
+          ${miniTable([['Client','Stage','Prob','Est','Weighted'],...active.map(o=>({o,w:BL.getWeighted(o)})).sort((a,b)=>b.w-a.w).slice(0,8).map(({o,w})=>[o.firstName+' '+o.lastName,o.stage||'—',o.probability+'%',fmt$(Number(o.estimate)),fmt$(w)])])}
+        </div>`;
+      }
+    },
+    overdue: {
+      label: 'Overdue Follow-ups',
+      render: () => {
+        const ovr = opps.filter(o=>BL.isOverdue(o)).sort((a,b)=>BL.getDaysOverdue(b)-BL.getDaysOverdue(a));
+        if (!ovr.length) return '<div style="color:var(--green);padding:20px;text-align:center;font-size:15px">✓ No overdue follow-ups — great work!</div>';
+        return miniTable([['Client','Stage','Days Overdue','Estimate','Win Tier'],...ovr.map(o=>[o.firstName+' '+o.lastName,o.stage||'—',BL.getDaysOverdue(o)+'d',fmt$(Number(o.estimate)),BL.getWinTier(o).label])]);
+      }
+    },
+    conversion: {
+      label: 'Conversion Rate',
+      render: () => {
+        const r = Math.round(kpis.convRate);
+        const bySource = LOOKUP.leadSources.map(s=>({
+          label:s,
+          total: opps.filter(o=>o.leadSource===s).length,
+          sold: opps.filter(o=>o.leadSource===s&&o.saleMade==='Yes').length,
+        })).filter(x=>x.total>0);
+        return `<div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start">
+          <div style="text-align:center">${ring(r,'var(--gold)',100)}
+            <div style="font-size:12px;color:var(--ink-40);margin-top:6px">${r}% overall</div>
+          </div>
+          <div><div class="label" style="margin-bottom:12px">Conversion by Lead Source</div>
+            ${bySource.map(x=>`<div class="bar-row">
+              <div class="bar-label">${x.label}</div>
+              <div class="bar-track"><div class="bar-fill" style="width:${x.total?Math.round(x.sold/x.total*100):0}%"></div></div>
+              <div class="bar-val">${x.sold}/${x.total}</div>
+            </div>`).join('')}
+          </div></div>`;
+      }
+    },
+    homecalls: {
+      label: 'Home Calls',
+      render: () => {
+        const hc = opps.filter(o=>o.homeCall==='Yes');
+        const byMonth = LOOKUP.months.map((m,i)=>({label:m.slice(0,3),val:hc.filter(o=>BL.getMonthAuto(o)===m+' 2026').length}));
+        return `<div>
+          <div class="label" style="margin-bottom:12px">Home Calls by Month</div>
+          ${barChart(byMonth, Math.max(...byMonth.map(x=>x.val),1), v=>v)}
+          <div style="margin-top:16px;display:flex;gap:24px">
+            <div class="kpi-card" style="flex:1"><span class="label">With Home Call</span>
+              <div class="kpi-value">${hc.filter(o=>o.saleMade==='Yes').length}</div><div class="kpi-delta">converted to sale</div></div>
+            <div class="kpi-card" style="flex:1"><span class="label">HC Conversion Rate</span>
+              <div class="kpi-value gold">${hc.length?Math.round(hc.filter(o=>o.saleMade==='Yes').length/hc.length*100):0}%</div>
+              <div class="kpi-delta">vs ${Math.round(kpis.convRate)}% overall</div></div>
+          </div></div>`;
+      }
+    },
+    avgval: {
+      label: 'Avg Project Value',
+      render: () => {
+        const byPT = LOOKUP.projectTypes.map(pt=>{
+          const ptSold = sold.filter(o=>o.projectType===pt);
+          return { label:pt, val: ptSold.length ? ptSold.reduce((s,o)=>s+(Number(o.estimate)||0),0)/ptSold.length : 0 };
+        }).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
+        return `<div><div class="label" style="margin-bottom:12px">Average Sale Value by Project Type</div>
+          ${barChart(byPT, Math.max(...byPT.map(x=>x.val),1), fmt$)}</div>`;
+      }
+    },
+    goldcomp: {
+      label: 'GoldComp',
+      render: () => {
+        const pct = Math.round(kpis.gcPct);
+        return `<div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start">
+          <div style="text-align:center">${ring(pct,'var(--gold)',100)}
+            <div style="font-size:12px;color:var(--ink-40);margin-top:6px">${pct}% of sales</div>
+            <div style="font-size:11px;color:var(--gold);margin-top:4px">Target: 50%</div>
+          </div>
+          <div>
+            <div style="display:flex;gap:12px;margin-bottom:16px">
+              <div class="kpi-card" style="flex:1"><span class="label">GoldComp $</span><div class="kpi-value gold">${fmt$(kpis.gcSales)}</div></div>
+              <div class="kpi-card" style="flex:1"><span class="label">Regular $</span><div class="kpi-value">${fmt$(kpis.totalSales-kpis.gcSales)}</div></div>
+            </div>
+            <div class="label" style="margin-bottom:8px">GoldComp Clients</div>
+            ${miniTable([['Client','Project','Value'],...sold.filter(o=>o.goldComp==='Yes').map(o=>[o.firstName+' '+o.lastName,o.projectType||'—',fmt$(Number(o.estimate))])])}
+          </div></div>`;
+      }
+    },
+    probability: {
+      label: 'Avg Probability',
+      render: () => {
+        const dist = [0,25,50,75,90,100].map((p,i,arr)=>({
+          label: i<arr.length-1 ? p+'–'+(arr[i+1]-1)+'%' : '100%',
+          val: active.filter(o=>{const pr=Number(o.probability)||0; return i<arr.length-1?pr>=p&&pr<arr[i+1]:pr===p;}).length
+        }));
+        return `<div><div class="label" style="margin-bottom:12px">Distribution of Active Pipeline Probability</div>
+          ${barChart(dist, Math.max(...dist.map(x=>x.val),1), v=>v+' opps')}</div>`;
+      }
+    },
+    hot: {
+      label: 'Hot Leads (≥75%)',
+      render: () => {
+        const hot = active.filter(o=>(Number(o.probability)||0)>=75).sort((a,b)=>(Number(b.estimate)||0)-(Number(a.estimate)||0));
+        if (!hot.length) return '<div style="color:var(--ink-40);padding:20px;text-align:center">No hot leads currently. Push leads to ≥75% probability.</div>';
+        return `<div>
+          <div class="label" style="margin-bottom:12px">Hot Leads — Sorted by Estimate</div>
+          ${miniTable([['Client','Stage','Prob','Estimate','Weighted','Follow-Up'],...hot.map(o=>[o.firstName+' '+o.lastName,o.stage||'—',o.probability+'%',fmt$(Number(o.estimate)),fmt$(BL.getWeighted(o)),fmtDate(o.followUpDate)])])}
+        </div>`;
+      }
+    },
+    totalest: {
+      label: 'Total Estimated Pipeline',
+      render: () => {
+        const byPT = LOOKUP.projectTypes.map(pt=>({label:pt,val:active.filter(o=>o.projectType===pt).reduce((s,o)=>s+(Number(o.estimate)||0),0)})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
+        const max  = Math.max(...byPT.map(x=>x.val),1);
+        return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div><div class="label" style="margin-bottom:12px">By Project Type</div>${barChart(byPT,max,fmt$)}</div>
+          <div><div class="label" style="margin-bottom:12px">Largest Open Opportunities</div>
+            ${miniTable([['Client','Project','Estimate','Prob'],...active.sort((a,b)=>(Number(b.estimate)||0)-(Number(a.estimate)||0)).slice(0,10).map(o=>[o.firstName+' '+o.lastName,o.projectType||'—',fmt$(Number(o.estimate)),o.probability+'%'])])}
+          </div></div>`;
+      }
+    },
+    winrate: {
+      label: 'Win Rate (YTD)',
+      render: () => {
+        const r = Math.round(kpis.winRate);
+        const bySource = LOOKUP.leadSources.map(s=>({
+          label:s,
+          total: opps.filter(o=>o.leadSource===s).length,
+          won:   opps.filter(o=>o.leadSource===s&&o.saleMade==='Yes').length
+        })).filter(x=>x.total>0);
+        const maxWR = Math.max(...bySource.map(x=>x.total),1);
+        return `<div style="display:grid;grid-template-columns:auto 1fr;gap:24px">
+          <div style="text-align:center">${ring(r,'var(--green)',100)}
+            <div style="font-size:11px;color:var(--ink-40);margin-top:6px">${kpis.sold} of ${opps.length} opps</div>
+          </div>
+          <div><div class="label" style="margin-bottom:12px">Win Rate by Lead Source</div>
+            ${bySource.map(x=>`<div class="bar-row">
+              <div class="bar-label">${x.label}</div>
+              <div class="bar-track"><div class="bar-fill green" style="width:${x.total?Math.round(x.won/x.total*100):0}%"></div></div>
+              <div class="bar-val">${x.won}/${x.total} (${x.total?Math.round(x.won/x.total*100):0}%)</div>
+            </div>`).join('')}
+          </div></div>`;
+      }
+    },
+  };
+
+  const cfg = configs[key];
+  if (!cfg) { body.innerHTML='<p>No detail available.</p>'; return; }
+  title.textContent = cfg.label.toUpperCase();
+  body.innerHTML = cfg.render();
+}
+
+function closeKPIModal() {
+  document.getElementById('kpiModal').classList.remove('open');
+}
+
+/* ══════════════════════════════════════════════════
+   EXPORT: MAILING → CSV (for Google Sheets + ChatGPT)
+══════════════════════════════════════════════════ */
+async function exportMailingToCSV() {
+  const opps = await DB.getAll();
+  const list = opps.filter(o => o.firstName && o.lastName);
+  const rows = [
+    ['First Name','Last Name','Email','Project Type','Stage','Sale Made','Probability (%)','Email Topic','Campaign Priority','Win Tier','Notes','ChatGPT Prompt'],
+    ...list.map(o => {
+      const topic = BL.getEmailTopic(o);
+      const prio  = BL.getCampaignPriority(o);
+      const wt    = BL.getWinTier(o);
+      const prompt = `You are a luxury interior design sales consultant for Ethan Allen. Write a warm, professional, personalized email to ${o.firstName} ${o.lastName}. Subject: "${topic}". The client is interested in ${o.projectType||'home furnishings'}. Current stage: ${o.stage||'initial contact'}. Probability of sale: ${o.probability}%. Tone: elegant, consultative, not pushy. End with a clear next step. Max 150 words.`;
+      return [o.firstName,o.lastName,o.email||'',o.projectType||'',o.stage||'',o.saleMade||'',o.probability||0,topic,prio.label,wt.label,o.notes||'',prompt];
+    })
+  ];
+  const csv = rows.map(r => r.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'EA_Mailing_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  toast('CSV exported — import into Google Sheets', 'success');
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER: YEAR VIEW
+══════════════════════════════════════════════════ */
+async function renderYear() {
+  const opps = await DB.getAll();
+  const today = new Date();
+  const curMonthIdx = today.getMonth();
+  const monthData = BL.calcAllMonthsKPIs(opps);
+
+  // YTD totals (months up to and including current)
+  const ytdMonths = monthData.slice(0, curMonthIdx + 1);
+  const ytdRevenue = ytdMonths.reduce((s,m) => s+m.totalSales, 0);
+  const ytdGoal    = ytdMonths.reduce((s,m) => s+m.goal, 0);
+  const ytdDeals   = ytdMonths.reduce((s,m) => s+m.deals, 0);
+  const ytdGC      = ytdMonths.reduce((s,m) => s+m.gcSales, 0);
+  const ytdPct     = ytdGoal ? Math.min(Math.round(ytdRevenue/ytdGoal*100), 999) : 0;
+
+  document.getElementById('yearSubtitle').textContent =
+    today.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' — Year to date through ' + LOOKUP.months[curMonthIdx];
+  document.getElementById('ytd-revenue').textContent = fmt$(ytdRevenue);
+  document.getElementById('ytd-fill').style.width = Math.min(ytdPct,100) + '%';
+  document.getElementById('ytd-pct').textContent = ytdPct + '% of YTD goal';
+
+  // YTD summary KPIs
+  const annualGoal = LOOKUP.monthGoals.reduce((s,g)=>s+g,0);
+  document.getElementById('yearKpiGrid').innerHTML = `
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><path d="M10 5v1.5M10 13.5V15M7.5 12.5c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-2-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2"/></svg><span class="label">YTD Revenue</span><div class="kpi-value gold">${fmt$(ytdRevenue)}</div><div class="kpi-delta">vs ${fmt$(ytdGoal)} goal</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a3 3 0 016 0v2"/><path d="M2 12h16"/></svg><span class="label">Total Deals</span><div class="kpi-value">${ytdDeals}</div><div class="kpi-delta">closed YTD</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 1v4M10 15v4M1 10h4M15 10h4M3.4 3.4l2.8 2.8M13.8 13.8l2.8 2.8M16.6 3.4l-2.8 2.8M6.2 13.8L3.4 16.6"/><circle cx="10" cy="10" r="3"/></svg><span class="label">GoldComp YTD</span><div class="kpi-value">${fmt$(ytdGC)}</div><div class="kpi-delta">${ytdRevenue?Math.round(ytdGC/ytdRevenue*100):0}% of revenue</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 15l5-5 3 3 5-6 3 3"/><path d="M2 18h16"/></svg><span class="label">YTD vs Goal</span><div class="kpi-value ${ytdPct>=100?'green':ytdPct>=70?'gold':'red'}">${ytdPct}%</div><div class="kpi-delta">${fmt$(Math.max(ytdGoal-ytdRevenue,0))} remaining</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="10" width="3" height="8" rx="1"/><rect x="8.5" y="5" width="3" height="13" rx="1"/><rect x="14" y="2" width="3" height="16" rx="1"/></svg><span class="label">Annual Goal</span><div class="kpi-value">${fmt$(annualGoal)}</div><div class="kpi-delta">Full year target</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2L1 18h18L10 2z"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="label">Months w/ Goal Hit</span><div class="kpi-value green">${ytdMonths.filter(m=>m.onTrack&&m.deals>0).length}</div><div class="kpi-delta">of ${curMonthIdx+1} months elapsed</div></div>
+  `;
+
+  // 12-month cards
+  document.getElementById('yearMonthGrid').innerHTML = monthData.map((m, i) => {
+    const isFuture  = i > curMonthIdx;
+    const isCurrent = i === curMonthIdx;
+    const isEmpty   = m.deals === 0 && !isCurrent;
+    const fillPct   = Math.min(m.pctToGoal, 100);
+    const fillColor = m.onTrack ? 'var(--green)' : 'var(--gold)';
+    const badgeCls  = isFuture ? 'future' : m.onTrack && m.deals>0 ? 'hit' : 'miss';
+    const badgeTxt  = isFuture ? 'UPCOMING' : m.onTrack && m.deals>0 ? '✓ GOAL HIT' : m.deals>0 ? `${Math.round(m.pctToGoal)}%` : '—';
+    const cardCls   = isCurrent ? 'current-month' : m.onTrack && m.deals>0 ? 'on-track' : 'below';
+
+    return `<div class="month-kpi-card ${cardCls} ${isEmpty&&!isCurrent?'empty-month':''}"
+        onclick="setMonthFilter('${m.month} 2026');navigate('dashboard')">
+      <div class="m-badge ${badgeCls}">${badgeTxt}</div>
+      <div class="m-name">${m.month.toUpperCase()}</div>
+      <div class="m-revenue">${m.deals>0||isCurrent?fmt$(m.totalSales):'—'}</div>
+      <div style="font-size:11px;color:var(--ink-40);margin-top:2px">Goal: ${fmt$(m.goal)}</div>
+      <div class="m-goal-bar"><div class="m-goal-fill" style="width:${fillPct}%;background:${fillColor}"></div></div>
+      <div class="m-grid">
+        <div class="m-stat"><div class="m-stat-val">${m.deals}</div><div class="m-stat-lbl">Deals</div></div>
+        <div class="m-stat"><div class="m-stat-val">${Math.round(m.convRate)}%</div><div class="m-stat-lbl">Conv Rate</div></div>
+        <div class="m-stat"><div class="m-stat-val">${m.gcSales>0?fmt$(m.gcSales,true):'—'}</div><div class="m-stat-lbl">GoldComp</div></div>
+        <div class="m-stat"><div class="m-stat-val">${m.weightedPipe>0?fmt$(m.weightedPipe,true):'—'}</div><div class="m-stat-lbl">Wtd Pipeline</div></div>
+        <div class="m-stat"><div class="m-stat-val">${m.overdue>0?m.overdue:'—'}</div><div class="m-stat-lbl" style="color:${m.overdue>0?'var(--red)':''}">Overdue</div></div>
+        <div class="m-stat"><div class="m-stat-val">${m.homeCalls}</div><div class="m-stat-lbl">Home Calls</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function launchApp(fromSupabase) {
+  document.getElementById('configScreen').style.display = 'none';
+  initDropdowns();
+  if (!fromSupabase) DB.seedDemo();
+  await navigate('dashboard');
+}
+
+async function launchDemoMode() {
+  DB.initLocal();
+  await launchApp(false);
+}
+
+/* ══════════════════════════════════════════════════
+   AUTO-CONNECT ON LOAD
+══════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  const SB_URL = "https://rsoukgpaqsgsdfvwrceu.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzb3VrZ3BhcXNnc2RmdndyY2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDYzMTIsImV4cCI6MjA4ODU4MjMxMn0.akKmWJfNncLA-Fxq38gDCXvSuIk_L95zdj1p0_ylqAY";
+
+  initDropdowns();
+  document.getElementById('configScreen').style.display = 'flex'; // show loading state
+
+  /* ── helper: diagnose error and return {msg, steps} ── */
+  function diagnose(e) {
+    const msg = (e.message || '').toLowerCase();
+    const code = (e.code || (e.details||'')).toString();
+
+    if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('load failed')) {
+      return {
+        title: 'Network Error — Cannot reach database',
+        msg: 'The browser could not connect to Supabase. This is usually a network issue.',
+        steps: [
+          '1. Check your internet connection',
+          '2. If on a corporate/school network, it may block external databases',
+          '3. Try opening the app in a different browser or network',
+          '4. Use Demo Mode to work offline — your data saves locally'
+        ]
+      };
+    }
+    if (msg.includes('relation') && msg.includes('does not exist') || code === '42P01') {
+      return {
+        title: 'Database Table Missing',
+        msg: "Connected to Supabase but the 'opportunities' table doesn't exist yet.",
+        steps: [
+          '1. Go to supabase.com → your project → SQL Editor',
+          '2. Paste and run the contents of schema_final.sql',
+          '3. You should see count=0 with no errors',
+          '4. Click Retry Connection above'
+        ]
+      };
+    }
+    if (msg.includes('jwt') || msg.includes('invalid api key') || msg.includes('apikey')) {
+      return {
+        title: 'Invalid API Key',
+        msg: 'The Supabase API key was rejected. The project may have been reset.',
+        steps: [
+          '1. Go to supabase.com → your project → Settings → API',
+          '2. Copy the new "anon public" key',
+          '3. Update SB_KEY in index.html',
+          '4. Redeploy to GitHub Pages'
+        ]
+      };
+    }
+    if (msg.includes('project paused') || msg.includes('503') || code === '503') {
+      return {
+        title: 'Supabase Project Paused',
+        msg: 'Your free-tier Supabase project is paused (happens after 1 week of no logins).',
+        steps: [
+          '1. Go to supabase.com and log in',
+          '2. Click "Resume Project" on your dashboard',
+          '3. Wait ~30 seconds for it to wake up',
+          '4. Click "Retry Connection" above'
+        ]
+      };
+    }
+    if (msg.includes('permission denied') || msg.includes('row level security')) {
+      return {
+        title: 'Database Permission Denied',
+        msg: 'Row Level Security is blocking access. The anon policy needs to be applied.',
+        steps: [
+          '1. Go to Supabase → SQL Editor',
+          '2. Run: CREATE POLICY "anon_all" ON opportunities FOR ALL TO anon USING (true) WITH CHECK (true);',
+          '3. Or re-run the full schema_final.sql',
+          '4. Click "Retry Connection"'
+        ]
+      };
+    }
+    // Generic
+    return {
+      title: 'Connection Failed',
+      msg: e.message || 'Unknown error',
+      steps: [
+        '1. Check that schema_final.sql has been run in Supabase SQL Editor',
+        '2. Verify your Supabase project is not paused at supabase.com',
+        '3. Check browser console (F12) for the full error details',
+        '4. Use Demo Mode to continue working — data saves locally'
+      ]
+    };
+  }
+
+  function showError(diag) {
+    document.getElementById('cfg-loading').style.display = 'none';
+    document.getElementById('cfg-error-block').style.display = 'block';
+    document.getElementById('cfg-error-msg').innerHTML =
+      '<strong>' + diag.title + '</strong><br><span style="color:var(--ink-40)">' + diag.msg + '</span>';
+    document.getElementById('cfg-fix-steps').innerHTML =
+      '<div style="margin-bottom:6px;font-weight:600;color:var(--ink-20)">How to fix:</div>' +
+      diag.steps.map(s => '<div style="margin-bottom:4px">→ ' + s + '</div>').join('');
+
+    // Auto-countdown to demo mode
+    let secs = 12;
+    const countEl = document.getElementById('cfg-countdown');
+    const tick = () => {
+      if (secs <= 0) { launchDemoMode(); return; }
+      countEl.textContent = 'Auto-switching to Demo Mode in ' + secs + 's — or click below to continue now';
+      secs--;
+      setTimeout(tick, 1000);
+    };
+    tick();
+  }
+
+  /* ── Wait for Supabase SDK (CDN load) ── */
+  let sdkWait = 0;
+  while ((!window.supabase || !window.supabase.createClient) && sdkWait < 30) {
+    await new Promise(r => setTimeout(r, 200));
+    sdkWait++;
+  }
+
+  if (!window.supabase || !window.supabase.createClient) {
+    showError({
+      title: 'Supabase SDK Failed to Load',
+      msg: 'The database library could not be fetched from the CDN.',
+      steps: [
+        '1. Check your internet connection',
+        '2. Disable any browser ad-blockers or privacy extensions temporarily',
+        '3. Try a different browser',
+        '4. Use Demo Mode — all features work without a database connection'
+      ]
+    });
+    return;
+  }
+
+  /* ── Connection with retry (handles Supabase cold-start / free-tier sleep) ── */
+  const RETRIES = 3;
+  const DELAYS  = [0, 3000, 8000]; // immediate, 3s, 8s
+  let lastErr = null;
+
+  for (let attempt = 0; attempt < RETRIES; attempt++) {
+    if (attempt > 0) {
+      const wait = DELAYS[attempt];
+      const msgEl = document.getElementById('cfg-loading-msg');
+      if (msgEl) {
+        msgEl.textContent = attempt === 1
+          ? 'Waking up database… (Supabase free tier may take 30s)' 
+          : 'Retrying connection (' + attempt + '/' + (RETRIES-1) + ')…';
+      }
+      await new Promise(r => setTimeout(r, wait));
+    }
+
+    try {
+      const client = window.supabase.createClient(SB_URL, SB_KEY);
+      // Use Promise.race with a 15s timeout per attempt
+      const testQuery = client.from('opportunities').select('id').limit(1);
+      const timeout   = new Promise((_, rej) => setTimeout(() => rej(new Error('Request timed out after 15s')), 15000));
+      const { data, error } = await Promise.race([testQuery, timeout]);
+      if (error) throw Object.assign(new Error(error.message), { code: error.code });
+      // ✅ Success
+      document.getElementById('configScreen').style.display = 'none';
+      DB.initSupabase(SB_URL, SB_KEY);
+      await launchApp(true);
+      return;
+    } catch(e) {
+      lastErr = e;
+      console.warn('[EA Sales] Connection attempt ' + (attempt+1) + ' failed:', e.message);
+    }
+  }
+
+  // All retries failed
+  console.error('[EA Sales] All connection attempts failed:', lastErr);
+  showError(diagnose(lastErr));
+});
+</script>
+
+
+<!-- ══════ KPI DETAIL MODAL ══════ -->
+<div class="modal-overlay" id="kpiModal" onclick="if(event.target===this)closeKPIModal()">
+  <div class="modal-panel" style="max-width:860px">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div class="modal-title" id="kpiModalTitle" style="margin-bottom:0">KPI DETAIL</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeKPIModal()">✕ Close</button>
+    </div>
+    <div id="kpiModalBody"></div>
+  </div>
+</div>
+
+<!-- ══════ EMAIL PREVIEW MODAL ══════ -->
+<div class="modal-overlay" id="emailPreviewModal" onclick="if(event.target===this)closeEmailPreview()">
+  <div class="modal-panel" style="max-width:720px">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="modal-title" id="emailPreviewTitle" style="margin-bottom:0;font-size:22px">EMAIL DRAFT</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeEmailPreview()">✕ Close</button>
+    </div>
+    <div id="emailFrameworkBadges" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px"></div>
+    <div style="margin-bottom:10px">
+      <span class="label">Subject</span>
+      <div id="emailPreviewSubject" style="background:var(--ink-70);border-radius:8px;padding:10px 14px;margin-top:6px;font-size:13px"></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <span class="label">Body</span>
+      <div id="emailPreviewBody" style="background:var(--ink-70);border-radius:8px;padding:16px;margin-top:6px;font-size:13px;line-height:1.7;white-space:pre-wrap;max-height:380px;overflow-y:auto"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="openGmailBtn" onclick="">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="18" height="14" rx="2"/><path d="M1 4l9 7 9-7"/></svg>
+        Open in Gmail
+      </button>
+      <button class="btn btn-ghost" id="openOutlookBtn" onclick="">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="18" height="14" rx="2"/><path d="M1 4l9 7 9-7"/></svg>
+        Open in Outlook
+      </button>
+      <button class="btn btn-ghost" onclick="copyEmailToClipboard()">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="6" width="12" height="13" rx="2"/><path d="M3 14V3h11"/></svg>
+        Copy Body
+      </button>
+    </div>
+    <div style="margin-top:16px;padding:12px 14px;background:rgba(196,147,63,.07);border-radius:8px;border:1px solid rgba(196,147,63,.2)">
+      <div class="label" style="margin-bottom:6px">Persuasion Techniques Used</div>
+      <div id="emailTechniquesList" style="font-size:12px;color:var(--ink-20);line-height:1.7"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
