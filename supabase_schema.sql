@@ -80,7 +80,7 @@ begin
     exception when others then
       days_over := 0;
     end;
-    new.urgency_score := (days_over * 3) + (prob_int * 2) + est_k;
+    new.urgency_score := LEAST((days_over * 3) + (prob_int * 2) + est_k, 100);
   end if;
 
   -- Month Auto (from home_call_date, else follow_up_date)
