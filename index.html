@@ -633,6 +633,10 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="2" width="14" height="12" rx="1.5"/><path d="M5 8h6M5 11h4"/><circle cx="8" cy="5" r="1.5" fill="currentColor"/></svg>
       <span data-i18n="nav_post60">Post 60</span>
     </button>
+    <button class="nav-tab" onclick="navigate('sales')" data-page="sales">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 13l4-4 3 3 4-5 3 3"/><path d="M1 15h14"/><path d="M13 4h2v4h-2z"/></svg>
+      <span data-i18n="nav_sales">Sales</span>
+    </button>
     <button class="nav-tab" onclick="navigate('mileage')" data-page="mileage">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="11" r="2.5"/><circle cx="12" cy="11" r="2.5"/><path d="M1.5 11H1V7l3-5h7l3 5v4h-.5M6.5 11h3"/><path d="M4 6H3M12 6l1-1"/></svg>
       <span data-i18n="nav_mileage">Mileage</span>
@@ -756,7 +760,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     <table id="pipelineTable">
       <thead><tr>
         <th>Client</th><th>Project Type</th><th>Lead Source</th>
-        <th>Stage</th><th>Prob</th><th>Estimate</th><th>Weighted</th>
+        <th>Stage</th><th class="tc">Prob</th><th>Estimate</th><th>Weighted</th>
+        <th>Close Date</th><th class="tc">Q</th>
         <th>Follow-Up</th><th>Win Tier</th><th>Score</th><th></th>
       </tr></thead>
       <tbody id="pipelineBody"></tbody>
@@ -832,6 +837,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <!-- ══════ TESTS ══════ -->
 <div class="page" id="page-post30"></div>
 <div class="page" id="page-post60"></div>
+<div class="page" id="page-sales"></div>
 <div class="page" id="page-mileage"></div>
 
 <div class="page" id="page-tests">
@@ -939,6 +945,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
             <input id="f-estimate" type="number" min="0" step="100" placeholder="15000" oninput="onFieldChange()"></div>
           <div class="field"><label data-i18n="lbl_followup">Follow-Up Date</label>
             <input id="f-followUpDate" type="date" onchange="onFieldChange()"></div>
+          <div class="field"><label data-i18n="lbl_closedate">Expected Close Date</label>
+            <input id="f-closeDate" type="date" onchange="onFieldChange()"></div>
           <div class="field"><label data-i18n="lbl_next">Next Step</label>
             <select id="f-nextStep"><option value="">Select…</option></select></div>
           <div class="field"><label data-i18n="lbl_hc">Home Call?</label>
@@ -968,6 +976,10 @@ tbody td { padding: 11px 12px; font-size: 13px; }
           <div>
             <div class="overline" style="margin-bottom:6px">Win Tier</div>
             <div id="auto-wintier" class="badge badge-cold" style="display:inline-flex;padding:6px 12px;font-size:12px">❄️ COLD</div>
+          </div>
+          <div>
+            <div class="overline" style="margin-bottom:6px">Quarter</div>
+            <div class="field-auto"><span>📅</span><span id="auto-quarter" style="font-family:var(--font-display);font-size:20px">—</span></div>
           </div>
           <div>
             <div class="overline" style="margin-bottom:6px">Urgency Score</div>
@@ -1158,7 +1170,28 @@ const STRINGS = {
     btn_view_all: 'View All →',
     perf_title: 'PERFORMANCE DASHBOARD',
     dash_title_display: 'PERFORMANCE<br>DASHBOARD',
-    toast_no_email:'No email on file',
+    lbl_closedate:'Expected Close Date',
+    lbl_quarter:'Quarter',
+    nav_sales:'Sales',
+    // Sales page
+    sales_header:'CLOSED SALES', sales_label:'Sales Record',
+    sales_sub:'All closed deals ordered by close date — most recent first',
+    sales_active_client:'✅ Active Client',
+    sales_th_date:'Close Date', sales_th_client:'Client',
+    sales_th_project:'Project Type', sales_th_source:'Lead Source',
+    sales_th_value:'Sale Value', sales_th_gc:'GoldComp',
+    sales_th_quarter:'Quarter', sales_th_hc:'Home Call',
+    sales_th_notes:'Notes',
+    sales_chart_title:'Monthly Closed Sales — 2026',
+    sales_chart_sub:'Total revenue per month',
+    sales_total:'Total Sales', sales_no_data:'No closed sales yet.',
+    sales_q1:'Q1 (Jan–Mar)', sales_q2:'Q2 (Apr–Jun)',
+    sales_q3:'Q3 (Jul–Sep)', sales_q4:'Q4 (Oct–Dec)',
+    // Pipeline quarter col
+    pipe_th_closedate:'Close Date', pipe_th_quarter:'Quarter',
+    // Active client label
+    status_active_client:'Active Client', status_lead:'Lead',
+        toast_no_email:'No email on file',
   },
 
   pt: {
@@ -1317,7 +1350,28 @@ const STRINGS = {
     btn_view_all: 'Ver Todos →',
     perf_title: 'PAINEL DE DESEMPENHO',
     dash_title_display: 'PAINEL DE<br>DESEMPENHO',
-    toast_no_email:'Sem e-mail cadastrado',
+    lbl_closedate:'Data de Fechamento Prevista',
+    lbl_quarter:'Trimestre',
+    nav_sales:'Vendas',
+    // Sales page
+    sales_header:'VENDAS FECHADAS', sales_label:'Registro de Vendas',
+    sales_sub:'Todas as vendas fechadas ordenadas por data — mais recentes primeiro',
+    sales_active_client:'✅ Cliente Ativo',
+    sales_th_date:'Data de Fechamento', sales_th_client:'Cliente',
+    sales_th_project:'Tipo de Projeto', sales_th_source:'Fonte do Lead',
+    sales_th_value:'Valor da Venda', sales_th_gc:'GoldComp',
+    sales_th_quarter:'Trimestre', sales_th_hc:'Visita',
+    sales_th_notes:'Observações',
+    sales_chart_title:'Vendas Fechadas Mensais — 2026',
+    sales_chart_sub:'Receita total por mês',
+    sales_total:'Total de Vendas', sales_no_data:'Nenhuma venda fechada ainda.',
+    sales_q1:'T1 (Jan–Mar)', sales_q2:'T2 (Abr–Jun)',
+    sales_q3:'T3 (Jul–Set)', sales_q4:'T4 (Out–Dez)',
+    // Pipeline quarter col
+    pipe_th_closedate:'Data Prevista', pipe_th_quarter:'Trimestre',
+    // Active client label
+    status_active_client:'Cliente Ativo', status_lead:'Lead',
+        toast_no_email:'Sem e-mail cadastrado',
   }
 };
 
@@ -1397,10 +1451,12 @@ function uid() {
 }
 
 function fmt$(n, compact=false) {
-  if (!n && n !== 0) return '$0';
-  const rounded = Math.round(Number(n));
-  if (compact && rounded >= 1000) return '$' + (rounded/1000).toFixed(1).replace('.0','') + 'k';
-  return '$' + rounded.toLocaleString('en-US');
+  const num = Number(n) || 0;
+  if (compact && Math.abs(num) >= 1000) {
+    const k = (num/1000);
+    return '$' + (Number.isInteger(k) ? k : k.toFixed(1)) + 'k';
+  }
+  return num.toLocaleString('en-US', { style:'currency', currency:'USD', minimumFractionDigits:0, maximumFractionDigits:0 });
 }
 
 function fmtDate(dateStr) {
@@ -1822,6 +1878,17 @@ Interior Design Consultant | Ethan Allen`
       count: opps.filter(o=>o.stage===stage).length,
       weighted: opps.filter(o=>o.stage===stage).reduce((s,o)=>s+this.getWeighted(o),0)
     }));
+  },
+
+  /* Quarter from date string YYYY-MM-DD */
+  getQuarter(dateStr) {
+    if (!dateStr) return null;
+    const m = parseInt((dateStr||'').split('-')[1], 10);
+    if (!m || isNaN(m)) return null;
+    if (m <= 3)  return 'Q1';
+    if (m <= 6)  return 'Q2';
+    if (m <= 9)  return 'Q3';
+    return 'Q4';
   },
 
   monthlyRevenue(opps) {
@@ -2290,6 +2357,7 @@ async function renderPage(page) {
     case 'mailing':    await renderMailing();    break;
     case 'post30':     await renderPost30();     break;
     case 'post60':     await renderPost60();     break;
+    case 'sales': window._currentPage='sales'; await renderSales(); break;
     case 'mileage':    await renderMileage();    break;
     case 'tests': break;
   }
@@ -2487,6 +2555,8 @@ async function renderPipeline() {
       <td style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':'—'}</td>
       <td>${o.estimate?fmt$(Number(o.estimate)):'—'}</td>
       <td style="color:var(--gold)">${w>0?fmt$(w):'—'}</td>
+      <td style="font-size:11px;color:var(--ink-20)">${o.closeDate?fmtDate(o.closeDate):'—'}</td>
+      <td class="tc"><span style="font-size:11px;font-weight:700;color:${BL.getQuarter(o.closeDate)?'var(--gold)':'var(--ink-60)'}">${BL.getQuarter(o.closeDate)||'—'}</span></td>
       <td style="${ovr?'color:var(--red);font-weight:600':''}">${fmtDate(o.followUpDate)}${ovr?` <span style="font-size:10px">(${BL.getDaysOverdue(o)}d)</span>`:''}</td>
       <td><span class="badge ${wt.cls}">${wt.label}</span></td>
       <td style="font-size:11px;color:var(--ink-40)">${urg}</td>
@@ -3446,26 +3516,38 @@ function closeModal() {
 function onFieldChange() { updateAutoFields(); }
 
 function updateAutoFields() {
-  const stage    = document.getElementById('f-stage')?.value || '';
-  const pt       = document.getElementById('f-projectType')?.value || '';
-  const est      = Number(document.getElementById('f-estimate')?.value) || 0;
-  const prob     = Number(document.getElementById('f-probability')?.value) || 0;
-  const saleMade = document.getElementById('f-saleMade')?.value || '';
-  const fupDate  = document.getElementById('f-followUpDate')?.value || '';
-  const mock = { stage, projectType:pt, estimate:est, probability:prob, saleMade, followUpDate:fupDate, firstName:'X', lastName:'X' };
+  const stage     = document.getElementById('f-stage')?.value || '';
+  const pt        = document.getElementById('f-projectType')?.value || '';
+  const est       = Number(document.getElementById('f-estimate')?.value) || 0;
+  const prob      = Number(document.getElementById('f-probability')?.value) || 0;
+  const saleMade  = document.getElementById('f-saleMade')?.value || '';
+  const fupDate   = document.getElementById('f-followUpDate')?.value || '';
+  const closeDate = document.getElementById('f-closeDate')?.value || '';
 
-  const weighted = BL.getWeighted(mock);
-  const wt       = BL.getWinTier(mock);
-  const urg      = BL.getUrgencyScore(mock);
-  const topic    = BL.getEmailTopic(mock);
+  const mock = { stage, projectType:pt, estimate:est, probability:prob,
+                 saleMade, followUpDate:fupDate, closeDate, firstName:'X', lastName:'X' };
 
-  document.getElementById('auto-weighted').textContent = fmt$(weighted);
-  document.getElementById('auto-urgency').textContent  = urg;
-  document.getElementById('auto-topic').textContent    = topic || 'Select Stage and Project Type…';
+  // Weighted: always compute from prob+estimate regardless of saleMade/stage
+  // (saleMade blank = in-progress, should still show live preview)
+  const rawWeighted = Math.floor((prob / 100) * est);
+  const weighted = (saleMade === 'Yes' || stage === 'Canceled') ? 0 : rawWeighted;
+
+  const wt    = BL.getWinTier(mock);
+  const urg   = BL.getUrgencyScore(mock);
+  const topic = BL.getEmailTopic(mock);
+  const qtr   = BL.getQuarter(closeDate);
+
+  const weightedEl = document.getElementById('auto-weighted');
+  if (weightedEl) weightedEl.textContent = fmt$(weighted);
+  const urgEl = document.getElementById('auto-urgency');
+  if (urgEl) urgEl.textContent = urg;
+  const topicEl = document.getElementById('auto-topic');
+  if (topicEl) topicEl.textContent = topic || (getLang()==='pt'?'Selecione Etapa e Tipo…':'Select Stage and Project Type…');
+  const qtrEl = document.getElementById('auto-quarter');
+  if (qtrEl) qtrEl.textContent = qtr ? (T('sales_'+qtr.toLowerCase()) || qtr) : '—';
 
   const tierEl = document.getElementById('auto-wintier');
-  tierEl.textContent = wt.label;
-  tierEl.className   = `badge ${wt.cls}`;
+  if (tierEl) { tierEl.textContent = wt.label; tierEl.className = `badge ${wt.cls}`; }
 
   // Auto-suggest next step
   const nsField = document.getElementById('f-nextStep');
@@ -3507,6 +3589,7 @@ async function saveLead() {
     saleMade:     document.getElementById('f-saleMade').value,
     goldComp:     document.getElementById('f-goldComp').value,
     notes:        document.getElementById('f-notes').value.trim(),
+    closeDate:    document.getElementById('f-closeDate')?.value || '',
     createdAt:    existingId ? undefined : todayStr(),
   };
 
@@ -4578,6 +4661,230 @@ function deleteMileEditRow() {
   renderMileage();
 }
 
+
+/* ══════════════════════════════════════════════════
+   RENDER: SALES — Closed deals by month + chart
+══════════════════════════════════════════════════ */
+async function renderSales() {
+  const opps  = await DB.getAll();
+  const sold  = opps
+    .filter(o => o.saleMade === 'Yes')
+    .sort((a,b) => {
+      // Sort by closeDate desc, then followUpDate desc, then createdAt desc
+      const da = a.closeDate || a.followUpDate || a.createdAt || '';
+      const db = b.closeDate || b.followUpDate || b.createdAt || '';
+      return db.localeCompare(da);
+    });
+
+  /* ── Group by close month ── */
+  const monthGroups = {}; // key = "YYYY-MM" or "Unknown"
+  const MONTHS_EN = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
+
+  sold.forEach(o => {
+    const dateStr = o.closeDate || o.followUpDate || '';
+    let key = 'unknown';
+    if (dateStr) {
+      const [y,m] = dateStr.split('-');
+      if (y && m) key = `${y}-${m.padStart(2,'0')}`;
+    }
+    if (!monthGroups[key]) monthGroups[key] = [];
+    monthGroups[key].push(o);
+  });
+
+  const sortedKeys = Object.keys(monthGroups)
+    .filter(k => k !== 'unknown')
+    .sort((a,b) => b.localeCompare(a));
+  if (monthGroups['unknown']?.length) sortedKeys.push('unknown');
+
+  const keyLabel = k => {
+    if (k === 'unknown') return getLang()==='pt'?'Data Desconhecida':'Unknown Date';
+    const [y,m] = k.split('-').map(Number);
+    const names = T('months');
+    return `${names[m-1]} ${y}`;
+  };
+
+  /* ── Monthly totals for chart (current year only, Jan–Dec) ── */
+  const curYear = new Date().getFullYear();
+  const monthlyTotals = Array(12).fill(0);
+  sold.forEach(o => {
+    const dateStr = o.closeDate || o.followUpDate || '';
+    if (!dateStr) return;
+    const d = new Date(dateStr + 'T12:00:00');
+    if (d.getFullYear() === curYear) {
+      monthlyTotals[d.getMonth()] += Number(o.estimate) || 0;
+    }
+  });
+  const maxMonthly = Math.max(...monthlyTotals, 1);
+
+  /* ── Total stats ── */
+  const totalRevenue   = sold.reduce((s,o) => s + (Number(o.estimate)||0), 0);
+  const gcRevenue      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+  const gcPct          = totalRevenue > 0 ? Math.round(gcRevenue/totalRevenue*100) : 0;
+  const avgVal         = sold.length > 0 ? Math.round(totalRevenue/sold.length) : 0;
+
+  /* ── Build month sections ── */
+  const sectionsHTML = sortedKeys.map(k => {
+    const recs = monthGroups[k];
+    const monthTotal = recs.reduce((s,o) => s+(Number(o.estimate)||0), 0);
+    const qLabel = k !== 'unknown' ? (() => {
+      const m = parseInt(k.split('-')[1],10);
+      const q = m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';
+      return `<span style="margin-left:8px;font-size:11px;font-weight:700;
+        background:rgba(196,147,63,.15);color:var(--gold);border:1px solid var(--gold-dk);
+        border-radius:4px;padding:2px 8px">${q}</span>`;
+    })() : '';
+
+    const rows = recs.map(o => {
+      const qtr = BL.getQuarter(o.closeDate || o.followUpDate);
+      const closeD = o.closeDate || o.followUpDate || '';
+      return `<tr onclick="editLead('${o.id}')" style="cursor:pointer"
+          onmouseover="this.style.background='rgba(196,147,63,.07)'"
+          onmouseout="this.style.background=''">
+        <td style="padding:9px 12px;font-size:11px;color:var(--ink-20)">${closeD?fmtDate(closeD):'—'}</td>
+        <td style="padding:9px 12px">
+          <div style="font-weight:600;color:var(--ink-10)">${esc(o.firstName)} ${esc(o.lastName)}</div>
+          <div style="font-size:11px;color:var(--ink-40)">${esc(o.email||'')}</div>
+          <div style="margin-top:3px">
+            <span style="font-size:10px;font-weight:700;letter-spacing:.08em;
+              background:rgba(76,175,125,.12);color:var(--green);border:1px solid rgba(76,175,125,.3);
+              border-radius:4px;padding:2px 7px">${T('sales_active_client')}</span>
+          </div>
+        </td>
+        <td style="padding:9px 12px;font-size:12px;color:var(--ink-20)">${esc(o.projectType||'—')}</td>
+        <td style="padding:9px 12px;font-size:11px;color:var(--ink-40)">${esc(o.leadSource||'—')}</td>
+        <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--green);font-size:14px">${fmt$(Number(o.estimate))}</td>
+        <td style="padding:9px 12px;text-align:center">
+          ${o.goldComp==='Yes'?'<span style="color:var(--gold);font-size:14px" title="GoldComp">⭐</span>':'<span style="color:var(--ink-60)">—</span>'}
+        </td>
+        <td style="padding:9px 12px;text-align:center">
+          <span style="font-size:11px;font-weight:700;color:${qtr?'var(--gold)':'var(--ink-60)'}">${qtr||'—'}</span>
+        </td>
+        <td style="padding:9px 12px;text-align:center;font-size:11px">
+          ${o.homeCall==='Yes'?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--ink-60)">—</span>'}
+        </td>
+        <td style="padding:9px 12px;font-size:11px;color:var(--ink-40);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc((o.notes||'').slice(0,60))}</td>
+        <td style="padding:9px 12px">
+          <button onclick="event.stopPropagation();editLead('${o.id}')"
+            style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--gold);
+                   border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">EDIT</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    return `
+      <div style="margin-bottom:24px">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:10px 16px;background:var(--ink-80);border:1px solid var(--ink-60);
+                    border-radius:var(--r) var(--r) 0 0;border-bottom:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-family:var(--font-display);font-size:18px;color:var(--gold-lt)">${keyLabel(k)}</span>
+            ${qLabel}
+          </div>
+          <div style="font-weight:700;font-size:16px;color:var(--green)">${fmt$(monthTotal)}
+            <span style="font-size:11px;font-weight:400;color:var(--ink-40);margin-left:6px">${recs.length} deal${recs.length!==1?'s':''}</span>
+          </div>
+        </div>
+        <div style="overflow-x:auto;border:1px solid var(--ink-60);border-top:2px solid var(--gold-dk);border-radius:0 0 var(--r) var(--r)">
+          <table style="width:100%;border-collapse:collapse;min-width:800px">
+            <thead>
+              <tr style="background:var(--ink-70)">
+                <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap">${T('sales_th_date')}</th>
+                <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;text-transform:uppercase">${T('sales_th_client')}</th>
+                <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap">${T('sales_th_project')}</th>
+                <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap">${T('sales_th_source')}</th>
+                <th style="padding:7px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap">${T('sales_th_value')}</th>
+                <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;text-transform:uppercase">${T('sales_th_gc')}</th>
+                <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;text-transform:uppercase">${T('sales_th_quarter')}</th>
+                <th style="padding:7px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap">${T('sales_th_hc')}</th>
+                <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;text-transform:uppercase">${T('sales_th_notes')}</th>
+                <th style="width:60px"></th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+
+  /* ── Monthly bar chart ── */
+  const months_short = T('months_short');
+  const chartBars = monthlyTotals.map((v,i) => {
+    const barH = v > 0 ? Math.max(Math.round(v/maxMonthly*88),4) : 2;
+    return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:32px;cursor:default">
+      <div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:4px;height:16px;
+                  display:flex;align-items:flex-end">${v>0?fmt$(v,true):''}</div>
+      <div style="width:100%;flex:1;display:flex;flex-direction:column;justify-content:flex-end;
+                  position:relative;min-height:80px">
+        <div title="${months_short[i]}: ${fmt$(v)}"
+          style="width:80%;margin:0 auto;background:${v>0?'var(--green)':'var(--ink-70)'};
+                 border-radius:4px 4px 0 0;height:${barH}%;min-height:${v>0?4:2}px;
+                 transition:height .3s;opacity:${v>0?1:0.3}"></div>
+      </div>
+      <div style="font-size:10px;color:var(--ink-40);margin-top:4px;font-weight:600">${months_short[i]}</div>
+    </div>`;
+  }).join('');
+
+  const el = document.getElementById('page-sales');
+  el.innerHTML = `
+    <div class="section-header" style="position:relative">
+      <div style="padding:0 24px;max-width:1320px;margin:0 auto">
+        <span class="label" style="display:block;margin-bottom:6px" data-i18n="sales_label">${T('sales_label')}</span>
+        <h2 class="display" style="color:var(--green)">${T('sales_header')}</h2>
+        <p style="font-size:13px;color:var(--ink-40);margin-top:8px">${T('sales_sub')}</p>
+      </div>
+    </div>
+
+    <!-- Summary KPIs -->
+    <div class="container" style="margin-bottom:20px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div class="kpi-card">
+          <svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><path d="M10 5v1.5M10 13.5V15M7.5 12.5c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-2-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2"/></svg>
+          <span class="label">${T('sales_total')}</span>
+          <div class="kpi-value green">${fmt$(totalRevenue)}</div>
+          <div class="kpi-delta">${sold.length} deal${sold.length!==1?'s':''} closed</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-icon">⭐</span>
+          <span class="label">${T('kpi_gc')}</span>
+          <div class="kpi-value gold">${fmt$(gcRevenue)}</div>
+          <div class="kpi-delta">${gcPct}% of revenue</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-icon">📊</span>
+          <span class="label">${T('kpi_avg')}</span>
+          <div class="kpi-value">${fmt$(avgVal)}</div>
+          <div class="kpi-delta">${T('kpi_avg_d')}</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-icon">✅</span>
+          <span class="label">${T('status_active_client')}</span>
+          <div class="kpi-value">${sold.length}</div>
+          <div class="kpi-delta">${T('kpi_hc_d')}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deals by month -->
+    <div class="container" style="margin-bottom:24px">
+      ${sold.length === 0
+        ? `<div class="empty-state"><div class="icon">📈</div><p>${T('sales_no_data')}</p></div>`
+        : sectionsHTML}
+    </div>
+
+    <!-- Monthly Bar Chart -->
+    <div class="dash-card container" style="margin-bottom:32px">
+      <div class="dash-card-header">
+        <div>
+          <div class="dash-card-title">${T('sales_chart_title')}</div>
+          <div class="dash-card-sub">${T('sales_chart_sub')}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;align-items:flex-end;height:160px;padding:8px 0 0">
+        ${chartBars}
+      </div>
+    </div>`;
+}
 
 async function launchApp(fromSupabase) {
   document.getElementById('configScreen').style.display = 'none';
