@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EA Sales Intelligence — Carolina Medrado</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
@@ -500,6 +501,54 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   background: transparent; color: var(--ink-20); font-size: 14px; cursor: pointer; font-family: var(--font-body); }
 .config-connect-btn { padding: 10px 24px; border-radius: 10px; border: none;
   background: var(--gold); color: #000; font-size: 14px; font-weight: 700; cursor: pointer; font-family: var(--font-body); }
+
+/* ── PRINT / PDF ── */
+.print-btn {
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--ink-70);border:1px solid var(--ink-60);
+  color:var(--ink-20);border-radius:8px;padding:8px 14px;
+  font-size:12px;font-weight:600;letter-spacing:.04em;cursor:pointer;
+  transition:border-color .15s,color .15s;
+}
+.print-btn:hover { border-color:var(--gold);color:var(--gold); }
+.print-btn svg { flex-shrink:0; }
+
+.export-btn {
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--ink-70);border:1px solid var(--ink-60);
+  color:var(--ink-20);border-radius:8px;padding:8px 14px;
+  font-size:12px;font-weight:600;letter-spacing:.04em;cursor:pointer;
+  transition:border-color .15s,color .15s;
+}
+.export-btn:hover { border-color:var(--green);color:var(--green); }
+
+@media print {
+  * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
+  body { background:#111!important; }
+  nav, .nav, #nav,
+  .print-btn, .export-btn,
+  .btn.btn-primary,
+  #configScreen,
+  .filter-row, #stageFilters, #monthFilter,
+  .toast-container,
+  .modal,
+  #kpiModal, #leadModal, #emailPreviewModal, #monthDetailModal,
+  .pipeline-header .search-box,
+  .pipeline-header .btn,
+  .priorities-header .btn,
+  .no-print { display:none!important; }
+  
+  .page { display:block!important; opacity:1!important; }
+  .page:not(.print-target) { display:none!important; }
+  .print-target { display:block!important; }
+
+  .container { max-width:100%!important; padding:0 12px!important; }
+  .table-wrap { overflow:visible!important; }
+  table { page-break-inside:auto; }
+  tr { page-break-inside:avoid; }
+  thead { display:table-header-group; }
+  tfoot { display:table-footer-group; }
+}
 </style>
 </head>
 <body>
@@ -619,6 +668,20 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     </div>
   </div>
 
+  <div style="padding:0 0 8px;display:flex;gap:8px;flex-wrap:wrap" class="container">
+    <button onclick="printPage('page-dashboard')" class="print-btn" title="Print or Save as PDF">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
+      Print / PDF
+    </button>
+    <button onclick="exportToExcel()" class="export-btn" title="Export all data to Excel">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 15l4-8 3 5 2-3 4 6"/><rect x="2" y="2" width="16" height="16" rx="2"/></svg>
+      Export to Excel
+    </button>
+    <button onclick="copyForSheets()" class="export-btn" title="Copy data for Google Sheets">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="14" height="14" rx="1"/><path d="M3 8h14M3 13h14M8 3v14"/></svg>
+      Copy for Sheets
+    </button>
+  </div>
   <div class="filter-row" id="monthFilter"></div>
 
   <div class="kpi-grid" id="kpiGrid">
@@ -678,7 +741,13 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <span style="color:var(--ink-40)">🔍</span>
       <input id="searchInput" type="text" placeholder="Search name, project, stage…" oninput="renderPipeline()">
     </div>
+    <div style="display:flex;gap:8px">
+    <button onclick="printPage('page-pipeline')" class="print-btn" title="Print or Save as PDF">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
+      Print / PDF
+    </button>
     <button class="btn btn-primary" onclick="openNewLead()">+ New Lead</button>
+  </div>
   </div>
   <div class="filter-row" id="stageFilters"></div>
   <div class="table-wrap">
@@ -702,6 +771,10 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     <span class="label" style="display:block;margin-bottom:6px">Daily Focus</span>
     <h2 class="display">⚡ PRIORITIES</h2>
     <p style="font-size:13px;color:var(--ink-40);margin-top:8px" id="prioritiesSubtitle">Clients sorted by urgency score</p>
+    <button onclick="printPage('page-priorities')" class="print-btn" style="margin-top:12px" title="Print or Save as PDF">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
+      Print / PDF
+    </button>
   </div>
 
   <div class="container" style="margin-bottom:20px">
@@ -2417,16 +2490,16 @@ async function renderMileage() {
 
     if (!r) {
       rows.push(`<tr style="height:34px;background:${rowBg}">
-        <td style="background:rgba(68,114,202,.06);padding:3px 6px"></td>
-        <td style="background:rgba(68,114,202,.06);padding:3px 6px"></td>
-        <td style="background:rgba(68,114,202,.06);padding:3px 6px"></td>
+        <td style="background:var(--ink-80);padding:3px 6px"></td>
+        <td style="background:var(--ink-80);padding:3px 6px"></td>
+        <td style="background:var(--ink-80);padding:3px 6px"></td>
         <td style="padding:3px 5px"></td><td style="padding:3px 5px"></td>
         <td style="padding:3px 5px"></td><td style="padding:3px 5px"></td>
         <td style="padding:3px 5px"></td>
-        <td style="padding:3px 5px;background:rgba(68,114,202,.04)"></td>
-        <td style="padding:3px 5px;background:rgba(68,114,202,.04)"></td>
+        <td style="padding:3px 5px;background:var(--ink-70)"></td>
+        <td style="padding:3px 5px;background:var(--ink-70)"></td>
         <td style="padding:3px 8px;text-align:right;color:var(--ink-60)">—</td>
-        <td style="padding:3px 5px;background:rgba(68,114,202,.04)"></td>
+        <td style="padding:3px 5px;background:var(--ink-70)"></td>
         <td style="padding:3px 8px;text-align:right;color:var(--ink-60)">—</td>
         <td style="padding:3px 5px"></td>
         <td style="padding:3px 5px"></td>
@@ -2439,13 +2512,13 @@ async function renderMileage() {
     const isAuto = !r.isManual && r.sourceOppId;
 
     rows.push(`<tr style="background:${rowBg}">
-      <td style="background:rgba(68,114,202,.08);padding:3px 6px;min-width:128px">
+      <td style="background:var(--ink-80);padding:3px 6px;min-width:128px">
         ${inp(r.id,'date',r.date,'118px','date')}
       </td>
-      <td style="background:rgba(68,114,202,.08);padding:3px 6px;min-width:130px">
+      <td style="background:var(--ink-80);padding:3px 6px;min-width:130px">
         ${inp(r.id,'clientName',r.clientName,'118px','text',isAuto?'':'Client name')}
       </td>
-      <td style="background:rgba(68,114,202,.08);padding:3px 6px;min-width:160px">
+      <td style="background:var(--ink-80);padding:3px 6px;min-width:160px">
         ${inp(r.id,'address',r.address,'148px','text',isAuto?'':'Address')}
       </td>
       <td style="padding:3px 5px;min-width:56px">${inp(r.id,'stopHome1',r.stopHome1||'','48px','text','')}</td>
@@ -2453,17 +2526,17 @@ async function renderMileage() {
       <td style="padding:3px 5px;min-width:56px">${inp(r.id,'stopClient',r.stopClient||'','48px','text','')}</td>
       <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopHome2',r.stopHome2||'','40px','text','')}</td>
       <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopDC2',r.stopDC2||'','40px','text','')}</td>
-      <td style="padding:3px 5px;min-width:72px;background:rgba(68,114,202,.04)">
+      <td style="padding:3px 5px;min-width:72px;background:var(--ink-70)">
         ${numInp(r.id,'totalMiles',r.totalMiles,'64px')}
       </td>
-      <td style="padding:3px 5px;min-width:72px;background:rgba(68,114,202,.04)">
+      <td style="padding:3px 5px;min-width:72px;background:var(--ink-70)">
         ${numInp(r.id,'commuteDeduct',r.commuteDeduct,'64px')}
       </td>
       <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;
                  color:${net>0?'var(--gold)':'var(--ink-60)'};min-width:72px">
         ${net>0 ? net.toFixed(1) : '—'}
       </td>
-      <td style="padding:3px 5px;min-width:68px;background:rgba(68,114,202,.04)">
+      <td style="padding:3px 5px;min-width:68px;background:var(--ink-70)">
         ${numInp(r.id,'tollsParking',r.tollsParking,'60px')}
       </td>
       <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;
@@ -2475,9 +2548,9 @@ async function renderMileage() {
       </td>
       <td style="padding:3px 8px;font-size:11px;color:var(--ink-40);min-width:90px;white-space:nowrap">
         ${isAuto ? '🏠 Home Call' : (r.purpose||'Home Call')}
-        ${r.isManual ? `<button onclick="deleteMileageRow('${r.id}')" title="Delete row"
-          style="background:none;border:none;color:var(--red);cursor:pointer;margin-left:3px;
-                 font-size:13px;vertical-align:middle;padding:0;line-height:1">✕</button>` : ''}
+        <button onclick="deleteMileageRow('${r.id}')" title="Delete row"
+          style="background:none;border:none;color:var(--red);cursor:pointer;margin-left:4px;
+                 font-size:13px;vertical-align:middle;padding:0;line-height:1">✕</button>
       </td>
     </tr>`);
   }
@@ -2521,10 +2594,16 @@ async function renderMileage() {
           <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">$${RATE.toFixed(3)} / mile</div>
         </div>
         <div style="flex:1"></div>
-        <button onclick="addMileageRow()"
-          style="background:var(--gold);color:var(--ink);border:none;border-radius:8px;
-                 padding:8px 16px;font-family:var(--font-body);font-weight:700;font-size:13px;
-                 cursor:pointer;letter-spacing:.04em">+ Add Manual Trip</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="printMilePage()" class="print-btn" title="Print or Save as PDF">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
+            Print / PDF
+          </button>
+          <button onclick="addMileageRow()"
+            style="background:var(--gold);color:var(--ink);border:none;border-radius:8px;
+                   padding:8px 16px;font-family:var(--font-body);font-weight:700;font-size:13px;
+                   cursor:pointer;letter-spacing:.04em">+ Add Manual Trip</button>
+        </div>
       </div>
 
       <!-- Row 5: IRS warning -->
@@ -2541,15 +2620,15 @@ async function renderMileage() {
         <!-- Row 6: Headers — Navy group (A B C I J K L M) · Gray group (D E F G H N O) -->
         <thead>
           <tr>
-            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:11px;
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:11px;
                        letter-spacing:.05em;padding:9px 8px;text-align:left;
                        border-right:1px solid rgba(255,255,255,.08);
                        border-bottom:2px solid var(--gold-dk);white-space:nowrap">Date</th>
-            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:11px;
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:11px;
                        letter-spacing:.05em;padding:9px 8px;text-align:left;
                        border-right:1px solid rgba(255,255,255,.08);
                        border-bottom:2px solid var(--gold-dk);white-space:nowrap">Client Name</th>
-            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:11px;
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:11px;
                        letter-spacing:.05em;padding:9px 8px;text-align:left;
                        border-right:1px solid rgba(255,255,255,.08);
                        border-bottom:2px solid var(--gold-dk);white-space:nowrap">Address</th>
@@ -2573,23 +2652,23 @@ async function renderMileage() {
                        letter-spacing:.05em;padding:9px 6px;text-align:center;
                        border-right:1px solid var(--ink-60);
                        border-bottom:2px solid var(--ink-60);white-space:nowrap">DC</th>
-            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:10px;
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
                        letter-spacing:.04em;padding:9px 8px;text-align:right;
                        border-right:1px solid rgba(255,255,255,.08);
                        border-bottom:2px solid var(--gold-dk);white-space:nowrap">Total Miles<br>Driven</th>
-            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:10px;
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
                        letter-spacing:.04em;padding:9px 8px;text-align:right;
                        border-right:1px solid rgba(255,255,255,.08);
                        border-bottom:2px solid var(--gold-dk);white-space:nowrap">Minus Daily<br>Commute</th>
-            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:10px;
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
                        letter-spacing:.04em;padding:9px 8px;text-align:right;
                        border-right:1px solid rgba(255,255,255,.08);
                        border-bottom:2px solid var(--gold-dk);white-space:nowrap">Net<br>Miles</th>
-            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:10px;
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
                        letter-spacing:.04em;padding:9px 8px;text-align:right;
                        border-right:1px solid rgba(255,255,255,.08);
                        border-bottom:2px solid var(--gold-dk);white-space:nowrap">Tolls /<br>Parking</th>
-            <th style="background:#1F4E79;color:#fff;font-weight:700;font-size:10px;
+            <th style="background:var(--ink-70);color:var(--ink-20);font-weight:700;font-size:10px;
                        letter-spacing:.04em;padding:9px 8px;text-align:right;
                        border-right:1px solid rgba(255,255,255,.08);
                        border-bottom:2px solid var(--gold-dk);white-space:nowrap">Total<br>Reimb.</th>
@@ -2608,7 +2687,7 @@ async function renderMileage() {
 
         <!-- Row 38: Totals footer -->
         <tfoot>
-          <tr style="background:rgba(68,114,202,.12);border-top:2px solid #1F4E79">
+          <tr style="background:var(--ink-70);border-top:2px solid var(--gold-dk)">
             <td colspan="8" style="padding:10px 12px;font-weight:700;font-size:12px;
                                    color:var(--gold-lt);letter-spacing:.04em">
               Mileage Rate ${curYear}: $${RATE.toFixed(3)} / Mile &nbsp;·&nbsp;
@@ -3853,6 +3932,160 @@ function closeMonthDetail() {
   document.getElementById('monthDetailModal').classList.remove('open');
 }
 
+
+/* ══════════════════════════════════════════════════
+   PRINT / PDF UTILITIES
+══════════════════════════════════════════════════ */
+function printPage(pageId) {
+  // Mark target page for @media print
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('print-target'));
+  const target = document.getElementById(pageId);
+  if (target) target.classList.add('print-target');
+  window.print();
+  // Cleanup after print dialog closes
+  setTimeout(() => {
+    if (target) target.classList.remove('print-target');
+  }, 2000);
+}
+
+function printMilePage() {
+  printPage('page-mileage');
+}
+
+/* ══════════════════════════════════════════════════
+   EXCEL EXPORT (SheetJS)
+══════════════════════════════════════════════════ */
+async function exportToExcel() {
+  if (typeof XLSX === 'undefined') {
+    toast('Excel library not loaded. Check your internet connection.', 'error');
+    return;
+  }
+  toast('Building Excel export…', 'info');
+
+  const opps = await DB.getAll();
+  const mileRecs = getMileageRecords();
+  const wb = XLSX.utils.book_new();
+
+  /* ── Sheet 1: All Opportunities ── */
+  const oppHeaders = ['ID','First Name','Last Name','Email','Phone','Address',
+    'Stage','Project Type','Probability %','Estimate $','Lead Source',
+    'Home Call','Home Call Date','Sale Made','GoldComp',
+    'Follow-Up Date','Next Step','Notes','Win Tier','Weighted Pipeline','Urgency Score'];
+  const oppRows = opps.map(o => {
+    const wt = BL.getWinTier(o);
+    return [
+      o.id, o.firstName, o.lastName, o.email, o.phone, o.address,
+      o.stage, o.projectType, Number(o.probability)||0, Number(o.estimate)||0,
+      o.leadSource, o.homeCall, o.homeCallDate, o.saleMade, o.goldComp,
+      o.followUpDate, o.nextStep, o.notes,
+      wt.label, BL.getWeighted(o), BL.urgencyScore(o)
+    ];
+  });
+  const wsOpps = XLSX.utils.aoa_to_sheet([oppHeaders, ...oppRows]);
+  wsOpps['!cols'] = [8,12,12,22,12,20,14,14,10,10,14,10,12,10,10,12,18,30,8,10,10].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsOpps, 'All Opportunities');
+
+  /* ── Sheet 2: Closed Sales ── */
+  const sold = opps.filter(o => o.saleMade === 'Yes');
+  const soldHdr = ['First Name','Last Name','Email','Project Type','Estimate $','GoldComp','Lead Source','Notes'];
+  const soldRows = sold.map(o => [o.firstName, o.lastName, o.email, o.projectType,
+    Number(o.estimate)||0, o.goldComp, o.leadSource, o.notes]);
+  const wsSold = XLSX.utils.aoa_to_sheet([soldHdr, ...soldRows]);
+  wsSold['!cols'] = [12,12,22,14,10,8,14,30].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsSold, 'Closed Sales');
+
+  /* ── Sheet 3: Active Pipeline ── */
+  const active = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+  const actHdr = ['First Name','Last Name','Stage','Project Type','Probability %','Estimate $',
+    'Weighted Pipeline','Win Tier','Follow-Up Date','Days Overdue','Urgency Score','Next Step'];
+  const actRows = active.map(o => {
+    const wt = BL.getWinTier(o);
+    return [o.firstName, o.lastName, o.stage, o.projectType,
+      Number(o.probability)||0, Number(o.estimate)||0,
+      BL.getWeighted(o), wt.label, o.followUpDate,
+      BL.getDaysOverdue(o), BL.urgencyScore(o), o.nextStep];
+  });
+  const wsAct = XLSX.utils.aoa_to_sheet([actHdr, ...actRows]);
+  wsAct['!cols'] = [12,12,14,14,10,10,10,8,12,8,8,18].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsAct, 'Active Pipeline');
+
+  /* ── Sheet 4: Priorities ── */
+  const prioOpps = [...active].sort((a,b) => BL.urgencyScore(b) - BL.urgencyScore(a));
+  const prioHdr = ['Rank','First Name','Last Name','Stage','Probability %','Estimate $',
+    'Urgency Score','Win Tier','Days Overdue','Follow-Up Date','Next Step'];
+  const prioRows = prioOpps.map((o,i) => {
+    const wt = BL.getWinTier(o);
+    return [i+1, o.firstName, o.lastName, o.stage,
+      Number(o.probability)||0, Number(o.estimate)||0,
+      BL.urgencyScore(o), wt.label, BL.getDaysOverdue(o), o.followUpDate, o.nextStep];
+  });
+  const wsPrio = XLSX.utils.aoa_to_sheet([prioHdr, ...prioRows]);
+  wsPrio['!cols'] = [5,12,12,14,10,10,8,8,8,12,18].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsPrio, 'Priorities');
+
+  /* ── Sheet 5: Mileage ── */
+  const RATE = 0.725;
+  const mileHdr = ['Date','Client Name','Address','Home→DC','DC→Client',
+    'Client→Home','Home→DC2','DC→Home','Total Miles','Commute Deduct',
+    'Net Miles','Tolls/Parking','Total Reimbursement ($)','Design Partner','Purpose'];
+  const mileRows = mileRecs.map(r => {
+    const net = Math.max((parseFloat(r.totalMiles)||0)-(parseFloat(r.commuteDeduct)||0),0);
+    const reimb = net > 0 ? +(net * RATE + (parseFloat(r.tollsParking)||0)).toFixed(2) : 0;
+    return [r.date, r.clientName, r.address, r.stopHome1, r.stopDC1,
+      r.stopClient, r.stopHome2, r.stopDC2,
+      parseFloat(r.totalMiles)||0, parseFloat(r.commuteDeduct)||0,
+      +net.toFixed(1), parseFloat(r.tollsParking)||0, reimb,
+      r.designPartner, r.isManual ? 'Manual Trip' : 'Home Call'];
+  });
+  const wsMile = XLSX.utils.aoa_to_sheet([mileHdr, ...mileRows]);
+  wsMile['!cols'] = [12,16,20,8,8,8,8,8,8,8,8,8,12,14,10].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsMile, 'Mileage');
+
+  /* ── Sheet 6: Monthly KPIs ── */
+  const allMonths = BL.calcAllMonthsKPIs(opps);
+  const moHdr = ['Month','Revenue','Goal','% to Goal','Deals Closed','Active Leads','GoldComp $'];
+  const moRows = allMonths.map(m => [
+    m.short, m.revenue, m.goal,
+    m.goal ? +((m.revenue/m.goal*100).toFixed(1)) : 0,
+    m.count, m.active, m.gcRevenue||0
+  ]);
+  const wsMo = XLSX.utils.aoa_to_sheet([moHdr, ...moRows]);
+  wsMo['!cols'] = [10,10,10,8,8,8,10].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, wsMo, 'Monthly KPIs');
+
+  // Save file
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `EA_Sales_Carolina_${date}.xlsx`);
+  toast('Excel file downloaded!', 'success');
+}
+
+/* ══════════════════════════════════════════════════
+   COPY ALL DATA FOR GOOGLE SHEETS (TSV)
+══════════════════════════════════════════════════ */
+async function copyForSheets() {
+  const opps = await DB.getAll();
+  const active = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+
+  const hdr = ['Name','Stage','Project Type','Probability %','Estimate $',
+    'Weighted','Win Tier','Follow-Up','Days Overdue','Urgency Score','GoldComp','Lead Source'];
+  const rows = active.sort((a,b) => BL.urgencyScore(b)-BL.urgencyScore(a)).map(o => {
+    const wt = BL.getWinTier(o);
+    return [
+      `${o.firstName||''} ${o.lastName||''}`.trim(),
+      o.stage||'', o.projectType||'',
+      Number(o.probability)||0, Number(o.estimate)||0,
+      BL.getWeighted(o), wt.label, o.followUpDate||'',
+      BL.getDaysOverdue(o), BL.urgencyScore(o),
+      o.goldComp||'', o.leadSource||''
+    ].join('\t');
+  });
+  const tsv = [hdr.join('\t'), ...rows].join('\n');
+  navigator.clipboard.writeText(tsv).then(() => {
+    toast('Pipeline data copied! Paste into Google Sheets (Ctrl+V or Cmd+V)', 'success');
+  }).catch(() => {
+    toast('Could not copy to clipboard — try Chrome or Edge', 'error');
+  });
+}
 
 async function launchApp(fromSupabase) {
   document.getElementById('configScreen').style.display = 'none';
