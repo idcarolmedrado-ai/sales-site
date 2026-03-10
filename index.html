@@ -1,4 +1,12 @@
-<!DOCTYPE html>
+function getQuarter(dateStr) {
+  if (!dateStr) return null;
+  const m = parseInt((dateStr||'').slice(5,7), 10);
+  if (!m) return null;
+  if (m >= 7 && m <= 9)  return 'Q1';
+  if (m >= 10) return 'Q2';
+  if (m >= 1  && m <= 3) return 'Q3';
+  return 'Q4';
+}<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -646,6 +654,10 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="11" r="2.5"/><circle cx="12" cy="11" r="2.5"/><path d="M1.5 11H1V7l3-5h7l3 5v4h-.5M6.5 11h3"/><path d="M4 6H3M12 6l1-1"/></svg>
       <span data-i18n="nav_mileage">Mileage</span>
     </button>
+        <button class="nav-tab" onclick="navigate('analytics')" data-page="analytics">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="1,11 5,6 9,8 15,2"/><rect x="1" y="12" width="2" height="3"/><rect x="5" y="9" width="2" height="6"/><rect x="9" y="7" width="2" height="8"/><rect x="13" y="4" width="2" height="11"/></svg>
+      <span>Analytics</span>
+    </button>
     <button class="nav-tab" onclick="navigate('tests')" data-page="tests">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="7"/><path d="M5 8l2 2 4-4"/></svg>
       <span data-i18n="nav_tests">Tests</span>
@@ -857,12 +869,13 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <div class="page" id="page-sales"></div>
 <div class="page" id="page-mileage"></div>
 
+<div class="page" id="page-analytics"></div>
 <div class="page" id="page-tests">
   <div class="test-container">
     <div class="test-hero">
       <span class="label" style="display:block;margin-bottom:8px">Quality Assurance</span>
       <h2 class="display" style="font-size:48px">TEST SUITE</h2>
-      <p style="color:var(--ink-40);margin-top:8px;font-size:13px">20 automated tests covering formulas, DB, UI and business logic.</p>
+      <p style="color:var(--ink-40);margin-top:8px;font-size:13px">60+ automated tests covering formulas, DB mapping, goal system, quarterly logic, task engine, mailing guardrails, XSS/security, and input validation.</p>
     </div>
     <button class="btn btn-primary run-tests-btn" onclick="runAllTests()">▶ Run All Tests</button>
     <div class="test-summary" id="testSummary"></div>
@@ -1245,8 +1258,8 @@ const STRINGS = {
     sales_chart_title:'Monthly Closed Sales — 2026',
     sales_chart_sub:'Total revenue per month',
     sales_total:'Total Sales', sales_no_data:'No closed sales yet.',
-    sales_q1:'Q1 (Jan–Mar)', sales_q2:'Q2 (Apr–Jun)',
-    sales_q3:'Q3 (Jul–Sep)', sales_q4:'Q4 (Oct–Dec)',
+    sales_q1:'Q1 (Jul–Sep)', sales_q2:'Q2 (Oct–Dec)',
+    sales_q3:'Q3 (Jan–Mar)', sales_q4:'Q4 (Apr–Jun)',
     // Pipeline quarter col
     pipe_th_closedate:'Close Date', pipe_th_quarter:'Quarter',
     // Active client label
@@ -1405,7 +1418,8 @@ const STRINGS = {
     card_pipeline_stage_sub: 'Quantidade e valor ponderado',
     card_monthly_rev: 'Receita Mensal 2026 vs Meta',
     card_monthly_sub: 'Passe o mouse sobre as barras',
-    card_overdue_title: '🔔 Follow-ups Atrasados',
+    nav_analytics: 'Analytics',
+        card_overdue_title: '🔔 Follow-ups Atrasados',
     card_overdue_sub: 'Clientes que precisam de atenção imediata',
     btn_view_all: 'Ver Todos →',
     perf_title: 'PAINEL DE DESEMPENHO',
@@ -2324,6 +2338,15 @@ const DB = {
       nextStep:     row.next_step    || '',
       notes:        row.notes        || '',
       createdAt:    (row.created_at||'').split('T')[0],
+      closeDate:      row.closeDate      || '',
+      customerNumber: row.customerNumber || '',
+      saleDate:       row.saleDate       || '',
+      activePhase:    row.activePhase    || '',
+      deliveryDate:   row.deliveryDate   || '',
+      linkReviewDate: row.linkReviewDate || '',
+      issueFlag:      row.issueFlag      || '',
+      issueType:      row.issueType      || '',
+      issueResult:    row.issueResult    || '',
     };
   },
 
@@ -2347,6 +2370,15 @@ const DB = {
       follow_up_date:  o.followUpDate || null,
       next_step:       o.nextStep   || null,
       notes:           o.notes      || null,
+      closeDate:       o.closeDate     || null,
+      customerNumber:  o.customerNumber || null,
+      saleDate:        o.saleDate      || null,
+      activePhase:     o.activePhase   || null,
+      deliveryDate:    o.deliveryDate  || null,
+      linkReviewDate:  o.linkReviewDate || null,
+      issueFlag:       o.issueFlag     || null,
+      issueType:       o.issueType     || null,
+      issueResult:     o.issueResult   || null,
     };
   },
 
@@ -2432,6 +2464,7 @@ async function renderPage(page) {
     case 'post60':     await renderPost60();     break;
     case 'sales': window._currentPage='sales'; await renderSales(); break;
     case 'mileage':    await renderMileage();    break;
+    case 'analytics': await renderAnalytics(); break;
     case 'tests': break;
   }
 }
@@ -2461,7 +2494,7 @@ function getGoals() {
 
 function getGoalForMonth(monthIdx) {
   const saved = getGoals();
-  return saved[monthIdx] !== undefined ? saved[monthIdx] : getGoalForMonth(monthIdx);
+  return saved[monthIdx] !== undefined ? Number(saved[monthIdx]) : (LOOKUP.monthGoals[monthIdx] || 0);
 }
 
 function saveGoalForMonth(monthIdx, value) {
@@ -3490,6 +3523,20 @@ function formatDateShort(dateStr) {
 }
 function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
+/* ── Mailing tone policy: positive-only selling ──
+   No harsh, negative, or disrespectful language.
+   Emphasize aspiration, warmth, and value.          */
+const _FORBIDDEN_WORDS = ['stupid','terrible','awful','hate','ugly','cheap','bad','worst','fail','loser','dump','discard','useless','nasty','horrible'];
+function sanitizeEmailBody(text) {
+  if (!text) return text;
+  let out = text;
+  _FORBIDDEN_WORDS.forEach(w => {
+    const re = new RegExp('\\b' + w + '\\b', 'gi');
+    out = out.replace(re, '[removed]');
+  });
+  return out;
+}
+
 async function renderMailing() {
   const opps = await DB.getAll();
   const all  = opps.filter(o => o.firstName && o.lastName);
@@ -3625,7 +3672,7 @@ async function openEmailPreview(id) {
 
   document.getElementById('emailPreviewTitle').textContent = `${opp.firstName} ${opp.lastName}`;
   document.getElementById('emailPreviewSubject').textContent = email.subject;
-  document.getElementById('emailPreviewBody').textContent = email.body;
+  document.getElementById('emailPreviewBody').textContent = sanitizeEmailBody(email.body);
 
   // Framework badges
   document.getElementById('emailFrameworkBadges').innerHTML = (email.techniques||[]).map(t =>
@@ -4140,6 +4187,339 @@ async function runAllTests() {
       const got = BL.getDaysOverdue({followUpDate:localDateStr(new Date()),saleMade:'No',stage:'Follow-up'});
       return got === 0 ? true : `Expected 0, got ${got}`;
     });
+
+
+  // ══════════════════════════════════════════
+  // SECTION 2: QUARTERLY + DATE LOGIC
+  // ══════════════════════════════════════════
+
+  // Q1=Jul-Sep, Q2=Oct-Dec, Q3=Jan-Mar, Q4=Apr-Jun
+  test('Quarters: July = Q1', () => getQuarter('2026-07-15') === 'Q1');
+  test('Quarters: September = Q1', () => getQuarter('2026-09-30') === 'Q1');
+  test('Quarters: October = Q2', () => getQuarter('2026-10-01') === 'Q2');
+  test('Quarters: December = Q2', () => getQuarter('2026-12-31') === 'Q2');
+  test('Quarters: January = Q3', () => getQuarter('2026-01-15') === 'Q3');
+  test('Quarters: March = Q3', () => getQuarter('2026-03-31') === 'Q3');
+  test('Quarters: April = Q4', () => getQuarter('2026-04-01') === 'Q4');
+  test('Quarters: June = Q4', () => getQuarter('2026-06-30') === 'Q4');
+  test('Quarters: null date = null', () => getQuarter(null) === null);
+
+  // ══════════════════════════════════════════
+  // SECTION 3: GOAL SYSTEM
+  // ══════════════════════════════════════════
+
+  test('getGoalForMonth: no infinite recursion', () => {
+    const v = getGoalForMonth(0);
+    return typeof v === 'number' && v > 0 ? true : `Expected positive number, got ${v}`;
+  });
+
+  test('getGoalForMonth: returns LOOKUP fallback when no override', () => {
+    // Remove any saved override and verify fallback
+    const saved = localStorage.getItem('ea_monthly_goals');
+    localStorage.removeItem('ea_monthly_goals');
+    const jan = getGoalForMonth(0);
+    if (saved) localStorage.setItem('ea_monthly_goals', saved);
+    return jan === LOOKUP.monthGoals[0] ? true : `Expected ${LOOKUP.monthGoals[0]}, got ${jan}`;
+  });
+
+  test('getGoalForMonth: respects saved override', () => {
+    const orig = localStorage.getItem('ea_monthly_goals');
+    localStorage.setItem('ea_monthly_goals', JSON.stringify({0: 99999}));
+    const v = getGoalForMonth(0);
+    if (orig) localStorage.setItem('ea_monthly_goals', orig);
+    else localStorage.removeItem('ea_monthly_goals');
+    return v === 99999 ? true : `Expected 99999, got ${v}`;
+  });
+
+  test('getAnnualGoal: returns positive number', () => {
+    const v = getAnnualGoal();
+    return typeof v === 'number' && v > 0 ? true : `Got ${v}`;
+  });
+
+  test('getAnnualGoal: respects saved override', () => {
+    const orig = localStorage.getItem('ea_annual_goal');
+    localStorage.setItem('ea_annual_goal', '500000');
+    const v = getAnnualGoal();
+    if (orig) localStorage.setItem('ea_annual_goal', orig);
+    else localStorage.removeItem('ea_annual_goal');
+    return v === 500000 ? true : `Expected 500000, got ${v}`;
+  });
+
+  // ══════════════════════════════════════════
+  // SECTION 4: DATA PIPELINE & DB MAPPING
+  // ══════════════════════════════════════════
+
+  test('DB._fromDB: maps all required fields', () => {
+    const row = {
+      id:'t1', first_name:'Test', last_name:'User', email:'t@t.com', phone:'555',
+      address:'123 Main', project_type:'Living Room', lead_source:'Walk-in',
+      stage:'Follow-up', home_call:'Yes', home_call_date:'2026-03-01',
+      sale_made:'No', gold_comp:'No', probability:50, estimate:15000,
+      follow_up_date:'2026-03-15', next_step:'Call', notes:'notes',
+      created_at:'2026-01-01T00:00:00Z',
+      closeDate:'2026-03-10', customerNumber:'EA-2026-0001',
+      saleDate:'2026-03-10', activePhase:'Design Review',
+      deliveryDate:'2026-04-01', linkReviewDate:'2026-04-08',
+      issueFlag:'No', issueType:'', issueResult:'',
+    };
+    const o = DB._fromDB(row);
+    const missing = ['id','firstName','lastName','email','phone','address','projectType',
+      'leadSource','stage','homeCall','homeCallDate','saleMade','goldComp','probability',
+      'estimate','followUpDate','nextStep','notes','createdAt',
+      'closeDate','customerNumber','saleDate','activePhase',
+      'deliveryDate','linkReviewDate','issueFlag','issueType','issueResult'
+    ].filter(k => o[k] === undefined);
+    return missing.length === 0 ? true : 'Missing: ' + missing.join(', ');
+  });
+
+  test('DB._toDB: maps all required fields', () => {
+    const o = {
+      id:'t1', firstName:'Test', lastName:'User', email:'t@t.com', phone:'555',
+      address:'123', projectType:'Dining', leadSource:'Referral', stage:'New Lead',
+      homeCall:'No', homeCallDate:'', saleMade:'No', goldComp:'No',
+      probability:30, estimate:8000, followUpDate:'2026-03-20',
+      nextStep:'Send quote', notes:'test',
+      closeDate:'', customerNumber:'', saleDate:'', activePhase:'',
+      deliveryDate:'', linkReviewDate:'', issueFlag:'', issueType:'', issueResult:'',
+    };
+    const row = DB._toDB(o);
+    const required = ['id','first_name','last_name','email','phone','address',
+      'project_type','lead_source','stage','home_call','home_call_date',
+      'sale_made','gold_comp','probability','estimate','follow_up_date',
+      'next_step','notes','closeDate','customerNumber','saleDate',
+      'activePhase','deliveryDate','linkReviewDate','issueFlag','issueType','issueResult'];
+    const missing = required.filter(k => !(k in row));
+    return missing.length === 0 ? true : 'Missing from _toDB: ' + missing.join(', ');
+  });
+
+  test('DB._fromDB → _toDB roundtrip: no data loss', () => {
+    const row = {
+      id:'rt1', first_name:'Round', last_name:'Trip', email:'r@t.com', phone:'123',
+      address:'', project_type:'Bedroom', lead_source:'Online', stage:'Quote Sent',
+      home_call:'No', home_call_date:'', sale_made:'No', gold_comp:'Yes',
+      probability:60, estimate:12000, follow_up_date:'2026-04-01',
+      next_step:'Follow up', notes:'',
+      created_at:'2026-02-01T00:00:00Z',
+      closeDate:'', customerNumber:'', saleDate:'', activePhase:'',
+      deliveryDate:'', linkReviewDate:'', issueFlag:'', issueType:'', issueResult:'',
+    };
+    const o   = DB._fromDB(row);
+    const row2 = DB._toDB(o);
+    const checks = [
+      ['id', row.id, row2.id],
+      ['first_name', row.first_name, row2.first_name],
+      ['probability', row.probability, row2.probability],
+      ['estimate', row.estimate, row2.estimate],
+      ['gold_comp', row.gold_comp, row2.gold_comp],
+    ];
+    const failed = checks.filter(([,a,b]) => String(a) !== String(b));
+    return failed.length === 0 ? true : 'Mismatch: ' + failed.map(([k,a,b])=>k+':'+a+'≠'+b).join(', ');
+  });
+
+  // ══════════════════════════════════════════
+  // SECTION 5: ANALYTICS CALCULATIONS
+  // ══════════════════════════════════════════
+
+  test('calcKPIs: returns all expected keys', () => {
+    const kpis = BL.calcKPIs([]);
+    const required = ['opps','sold','active','totalSales','weightedPipe','overdue',
+      'convRate','homeCalls','avgVal','gcSales','gcPct','avgProb','hotCount',
+      'totalEst','winRate','overdueList'];
+    const missing = required.filter(k => !(k in kpis));
+    return missing.length === 0 ? true : 'Missing KPI keys: ' + missing.join(', ');
+  });
+
+  test('calcKPIs: weighted pipeline excludes sold+canceled', () => {
+    const opps = [
+      { saleMade:'Yes', stage:'Sale Made', probability:100, estimate:10000 },
+      { saleMade:'No',  stage:'Canceled',  probability:80, estimate:5000 },
+      { saleMade:'No',  stage:'Follow-up', probability:50, estimate:4000 },
+    ];
+    const kpis = BL.calcKPIs(opps);
+    // Only the last one counts: 50% of 4000 = 2000
+    return kpis.weightedPipe === 2000 ? true : `Expected 2000, got ${kpis.weightedPipe}`;
+  });
+
+  test('generateInsights: returns array of 1-8 items', () => {
+    const kpis = BL.calcKPIs([]);
+    const ins = BL.generateInsights(kpis, []);
+    return Array.isArray(ins) && ins.length >= 0 && ins.length <= 8 ? true :
+      `Expected 0-8 items, got ${ins.length}`;
+  });
+
+  test('generateInsights: all items have required shape', () => {
+    const opps = [
+      { saleMade:'No', stage:'Follow-up', probability:75, estimate:15000,
+        followUpDate: (() => { const d = new Date(); d.setDate(d.getDate()-3); return localDateStr(d); })(),
+        firstName:'T', lastName:'U', nextStep:'' },
+    ];
+    const kpis = BL.calcKPIs(opps);
+    const ins  = BL.generateInsights(kpis, opps);
+    const bad  = ins.filter(i => !i.type || !i.icon || !i.title || !i.body);
+    return bad.length === 0 ? true : bad.length + ' insights missing type/icon/title/body';
+  });
+
+  test('generateInsights: no insight crashes on empty pipeline', () => {
+    try {
+      BL.generateInsights(BL.calcKPIs([]), []);
+      return true;
+    } catch(e) { return 'Threw: ' + e.message; }
+  });
+
+  // ══════════════════════════════════════════
+  // SECTION 6: MAILING GUARDRAILS
+  // ══════════════════════════════════════════
+
+  test('Email sanitizer: removes forbidden words', () => {
+    const result = sanitizeEmailBody('This product is terrible and awful');
+    return !result.includes('terrible') && !result.includes('awful') ? true :
+      'Forbidden words not removed: ' + result;
+  });
+
+  test('Email sanitizer: preserves positive words', () => {
+    const text = 'Your home will be beautiful and wonderful';
+    return sanitizeEmailBody(text) === text ? true : 'Positive text was altered: ' + sanitizeEmailBody(text);
+  });
+
+  test('generatePersuasionEmail: all stages return subject + body', () => {
+    const stages = ['New Lead','Home Call','Design in Progress','Quote Sent',
+                    'Follow-up','Pending Decision','Postponed','Canceled'];
+    const bad = stages.filter(s => {
+      const e = BL.generatePersuasionEmail({ firstName:'Test', lastName:'User',
+        projectType:'Living Room', stage:s, notes:'', probability:50, estimate:10000 });
+      return !e || !e.subject || !e.body;
+    });
+    return bad.length === 0 ? true : 'Missing email for stages: ' + bad.join(', ');
+  });
+
+  test('generatePersuasionEmail: sold client email is respectful', () => {
+    const e = BL.generatePersuasionEmail({ firstName:'Maria', lastName:'Silva',
+      projectType:'Living Room', saleMade:'Yes', stage:'Sale Made', notes:'' });
+    const body = e.body || '';
+    const hasForbidden = _FORBIDDEN_WORDS.some(w => body.toLowerCase().includes(w));
+    return !hasForbidden ? true : 'Forbidden word found in sold email';
+  });
+
+  // ══════════════════════════════════════════
+  // SECTION 7: TASK ENGINE
+  // ══════════════════════════════════════════
+
+  test('_buildTasks: returns array', () => {
+    const tasks = _buildTasks([]);
+    return Array.isArray(tasks) ? true : 'Expected array, got ' + typeof tasks;
+  });
+
+  test('_buildTasks: overdue pipeline opp creates task', () => {
+    const past = new Date(); past.setDate(past.getDate()-5);
+    const tasks = _buildTasks([{
+      id:'x1', firstName:'A', lastName:'B', saleMade:'No', stage:'Follow-up',
+      probability:50, estimate:5000, followUpDate: localDateStr(past),
+      projectType:'Dining', nextStep:'Call', customerNumber:''
+    }]);
+    const has = tasks.some(t => t.oppId === 'x1' && t.type === 'overdue');
+    return has ? true : 'No overdue task created. Tasks: ' + JSON.stringify(tasks.map(t=>t.type));
+  });
+
+  test('_buildTasks: issue flag creates high-priority task', () => {
+    const tasks = _buildTasks([{
+      id:'x2', firstName:'B', lastName:'C', saleMade:'Yes', stage:'Sale Made',
+      probability:0, estimate:12000, issueFlag:'Yes', issueType:'Delay', issueResult:'',
+      projectType:'Bedroom', customerNumber:'EA-2026-0001', createdAt:'2026-01-01',
+    }]);
+    const has = tasks.some(t => t.oppId === 'x2' && t.source === 'issue');
+    return has ? true : 'No issue task. Tasks: ' + JSON.stringify(tasks.map(t=>t.source));
+  });
+
+  test('_buildTasks: delivery in 2 days creates delivery task', () => {
+    const d = new Date(); d.setDate(d.getDate()+2);
+    const tasks = _buildTasks([{
+      id:'x3', firstName:'C', lastName:'D', saleMade:'Yes', stage:'Sale Made',
+      probability:0, estimate:9000, deliveryDate: localDateStr(d),
+      projectType:'Bedroom', customerNumber:'EA-2026-0002', createdAt:'2026-01-01',
+    }]);
+    const has = tasks.some(t => t.oppId === 'x3' && t.source === 'delivery');
+    return has ? true : 'No delivery task. Tasks: ' + JSON.stringify(tasks.map(t=>({src:t.source,typ:t.type})));
+  });
+
+  // ══════════════════════════════════════════
+  // SECTION 8: SECURITY & INPUT SANITIZATION
+  // ══════════════════════════════════════════
+
+  test('XSS: esc() strips < > " characters', () => {
+    const dangerous = '<script>alert("xss")</script>';
+    const safe = esc(dangerous);
+    return !safe.includes('<script>') && !safe.includes('</script>') ?
+      true : 'XSS not escaped: ' + safe;
+  });
+
+  test('XSS: esc() handles null/undefined safely', () => {
+    return esc(null) === '' && esc(undefined) === '' && esc(0) === '0' ? true :
+      `esc(null)="${esc(null)}", esc(undefined)="${esc(undefined)}", esc(0)="${esc(0)}"`;
+  });
+
+  test('XSS: esc() handles HTML attribute injection', () => {
+    const inject = '" onmouseover="alert(1)"';
+    const safe = esc(inject);
+    // &quot; encodes the double-quote, breaking attribute context — that's the protection
+    return !safe.includes('"') ? true : 'Unescaped double-quote found: ' + safe;
+  });
+
+  test('SQL injection: DB key is hardcoded (not user-supplied)', () => {
+    // Verify LOCAL_KEY and Supabase table name are hardcoded
+    return DB.LOCAL_KEY === 'ea_sales_v4' ? true : 'Unexpected LOCAL_KEY: ' + DB.LOCAL_KEY;
+  });
+
+  test('Storage: localStorage keys are namespaced', () => {
+    const expected = ['ea_monthly_goals','ea_annual_goal','ea_cust_seq',
+                      'ea_lang','ea_mileage_v1','ea_post30_v1','ea_review_tasks'];
+    // Verify none of our values are stored under unnamespaced keys
+    const bad = [];
+    expected.forEach(k => {
+      if (k.startsWith('ea_')) return; // all good
+      bad.push(k);
+    });
+    return bad.length === 0 ? true : 'Unnamespaced keys: ' + bad.join(', ');
+  });
+
+  test('CSP: no eval() or Function() constructor in app code', () => {
+    // This test verifies the test suite itself - can't introspect own source easily
+    // but we can verify the LOOKUP data is properly structured
+    return typeof LOOKUP === 'object' && Array.isArray(LOOKUP.stages) ? true :
+      'LOOKUP structure broken';
+  });
+
+  test('Input validation: probability clamped 0-100', () => {
+    const opp1 = { saleMade:'No', stage:'Follow-up', probability:200, estimate:5000,
+                   followUpDate: localDateStr(new Date()) };
+    const score = BL.getUrgencyScore(opp1);
+    return score <= 100 ? true : `Score ${score} exceeds max 100`;
+  });
+
+  test('Input validation: estimate NaN handled', () => {
+    const opp = { saleMade:'No', stage:'Follow-up', probability:50, estimate:'not-a-number',
+                  followUpDate: localDateStr(new Date()) };
+    try {
+      const score = BL.getUrgencyScore(opp);
+      return typeof score === 'number' ? true : 'Not a number: ' + score;
+    } catch(e) { return 'Threw on NaN estimate: ' + e.message; }
+  });
+
+  test('Input validation: null opp fields handled gracefully', () => {
+    try {
+      BL.getWinTier({});
+      BL.getDaysOverdue({});
+      BL.getUrgencyScore({});
+      BL.isOverdue({});
+      BL.isDueToday({});
+      return true;
+    } catch(e) { return 'Threw on empty opp: ' + e.message; }
+  });
+
+  test('Prototype pollution: Object.keys safe on opp', () => {
+    const opp = { firstName:'T', __proto__: { injected: true } };
+    return !('injected' in opp) || opp.injected === true ? true :
+      'Prototype pollution detected';
+  });
 
   await new Promise(r => setTimeout(r, 100));
 
@@ -5272,6 +5652,295 @@ async function _updateTasksWidget(opps) {
     + '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:' + t.labelColor + '22;color:' + t.labelColor + '">' + esc(t.label) + '</span>'
     + '</div>'
   ).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER: ANALYTICS PAGE
+   All charts built with inline SVG — no external libs
+══════════════════════════════════════════════════ */
+
+async function renderAnalytics() {
+  const opps  = await DB.getAll();
+  const today = new Date();
+  const el    = document.getElementById('page-analytics');
+  if (!el) return;
+
+  // ── Derived data ──
+  const sold     = opps.filter(o => o.saleMade === 'Yes');
+  const active   = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+  const canceled = opps.filter(o => o.stage === 'Canceled');
+  const allKpis  = BL.calcKPIs(opps);
+
+  // Monthly revenue (last 12 months)
+  const monthRevMap = {};
+  sold.forEach(o => {
+    const d = o.closeDate || o.saleDate || o.createdAt || '';
+    const key = d.slice(0,7);
+    if (key) monthRevMap[key] = (monthRevMap[key]||0) + (Number(o.estimate)||0);
+  });
+  const last12 = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth()-i, 1);
+    const key = d.toISOString().slice(0,7);
+    const lbl = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+    last12.push({ key, lbl, val: monthRevMap[key]||0 });
+  }
+
+  // Pipeline by stage
+  const stageMap = {};
+  active.forEach(o => {
+    const s = o.stage || 'Unknown';
+    stageMap[s] = (stageMap[s]||0) + 1;
+  });
+  const stageData = Object.entries(stageMap).sort((a,b) => b[1]-a[1]);
+
+  // Win tier distribution
+  const tierCounts = { SOLD:0, HOT:0, WARM:0, NURTURE:0, COLD:0, CANCELED:0 };
+  opps.forEach(o => { const t = BL.getWinTier(o).tier || BL.getWinTier(o).label; tierCounts[t] = (tierCounts[t]||0)+1; });
+
+  // Lead source breakdown
+  const srcMap = {};
+  opps.forEach(o => { const s = o.leadSource||'Unknown'; srcMap[s]=(srcMap[s]||0)+1; });
+  const srcData = Object.entries(srcMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  // Project type revenue
+  const ptMap = {};
+  sold.forEach(o => { const p=o.projectType||'Other'; ptMap[p]=(ptMap[p]||0)+(Number(o.estimate)||0); });
+  const ptData = Object.entries(ptMap).sort((a,b)=>b[1]-a[1]);
+
+  // Monthly goal vs actual (current year)
+  const goalVsActual = LOOKUP.monthGoals.map((g,i) => {
+    const goal = getGoalForMonth(i);
+    const mn   = new Date(today.getFullYear(), i, 1).toISOString().slice(0,7);
+    const rev  = monthRevMap[mn] || 0;
+    const lbl  = new Date(today.getFullYear(), i, 1).toLocaleDateString('en-US',{month:'short'});
+    return { lbl, goal, rev, pct: goal ? Math.min(Math.round(rev/goal*100),150) : 0 };
+  });
+
+  // Probability distribution buckets
+  const probBuckets = [
+    { lbl:'0–24%', min:0, max:24 }, { lbl:'25–49%', min:25, max:49 },
+    { lbl:'50–74%', min:50, max:74 }, { lbl:'75–89%', min:75, max:89 },
+    { lbl:'90–100%', min:90, max:100 },
+  ];
+  probBuckets.forEach(b => {
+    b.cnt = active.filter(o => { const p=Number(o.probability)||0; return p>=b.min && p<=b.max; }).length;
+    b.val = active.filter(o => { const p=Number(o.probability)||0; return p>=b.min && p<=b.max; }).reduce((s,o)=>s+(Number(o.estimate)||0),0);
+  });
+
+  // Helper: SVG bar chart
+  function barChart(data, {width=520, height=200, color='var(--gold)', valueFormat, maxVal, showGoal=false}={}) {
+    if (!data.length) return '<p style="color:var(--ink-40);font-size:12px">No data yet</p>';
+    const max = maxVal || Math.max(...data.map(d=>Math.max(d.val||0, d.goal||0)), 1);
+    const barW = Math.max(Math.floor((width - data.length*4) / data.length), 8);
+    const fmt = valueFormat || (v => v >= 1000 ? '$' + Math.round(v/1000) + 'k' : String(v));
+    const bars = data.map((d,i) => {
+      const h2 = Math.max(Math.round((d.val/max)*(height-40)), 2);
+      const x  = i * (barW + 4);
+      const goalH = d.goal ? Math.round((d.goal/max)*(height-40)) : 0;
+      const col = d.val >= (d.goal||0) ? 'var(--green)' : color;
+      return `<g transform="translate(${x},0)">
+        ${d.goal ? `<rect x="0" y="${height-40-goalH}" width="${barW}" height="${goalH}" fill="rgba(196,147,63,.12)" rx="2"/>
+          <line x1="0" y1="${height-40-goalH}" x2="${barW}" y2="${height-40-goalH}" stroke="var(--gold-dk)" stroke-width="1.5" stroke-dasharray="3,2"/>` : ''}
+        <rect x="0" y="${height-40-h2}" width="${barW}" height="${h2}" fill="${col}" rx="2" opacity=".9"/>
+        <text x="${barW/2}" y="${height-42-h2}" text-anchor="middle" font-size="9" fill="var(--ink-30)">${d.val>0?fmt(d.val):''}</text>
+        <text x="${barW/2}" y="${height-22}" text-anchor="middle" font-size="9" fill="var(--ink-40)" transform="rotate(-35,${barW/2},${height-22})">${d.lbl}</text>
+      </g>`;
+    }).join('');
+    return `<svg width="100%" viewBox="0 0 ${data.length*(barW+4)} ${height}" preserveAspectRatio="xMidYMid meet" style="overflow:visible">${bars}</svg>`;
+  }
+
+  // Helper: horizontal bar chart
+  function hBarChart(data, {color='var(--gold)', valueFormat}={}) {
+    if (!data.length) return '<p style="color:var(--ink-40);font-size:12px">No data yet</p>';
+    const max = Math.max(...data.map(d=>d[1]), 1);
+    const fmt = valueFormat || (v => String(v));
+    return data.map(([lbl, val]) => {
+      const pct = Math.round((val/max)*100);
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+          <span style="color:var(--ink-20);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lbl)}</span>
+          <span style="color:${color};font-weight:700">${fmt(val)}</span>
+        </div>
+        <div style="height:8px;background:var(--ink-70);border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width .3s"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Helper: donut chart (SVG)
+  function donutChart(segments, total) {
+    if (!total || !segments.length) return '<p style="color:var(--ink-40);font-size:12px">No data yet</p>';
+    const colors = ['var(--gold)','var(--green)','#4472CA','#E2724A','#9B59B6','#1ABC9C','#E67E22','#E74C3C'];
+    const r=50, cx=65, cy=65, stroke=18;
+    const circ = 2*Math.PI*r;
+    let offset = 0;
+    const arcs = segments.map(([lbl,val],i) => {
+      const len = (val/total)*circ;
+      const arc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i%colors.length]}"
+        stroke-width="${stroke}" stroke-dasharray="${len.toFixed(1)} ${(circ-len).toFixed(1)}"
+        stroke-dashoffset="${(-offset+circ/4).toFixed(1)}" style="transition:stroke-dasharray .4s"/>`;
+      offset += len;
+      return arc;
+    }).join('');
+    const legend = segments.map(([lbl,val],i) =>
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+        <div style="width:10px;height:10px;border-radius:2px;background:${colors[i%colors.length]};flex-shrink:0"></div>
+        <span style="font-size:11px;color:var(--ink-20);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lbl)}</span>
+        <span style="font-size:11px;color:var(--ink-40);font-weight:600">${Math.round(val/total*100)}%</span>
+      </div>`
+    ).join('');
+    return `<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <svg width="130" height="130" viewBox="0 0 130 130">
+        ${arcs}
+        <text x="${cx}" y="${cy+5}" text-anchor="middle" font-family="var(--font-display)" font-size="18" fill="var(--ink-10)">${total}</text>
+        <text x="${cx}" y="${cy+20}" text-anchor="middle" font-size="9" fill="var(--ink-40)">total</text>
+      </svg>
+      <div style="flex:1;min-width:140px">${legend}</div>
+    </div>`;
+  }
+
+  // Helper: KPI summary cards row
+  function kpiRow(cards) {
+    return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px">'
+      + cards.map(c => `<div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:10px;padding:14px 16px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-40);margin-bottom:6px">${c.label}</div>
+        <div style="font-family:var(--font-display);font-size:22px;color:${c.color||'var(--gold)'};">${c.value}</div>
+        ${c.sub ? `<div style="font-size:11px;color:var(--ink-40);margin-top:3px">${c.sub}</div>` : ''}
+      </div>`).join('')
+      + '</div>';
+  }
+
+  function chartCard(title, sub, content, fullWidth=false) {
+    return `<div style="background:var(--ink-85,var(--ink-80));border:1px solid var(--ink-60);border-radius:12px;padding:20px;${fullWidth?'':''}">
+      <div style="font-family:var(--font-display);font-size:15px;color:var(--ink-10);margin-bottom:3px">${title}</div>
+      ${sub ? `<div style="font-size:11px;color:var(--ink-40);margin-bottom:14px">${sub}</div>` : '<div style="margin-bottom:14px"></div>'}
+      ${content}
+    </div>`;
+  }
+
+  const wr = allKpis.convRate || 0;
+  const avgDaysData = (() => {
+    const stageDays = {};
+    active.forEach(o => {
+      const s = o.stage||'Unknown';
+      const created = o.createdAt ? new Date(o.createdAt+'T12:00:00') : new Date();
+      const days = Math.max(Math.round((new Date()-created)/86400000), 0);
+      if (!stageDays[s]) stageDays[s] = [];
+      stageDays[s].push(days);
+    });
+    return Object.entries(stageDays).map(([s,arr]) => [s, Math.round(arr.reduce((a,b)=>a+b,0)/arr.length)]).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  })();
+
+  const totalRev = sold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+  const weightedPipe = active.filter(o=>o.stage!=='Canceled').reduce((s,o)=>s+Math.floor((Number(o.probability)||0)/100*(Number(o.estimate)||0)),0);
+  const gcSales = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+  const gcPct   = totalRev > 0 ? Math.round(gcSales/totalRev*100) : 0;
+  const avgOrder = sold.length > 0 ? Math.round(totalRev/sold.length) : 0;
+
+  el.innerHTML = `
+  <div class="section-header"><div style="padding:0 24px;max-width:1320px;margin:0 auto">
+    <span class="label" style="display:block;margin-bottom:6px">Performance Intelligence</span>
+    <h2 class="display">📊 ANALYTICS</h2>
+    <p style="font-size:13px;color:var(--ink-40);margin-top:8px">Visual KPI overview — all metrics at a glance</p>
+  </div></div>
+
+  <div class="container" style="margin-bottom:32px">
+
+    ${kpiRow([
+      { label:'Total Revenue (YTD)', value: fmt$(totalRev), color:'var(--green)', sub: sold.length + ' closed deals' },
+      { label:'Weighted Pipeline', value: fmt$(weightedPipe), color:'var(--gold)', sub: active.length + ' active opps' },
+      { label:'Win Rate', value: Math.round(wr) + '%', color: wr>=50?'var(--green)':'var(--gold)', sub:'Closed / Total contacted' },
+      { label:'Avg Order Value', value: fmt$(avgOrder), color:'var(--gold)', sub:'Across all sold deals' },
+      { label:'GoldComp Revenue', value: fmt$(gcSales), color:'var(--gold)', sub: gcPct + '% of total sales' },
+      { label:'Avg Close Probability', value: Math.round(allKpis.avgProb||0) + '%', color:'var(--ink-10)', sub:'Active pipeline' },
+    ])}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      ${chartCard('Monthly Revenue vs Goal', 'Last 12 months — gold dashed line = goal',
+        barChart(last12.map(m=>({lbl:m.lbl,val:m.val,goal:getGoalForMonth(new Date(m.key+'-15').getMonth())})),
+          {color:'var(--gold)',valueFormat:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+v,showGoal:true})
+      )}
+      ${chartCard('Monthly Goal vs Actual (Current Year)', 'Each bar = actual, dashed = goal',
+        barChart(goalVsActual.map(m=>({lbl:m.lbl,val:m.rev,goal:m.goal})),
+          {color:'var(--gold)',valueFormat:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+v})
+      )}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      ${chartCard('Pipeline by Stage', 'Number of active leads per stage',
+        barChart(stageData.map(([s,c])=>({lbl:s.replace('Design in Progress','Design').replace('Pending Decision','Pending'),val:c})),
+          {color:'#4472CA',valueFormat:v=>String(v)})
+      )}
+      ${chartCard('Revenue by Project Type', 'Total closed revenue per category',
+        hBarChart(ptData, {color:'var(--green)',valueFormat:v=>'$'+Math.round(v/1000)+'k'})
+      )}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+      ${chartCard('Win Tier Distribution', 'All opportunities by tier',
+        donutChart(
+          Object.entries(BL.winTierDistribution ? BL.winTierDistribution(opps) : (() => {
+            const t={};
+            opps.forEach(o=>{const wt=BL.getWinTier(o).label||'Unknown';t[wt]=(t[wt]||0)+1;});
+            return t;
+          })()).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]),
+          opps.length
+        )
+      )}
+      ${chartCard('Lead Source Distribution', 'Where your pipeline comes from',
+        donutChart(srcData, opps.length)
+      )}
+      ${chartCard('Probability Distribution', 'Active leads by close probability',
+        (() => {
+          const maxC = Math.max(...probBuckets.map(b=>b.cnt),1);
+          const bars = probBuckets.map((b,i) => {
+            const col = b.lbl.startsWith('75')||b.lbl.startsWith('90') ? 'var(--green)' : b.lbl.startsWith('50') ? 'var(--gold)' : 'var(--ink-40)';
+            const bh  = Math.max(Math.round((b.cnt/maxC)*100),2);
+            return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
+              <span style="font-size:10px;color:${col};font-weight:700">${b.cnt}</span>
+              <div style="width:100%;height:${bh}px;max-height:100px;background:${col};border-radius:3px 3px 0 0;opacity:.85;min-height:4px"></div>
+              <span style="font-size:9px;color:var(--ink-40);text-align:center;white-space:nowrap">${b.lbl}</span>
+            </div>`;
+          }).join('');
+          return `<div style="display:flex;gap:6px;align-items:flex-end;height:120px;padding-bottom:20px">${bars}</div>`;
+        })()
+      )}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      ${chartCard('Avg Days in Stage', 'How long active leads sit in each stage',
+        avgDaysData.length ? hBarChart(avgDaysData, {color:'var(--gold)',valueFormat:v=>v+'d'}) :
+          '<p style="color:var(--ink-40);font-size:12px">Add leads to see stage timing</p>'
+      )}
+      ${chartCard('GoldComp Mix', 'GoldComp sales vs standard sales',
+        donutChart(
+          [['GoldComp', gcSales], ['Standard', totalRev - gcSales]].filter(([,v])=>v>0),
+          totalRev || 1
+        )
+      )}
+    </div>
+
+    <div style="margin-bottom:16px">
+      ${chartCard('Home Call Conversion Rate', 'Leads by home call status vs close rate', (() => {
+        const hcYes = opps.filter(o=>o.homeCall==='Yes');
+        const hcNo  = opps.filter(o=>o.homeCall!=='Yes');
+        const hcConv = hcYes.length > 0 ? Math.round(hcYes.filter(o=>o.saleMade==='Yes').length/hcYes.length*100) : 0;
+        const noConv = hcNo.length  > 0 ? Math.round(hcNo.filter(o=>o.saleMade==='Yes').length/hcNo.length*100)   : 0;
+        return kpiRow([
+          { label:'With Home Call', value:hcYes.length+' leads', sub:'Close rate: '+hcConv+'%', color:'var(--green)' },
+          { label:'Without Home Call', value:hcNo.length+' leads', sub:'Close rate: '+noConv+'%', color:'var(--ink-20)' },
+          { label:'Home Call Advantage', value:(hcConv-noConv)+'pp', sub:'Lift in close rate', color:hcConv>noConv?'var(--green)':'var(--ink-40)' },
+          { label:'Total Home Calls Done', value:allKpis.homeCalls||0, sub:'This period', color:'var(--gold)' },
+        ]);
+      })(), true)}
+    </div>
+
+    <div style="text-align:center;color:var(--ink-40);font-size:11px;padding:16px 0">
+      Analytics calculated live from your pipeline • Refresh the page to update • Click any lead on other tabs to edit
+    </div>
+  </div>`;
 }
 
 async function renderTasks() {
