@@ -3508,7 +3508,7 @@ function formatDateShort(dateStr) {
   const [y,m,d] = dateStr.split('-').map(Number);
   return new Date(y,m-1,d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
-function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function esc(str) { return String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 /* ── Mailing tone policy: positive-only selling ──
    No harsh, negative, or disrespectful language.
