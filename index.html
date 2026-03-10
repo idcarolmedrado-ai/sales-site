@@ -1,12 +1,4 @@
-function getQuarter(dateStr) {
-  if (!dateStr) return null;
-  const m = parseInt((dateStr||'').slice(5,7), 10);
-  if (!m) return null;
-  if (m >= 7 && m <= 9)  return 'Q1';
-  if (m >= 10) return 'Q2';
-  if (m >= 1  && m <= 3) return 'Q3';
-  return 'Q4';
-}<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -633,9 +625,9 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M1 4l7 5 7-5"/></svg>
       <span data-i18n="nav_mailing">Mailing</span>
     </button>
-    <button class="nav-tab" onclick="navigate('tasks')" data-page="tasks">
+    <button class="nav-tab" onclick="navigate('active')" data-page="active">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="14" height="14" rx="2"/><path d="M4 5h8M4 8h8M4 11h5"/></svg>
-      <span>Tasks</span>
+      <span>Active</span>
       <span id="tasksBadge" style="background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px">0</span>
     </button>
     <button class="nav-tab" onclick="navigate('post30')" data-page="post30">
@@ -758,7 +750,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
           <div class="dash-card-title">📋 Tasks</div>
           <div class="dash-card-sub">All pending follow-ups, post-sale &amp; overdue activities</div>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="navigate('tasks')">View All →</button>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('active')">View All →</button>
       </div>
       <div id="tasksWidget">
         <div class="empty-state"><div class="icon">✅</div><p>All caught up!</p></div>
@@ -863,7 +855,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 </div><!-- /mailing -->
 
 <!-- ══════ TESTS ══════ -->
-<div class="page" id="page-tasks"></div>
+<div class="page" id="page-active"></div>
 <div class="page" id="page-post30"></div>
 <div class="page" id="page-post60"></div>
 <div class="page" id="page-sales"></div>
@@ -1561,7 +1553,7 @@ function toast(msg, type='info') {
 }
 
 function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 /* ══════════════════════════════════════════════════
@@ -1592,6 +1584,7 @@ const BL = {
 
   /* Days overdue */
   getDaysOverdue(opp) {
+    if (opp.saleMade === 'Yes' || opp.stage === 'Canceled') return 0;
     if (!opp.followUpDate) return 0;
     // Date.UTC avoids DST — treats YYYY-MM-DD as exact calendar days
     const toUTC = s => { const [y,m,d] = s.split('-').map(Number); return Date.UTC(y, m-1, d); };
@@ -2459,7 +2452,7 @@ async function renderPage(page) {
     case 'priorities': await renderPriorities(); break;
     case 'year':       await renderYear();       break;
     case 'mailing':    await renderMailing();    break;
-    case 'tasks':      await renderTasks();      break;
+    case 'active':     await renderActive();     break;
     case 'post30':     await renderPost30();     break;
     case 'post60':     await renderPost60();     break;
     case 'sales': window._currentPage='sales'; await renderSales(); break;
@@ -2490,6 +2483,16 @@ function getGoals() {
     const raw = localStorage.getItem('ea_monthly_goals');
     return raw ? JSON.parse(raw) : {};
   } catch(e) { return {}; }
+}
+
+function getQuarter(dateStr) {
+  if (!dateStr) return null;
+  const m = parseInt((dateStr||'').slice(5,7), 10);
+  if (!m) return null;
+  if (m >= 7 && m <= 9)  return 'Q1';
+  if (m >= 10) return 'Q2';
+  if (m >= 1  && m <= 3) return 'Q3';
+  return 'Q4';
 }
 
 function getGoalForMonth(monthIdx) {
@@ -3115,7 +3118,6 @@ function updatePost60(oppId, field, value) {
    Rate: $0.725/mile (2026 IRS)
 ════════════════════════════════════════════════════ */
 async function renderMileage() {
-  const opps    = await DB.getAll();
   const today   = new Date();
   const RATE    = 0.725;
 
@@ -3127,22 +3129,7 @@ async function renderMileage() {
   };
   const MS = window._mileState;
 
-  /* ── Auto-seed home calls for ALL months ── */
   let allRecs = getMileageRecords();
-  opps.filter(o => o.homeCall === 'Yes' && o.homeCallDate).forEach(o => {
-    if (!allRecs.find(r => r.sourceOppId === o.id)) {
-      allRecs.push({
-        id: uid(), sourceOppId: o.id, isManual: false,
-        date: o.homeCallDate,
-        clientName: `${o.firstName||''} ${o.lastName||''}`.trim(),
-        address: o.address || '',
-        stopHome1:'', stopDC1:'', stopClient:'', stopHome2:'', stopDC2:'',
-        totalMiles:'', commuteDeduct:'', tollsParking:'', designPartner:'',
-      });
-    }
-  });
-  Store.save('mileage', allRecs);
-  allRecs = getMileageRecords();
 
   /* ── Build month groups ── */
   const grouped = {};  // key: "YYYY-MM"
@@ -4446,9 +4433,9 @@ async function runAllTests() {
   // ══════════════════════════════════════════
 
   test('XSS: esc() strips < > " characters', () => {
-    const dangerous = '<script>alert("xss")</script>';
+    const dangerous = '<scr'+'ipt>alert("xss")</'+'script>';
     const safe = esc(dangerous);
-    return !safe.includes('<script>') && !safe.includes('</script>') ?
+    return !safe.includes('<scr'+'ipt>') && !safe.includes('</'+'script>') ?
       true : 'XSS not escaped: ' + safe;
   });
 
@@ -5943,71 +5930,205 @@ async function renderAnalytics() {
   </div>`;
 }
 
-async function renderTasks() {
+async function renderActive() {
   const opps  = await DB.getAll();
-  const tasks = _buildTasks(opps);
-  const el    = document.getElementById('page-tasks');
+  const el    = document.getElementById('page-active');
   if (!el) return;
 
-  const cnt = { overdue: 0, today: 0, upcoming: 0, postponed: 0 };
-  tasks.forEach(t => { if (cnt[t.type] !== undefined) cnt[t.type]++; });
+  /* ── Active clients = saleMade=Yes, sorted by deliveryDate then saleDate ── */
+  const clients = opps
+    .filter(o => o.saleMade === 'Yes')
+    .sort((a, b) => {
+      const da = a.deliveryDate || a.saleDate || '9999';
+      const db = b.deliveryDate || b.saleDate || '9999';
+      return da.localeCompare(db);
+    });
 
-  function TH(txt, right) {
-    return '<th style="padding:8px 10px;text-align:' + (right ? 'right' : 'left')
-      + ';font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.08em;text-transform:uppercase;'
-      + 'white-space:nowrap;background:var(--ink-80);border-bottom:2px solid var(--ink-60);position:sticky;top:0">' + txt + '</th>';
+  const today = localDateStr(new Date());
+
+  /* ── Column header helper ── */
+  function TH(txt, extra) {
+    return '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;'
+      + 'color:var(--ink-10);letter-spacing:.07em;text-transform:uppercase;'
+      + 'white-space:nowrap;border-bottom:2px solid var(--gold-dk);border-right:1px solid var(--ink-60);'
+      + 'position:sticky;top:0;' + (extra || '') + '">' + txt + '</th>';
   }
-  function TD(txt, right, extra) {
-    return '<td style="padding:8px 10px;text-align:' + (right ? 'right' : 'left')
-      + ';font-size:12px;vertical-align:middle;' + (extra || '') + '">' + txt + '</td>';
+  function THR(txt, extra) {  /* Red/accent header */
+    return '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;'
+      + 'color:#fff;letter-spacing:.07em;text-transform:uppercase;'
+      + 'white-space:nowrap;background:rgba(180,50,50,.55);border-bottom:2px solid var(--gold-dk);'
+      + 'border-right:1px solid rgba(255,255,255,.15);position:sticky;top:0;' + (extra || '') + '">' + txt + '</th>';
+  }
+  function TD(txt, extra) {
+    return '<td style="padding:7px 10px;font-size:12px;vertical-align:middle;'
+      + 'border-right:1px solid var(--ink-70);border-bottom:1px solid var(--ink-70);'
+      + (extra || '') + '">' + (txt || '<span style="color:var(--ink-60)">—</span>') + '</td>';
   }
 
-  const rows = tasks.map(t => {
-    const badge = '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;'
-      + 'background:' + t.labelColor + '22;color:' + t.labelColor + '">' + esc(t.label) + '</span>';
-    const del2badge = t.delivery2Day ? ' <span style="font-size:10px;font-weight:700;color:var(--red)">🚚</span>' : '';
-    return '<tr onclick="editLead(\'' + t.oppId + '\')" style="cursor:pointer;border-bottom:1px solid var(--ink-70);border-left:3px solid ' + t.labelColor + '"'
-      + ' onmouseover="this.style.background=\'rgba(196,147,63,.05)\'" onmouseout="this.style.background=\'\'">'
-      + TD('<div style="font-weight:600;color:var(--ink-10)">' + esc(t.firstName) + ' ' + esc(t.lastName) + '</div>'
-          + '<div style="font-size:10px;color:var(--ink-40)">' + esc(t.projectType) + '</div>')
-      + TD(t.customerNumber ? '<span style="color:var(--gold);font-weight:700">' + esc(t.customerNumber) + '</span>' : '—')
-      + TD(t.saleDate ? fmtDate(t.saleDate) : '—')
-      + TD(t.estimate > 0 ? '<span style="color:var(--green)">' + fmt$(t.estimate) + '</span>' : '—', true)
-      + TD(t.goldComp === 'Yes' ? '<span style="color:var(--gold)">⭐</span>' : '—', false, 'text-align:center')
-      + TD(esc(t.activePhase) || '—')
-      + TD(badge)
-      + TD('<div style="font-size:12px">' + esc(t.activity.slice(0, 60)) + (t.activity.length > 60 ? '…' : '') + '</div>'
-          + (t.dueDate ? '<div style="font-size:10px;color:var(--ink-40);margin-top:2px">' + fmtDate(t.dueDate) + '</div>' : ''))
-      + TD(t.delivery2Day ? '<span style="color:var(--red);font-weight:700">🚚 ' + fmtDate(t.deliveryDate) + '</span>' + del2badge
-                           : (t.deliveryDate ? fmtDate(t.deliveryDate) : '—'))
-      + TD(t.linkReviewDate ? fmtDate(t.linkReviewDate) : '—')
-      + TD(t.issueFlag || '—', false, 'color:' + (t.issueFlag === 'Yes' ? 'var(--red)' : 'var(--ink-40)') + ';text-align:center')
-      + TD(t.issueType ? esc(t.issueType.slice(0, 30)) + (t.issueType.length > 30 ? '…' : '') : '—')
-      + TD(t.issueResult || '—', false, 'color:' + (t.issueResult === 'Yes' ? 'var(--green)' : 'var(--ink-40)') + ';text-align:center')
+  /* ── Build rows ── */
+  const rows = clients.map((o, i) => {
+    const rowBg = i % 2 === 0 ? 'var(--ink-90)' : 'var(--ink-80)';
+    const gcVal = o.goldComp === 'Yes' ? (Number(o.estimate) || 0) : 0;
+
+    /* 2-Days-Before-Delivery */
+    const twoDaysBefore = o.deliveryDate ? offsetDate(o.deliveryDate, -2) : '';
+    const twoFlag = twoDaysBefore && twoDaysBefore <= today && (!o.deliveryDate || today <= o.deliveryDate);
+
+    /* Delivery status color */
+    const dvDiff = o.deliveryDate ? daysDiff(today, o.deliveryDate) : null;
+    const dvColor = dvDiff === null ? 'var(--ink-60)'
+                  : dvDiff < 0   ? 'var(--red)'
+                  : dvDiff <= 2  ? 'var(--gold)'
+                  : 'var(--ink-10)';
+
+    /* Issue badge */
+    const issueBg = o.issueFlag === 'Yes' ? 'rgba(231,76,60,.15)' : 'rgba(76,175,125,.1)';
+    const issueTxt = o.issueFlag === 'Yes' ? 'var(--red)' : 'var(--green)';
+    const issueLbl = o.issueFlag === 'Yes' ? 'Yes' : (o.issueFlag === 'No' ? 'No' : '—');
+
+    /* Issue result badge */
+    const resultBg  = o.issueResult === 'Yes' ? 'rgba(76,175,125,.15)' : 'rgba(231,76,60,.1)';
+    const resultTxt = o.issueResult === 'Yes' ? 'var(--green)' : (o.issueResult ? 'var(--red)' : 'var(--ink-60)');
+
+    /* Link Review highlight */
+    const lrDiff   = o.linkReviewDate ? daysDiff(today, o.linkReviewDate) : null;
+    const lrColor  = lrDiff === null ? 'var(--ink-60)'
+                   : lrDiff < 0  ? 'var(--red)'
+                   : lrDiff <= 1 ? 'var(--gold)'
+                   : 'var(--ink-10)';
+
+    return '<tr onclick="editLead(\'' + o.id + '\')" style="cursor:pointer;background:' + rowBg + '"'
+      + ' onmouseover="this.style.background=\'rgba(196,147,63,.07)\'" onmouseout="this.style.background=\'' + rowBg + '\'">'
+      /* A: Last Name */
+      + TD('<span style="font-weight:600;color:var(--ink-10)">' + esc(o.lastName || '') + '</span>')
+      /* B: First Name */
+      + TD(esc(o.firstName || ''))
+      /* C: Customer # */
+      + TD(o.customerNumber
+          ? '<span style="color:var(--gold);font-weight:700;font-size:11px">' + esc(o.customerNumber) + '</span>'
+          : '', 'background:rgba(180,50,50,.08)')
+      /* D: GoldComp Y/N */
+      + TD(o.goldComp === 'Yes'
+          ? '<span style="background:rgba(196,147,63,.18);color:var(--gold);font-weight:700;font-size:10px;padding:2px 7px;border-radius:4px">⭐ Yes</span>'
+          : '<span style="color:var(--ink-60);font-size:11px">No</span>',
+          'background:rgba(180,50,50,.08)')
+      /* E: Sale Date */
+      + TD(o.saleDate ? fmtDate(o.saleDate) : (o.closeDate ? fmtDate(o.closeDate) : ''), 'background:rgba(180,50,50,.08)')
+      /* F: Project Type */
+      + TD('<span style="color:var(--ink-20)">' + esc(o.projectType || '') + '</span>', 'background:rgba(180,50,50,.08)')
+      /* G: GoldComp Value */
+      + TD(gcVal > 0
+          ? '<span style="color:var(--gold);font-weight:700">' + fmt$(gcVal) + '</span>'
+          : '<span style="color:var(--ink-60)">—</span>',
+          'text-align:right;background:rgba(180,50,50,.08)')
+      /* H: Project Value */
+      + TD(o.estimate
+          ? '<span style="color:var(--green);font-weight:700">' + fmt$(Number(o.estimate)) + '</span>'
+          : '', 'text-align:right;background:rgba(180,50,50,.08)')
+      /* [I: Active Phase — EXCLUDED] */
+      /* J: 2 Days Before Delivery */
+      + TD(twoDaysBefore
+          ? '<span style="color:' + (twoFlag ? 'var(--gold)' : 'var(--ink-40)') + ';font-size:11px">'
+            + (twoFlag ? '🔔 ' : '') + fmtDate(twoDaysBefore) + '</span>'
+          : '', 'text-align:center')
+      /* K: Delivery Date */
+      + TD(o.deliveryDate
+          ? '<span style="color:' + dvColor + ';font-weight:' + (dvDiff !== null && dvDiff <= 2 ? '700' : '400') + '">'
+            + (dvDiff !== null && dvDiff < 0 ? '🚚 ' : dvDiff !== null && dvDiff <= 2 ? '📦 ' : '')
+            + fmtDate(o.deliveryDate) + '</span>'
+          : '', 'text-align:center')
+      /* [L: Last Contact — EXCLUDED] */
+      /* M: Follow-up / Link Review */
+      + TD(o.linkReviewDate
+          ? '<span style="color:' + lrColor + ';font-weight:' + (lrDiff !== null && lrDiff <= 1 ? '700' : '400') + '">'
+            + (lrDiff !== null && lrDiff <= 0 ? '⭐ ' : '') + fmtDate(o.linkReviewDate) + '</span>'
+          : '')
+      /* N: Issue Flag */
+      + TD(o.issueFlag
+          ? '<span style="background:' + issueBg + ';color:' + issueTxt + ';font-weight:700;font-size:10px;padding:2px 8px;border-radius:4px">'
+            + issueLbl + '</span>'
+          : '', 'text-align:center')
+      /* O: Issue Type */
+      + TD(o.issueType ? esc(o.issueType.slice(0, 30)) + (o.issueType.length > 30 ? '…' : '') : '')
+      /* P: Issue Follow-up (nextStep when issue is open) */
+      + TD(o.issueFlag === 'Yes' && o.nextStep ? esc(o.nextStep.slice(0, 35)) + (o.nextStep.length > 35 ? '…' : '') : '')
+      /* Q: Issue Result */
+      + TD(o.issueResult
+          ? '<span style="background:' + resultBg + ';color:' + resultTxt + ';font-weight:700;font-size:10px;padding:2px 8px;border-radius:4px">'
+            + esc(o.issueResult) + '</span>'
+          : '', 'text-align:center')
+      /* R: Notes */
+      + TD(o.notes ? '<span style="color:var(--ink-40);font-style:italic;font-size:11px">'
+            + esc(o.notes.slice(0, 45)) + (o.notes.length > 45 ? '…' : '') + '</span>' : '')
+      /* [S, T, U — EXCLUDED] */
+      /* Edit button */
+      + '<td style="padding:5px 8px;border-bottom:1px solid var(--ink-70);text-align:center">'
+        + '<button onclick="event.stopPropagation();editLead(\'' + o.id + '\')" title="Edit"'
+        + ' style="background:none;border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;'
+        + 'font-size:10px;font-weight:700;padding:3px 9px;cursor:pointer;letter-spacing:.04em">EDIT ✏️</button>'
+        + '</td>'
       + '</tr>';
   }).join('');
 
-  el.innerHTML = '<div class="section-header"><div style="padding:0 24px;max-width:1320px;margin:0 auto">'
-    + '<span class="label" style="display:block;margin-bottom:6px">Task Management</span>'
-    + '<h2 class="display">TASKS</h2>'
-    + '<p style="font-size:13px;color:var(--ink-40);margin-top:8px">All open activities — overdue, due today, post-sale &amp; upcoming</p>'
+  /* ── Summary KPIs ── */
+  const totalVal  = clients.reduce((s, o) => s + (Number(o.estimate) || 0), 0);
+  const gcVal     = clients.filter(o => o.goldComp === 'Yes').reduce((s, o) => s + (Number(o.estimate) || 0), 0);
+  const openIssues = clients.filter(o => o.issueFlag === 'Yes' && o.issueResult !== 'Yes').length;
+  const upcoming  = clients.filter(o => o.deliveryDate && daysDiff(today, o.deliveryDate) >= 0 && daysDiff(today, o.deliveryDate) <= 7).length;
+  const reviewDue = clients.filter(o => o.linkReviewDate && daysDiff(today, o.linkReviewDate) <= 0).length;
+
+  el.innerHTML =
+    '<div class="section-header"><div style="padding:0 24px;max-width:1400px;margin:0 auto">'
+    + '<span class="label" style="display:block;margin-bottom:6px">Post-Sale Tracking</span>'
+    + '<h2 class="display">ACTIVE CLIENTS</h2>'
+    + '<p style="font-size:13px;color:var(--ink-40);margin-top:8px">All sold clients — delivery, link review &amp; issue tracking</p>'
     + '</div></div>'
-    + '<div class="container" style="margin-bottom:16px"><div style="display:flex;gap:10px;flex-wrap:wrap">'
-    + (cnt.overdue  ? '<span style="background:rgba(231,76,60,.15);color:var(--red);font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(231,76,60,.3)">⚠️ ' + cnt.overdue + ' Overdue</span>' : '')
-    + (cnt.today    ? '<span style="background:rgba(196,147,63,.15);color:var(--gold);font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(196,147,63,.3)">📅 ' + cnt.today + ' Due Today</span>' : '')
-    + (cnt.upcoming ? '<span style="background:rgba(76,175,125,.1);color:var(--green);font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(76,175,125,.2)">📌 ' + cnt.upcoming + ' Upcoming</span>' : '')
-    + (!tasks.length ? '<span style="color:var(--green);font-weight:600">✅ All clear!</span>' : '')
+
+    /* KPI chips */
+    + '<div class="container" style="margin-bottom:16px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
+    + '<div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:8px 16px;display:flex;gap:10px;align-items:center">'
+    + '<span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40)">Clients</span>'
+    + '<span style="font-size:18px;font-weight:700;color:var(--gold)">' + clients.length + '</span></div>'
+    + '<div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:8px 16px;display:flex;gap:10px;align-items:center">'
+    + '<span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40)">Total Value</span>'
+    + '<span style="font-size:18px;font-weight:700;color:var(--green)">' + fmt$(totalVal) + '</span></div>'
+    + '<div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:8px 16px;display:flex;gap:10px;align-items:center">'
+    + '<span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40)">GoldComp</span>'
+    + '<span style="font-size:18px;font-weight:700;color:var(--gold)">' + fmt$(gcVal) + '</span></div>'
+    + (upcoming ? '<span style="background:rgba(196,147,63,.15);color:var(--gold);font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;border:1px solid rgba(196,147,63,.3)">📦 ' + upcoming + ' Deliveries this week</span>' : '')
+    + (reviewDue ? '<span style="background:rgba(196,147,63,.15);color:var(--gold);font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;border:1px solid rgba(196,147,63,.3)">⭐ ' + reviewDue + ' Review Due</span>' : '')
+    + (openIssues ? '<span style="background:rgba(231,76,60,.15);color:var(--red);font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;border:1px solid rgba(231,76,60,.3)">🔴 ' + openIssues + ' Open Issues</span>' : '')
+    + (!clients.length ? '' : '')
     + '</div></div>'
-    + '<div class="container" style="margin-bottom:32px;overflow-x:auto">'
-    + (!tasks.length
-        ? '<div class="empty-state"><div class="icon">✅</div><p>No open tasks — great work!</p></div>'
-        : '<table style="width:100%;border-collapse:collapse;min-width:1200px"><thead><tr>'
-          + TH('Client / Project') + TH('Customer #') + TH('Sale Date') + TH('Value', true)
-          + TH('GC') + TH('Phase') + TH('Status') + TH('Activity')
-          + TH('Delivery') + TH('Link Review') + TH('Issue?') + TH('Issue Type') + TH('Resolved?')
-          + '</tr></thead><tbody>' + rows + '</tbody></table>')
+
+    /* Table */
+    + '<div class="container" style="margin-bottom:32px;overflow-x:auto;padding-bottom:2px">'
+    + (!clients.length
+        ? '<div class="empty-state"><div class="icon">📭</div><p>No active clients yet — closed deals will appear here</p></div>'
+        : '<table style="width:100%;border-collapse:collapse;min-width:1400px;font-size:12px">'
+          + '<thead><tr style="background:var(--ink-70)">'
+          /* A-B: white headers */
+          + TH('Last Name') + TH('First Name')
+          /* C-H: red headers */
+          + THR('Customer #') + THR('GoldComp<br>Yes/No') + THR('Sale Date')
+          + THR('Project Type') + THR('GoldComp Value') + THR('Project Value')
+          /* [I excluded] */
+          /* J-K */
+          + TH('2 Days Before<br>Delivery','text-align:center') + TH('Delivery Date','text-align:center')
+          /* [L excluded] */
+          /* M-R */
+          + TH('Follow-up / Link<br>Review','text-align:center')
+          + TH('Issue Flag<br>Yes/No','text-align:center')
+          + TH('Issue Type') + TH('Issue Follow-up') + TH('Issue Result','text-align:center')
+          + TH('Notes')
+          /* [S, T, U excluded] */
+          + TH('','width:60px')
+          + '</tr></thead>'
+          + '<tbody>' + rows + '</tbody>'
+          + '</table>')
     + '</div>';
 }
+
 
 async function renderSales() {
   const opps  = await DB.getAll();
