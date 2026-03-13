@@ -4526,16 +4526,18 @@ async function renderSecurity() {
   const el = document.getElementById('page-security');
   if (!el) return;
 
-  const pinLen    = getPinLength();
-  const hasPin    = !!getStoredHash();
+  const pinLen      = getPinLength();
+  const hasPin      = !!getStoredHash();
+  const lockEnabled = localStorage.getItem('ea_pin_lock_enabled') === 'true';
   const auditData = getAuditLog().slice().reverse();
   const attempts  = getAttempts();
   const lockout   = getLockout();
   const isLocked  = lockout && (lockout + 5*60*1000 > Date.now());
 
   let score = 0, scoreItems = [];
-  if (hasPin)    { score += 30; scoreItems.push({ok:true,  label:'PIN protection enabled'}); }
-  else           { scoreItems.push({ok:false, label:'No PIN set — app is unprotected'}); }
+  if (hasPin && lockEnabled) { score += 30; scoreItems.push({ok:true,  label:'PIN lock enabled on startup'}); }
+  else if (hasPin)           { score += 15; scoreItems.push({ok:false, label:'PIN set but startup lock is OFF — enable it in Security'}); }
+  else                       { scoreItems.push({ok:false, label:'No PIN set — use Security page to configure'}); }
   if (pinLen===6){ score += 20; scoreItems.push({ok:true,  label:'6-digit PIN (stronger)'}); }
   else           { scoreItems.push({ok:false, label:'4-digit PIN — consider upgrading to 6'}); }
   score += 20; scoreItems.push({ok:true,  label:'Auto-lock after 15 min inactivity'});
@@ -4656,14 +4658,16 @@ async function renderSecurity() {
         // PIN card
         '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;padding:20px">' +
           '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:4px;letter-spacing:.05em">\ud83d\udd10 PIN PROTECTION</div>' +
-          '<div style="font-size:11px;color:var(--ink-40);margin-bottom:16px">Current: <strong style="color:var(--ink-20)">' + pinLen + '-digit</strong> &nbsp;·&nbsp; ' + (hasPin ? '<span style="color:var(--green)">Active</span>' : '<span style="color:var(--red)">Not set</span>') + '</div>' +
+          '<div style="font-size:11px;color:var(--ink-40);margin-bottom:16px">PIN: <strong style="color:var(--ink-20)">' + pinLen + '-digit</strong> &nbsp;·&nbsp; ' + (hasPin ? '<span style="color:var(--green)">Set</span>' : '<span style="color:var(--red)">Not set</span>') + ' &nbsp;·&nbsp; Lock: ' + (lockEnabled ? '<span style="color:var(--green)">Enabled</span>' : '<span style="color:var(--ink-50)">Disabled</span>') + '</div>' +
           '<div style="display:flex;flex-direction:column;gap:9px">' +
             '<button onclick="changePIN()" style="padding:9px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:8px;color:var(--gold);font-size:12px;font-weight:600;cursor:pointer">' + (hasPin ? '\ud83d\udd04 Change PIN' : '\ud83d\udd10 Set PIN') + '</button>' +
             '<div style="display:flex;gap:8px">' +
               '<button onclick="switchPinLength(4)" style="flex:1;padding:8px;background:' + (pinLen===4?'rgba(196,147,63,.2)':'var(--ink-75)') + ';border:1px solid ' + (pinLen===4?'var(--gold)':'var(--ink-60)') + ';border-radius:7px;color:' + (pinLen===4?'var(--gold)':'var(--ink-40)') + ';font-size:11px;font-weight:600;cursor:pointer">4-Digit</button>' +
               '<button onclick="switchPinLength(6)" style="flex:1;padding:8px;background:' + (pinLen===6?'rgba(76,175,125,.2)':'var(--ink-75)') + ';border:1px solid ' + (pinLen===6?'var(--green)':'var(--ink-60)') + ';border-radius:7px;color:' + (pinLen===6?'var(--green)':'var(--ink-40)') + ';font-size:11px;font-weight:600;cursor:pointer">6-Digit \u2b50</button>' +
             '</div>' +
-            '<button onclick="lockNow()" style="padding:9px;background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600;cursor:pointer">\ud83d\udd12 Lock App Now</button>' +
+            (lockEnabled
+            ? '<button onclick="disablePinLock()" style="padding:9px;background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600;cursor:pointer">🔓 Disable Startup Lock</button>'
+            : '<button onclick="enablePinLock()" style="padding:9px;background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);border-radius:8px;color:var(--green);font-size:12px;font-weight:600;cursor:pointer">🔐 Enable Startup Lock</button>') +
           '</div>' +
         '</div>' +
         // Session card
@@ -8351,7 +8355,14 @@ async function launchDemoMode() {
       hideOverlay();
       startInactivityTimer();
       auditLog('PIN_SET', `${getPinLength()}-digit PIN configured`);
-      toast('🔐 PIN set successfully', 'success');
+      if (localStorage.getItem('ea_pin_lock_pending') === '1') {
+        localStorage.setItem('ea_pin_lock_enabled', 'true');
+        localStorage.removeItem('ea_pin_lock_pending');
+        auditLog('PIN_LOCK_ENABLED', 'auto-enabled after PIN setup');
+        toast('🔐 PIN set & lock enabled — active on next page load', 'success');
+      } else {
+        toast('🔐 PIN set successfully', 'success');
+      }
       return;
     }
 
@@ -8444,11 +8455,35 @@ async function launchDemoMode() {
   window.changePIN = function() {
     const hasPin = !!getStoredHash();
     if (hasPin) {
-      // Must verify existing PIN before changing
       showOverlay('verify-old');
     } else {
       showOverlay('setup');
     }
+  };
+
+  window.enablePinLock = function() {
+    const hasPin = !!getStoredHash();
+    if (!hasPin) {
+      // No PIN set yet — set one first
+      showOverlay('setup');
+      // After setup completes, enable lock
+      const origHide = hideOverlay;
+      // flag to enable after next successful setup
+      localStorage.setItem('ea_pin_lock_pending', '1');
+    } else {
+      localStorage.setItem('ea_pin_lock_enabled', 'true');
+      localStorage.removeItem('ea_pin_lock_pending');
+      toast('🔐 PIN lock enabled — active on next page load', 'success');
+      auditLog('PIN_LOCK_ENABLED');
+      if (typeof renderSecurity === 'function') renderSecurity();
+    }
+  };
+
+  window.disablePinLock = function() {
+    localStorage.setItem('ea_pin_lock_enabled', 'false');
+    toast('🔓 PIN lock disabled — app will open freely', 'success');
+    auditLog('PIN_LOCK_DISABLED');
+    if (typeof renderSecurity === 'function') renderSecurity();
   };
 
   window.switchPinLength = function(n) {
@@ -8471,9 +8506,14 @@ async function launchDemoMode() {
   document.addEventListener('keydown', handleKeydown);
 
   document.addEventListener('DOMContentLoaded', () => {
-    // PIN auth disabled — auto-authenticate on load
-    setAuthenticated();
-    hideOverlay();
+    const lockEnabled = localStorage.getItem('ea_pin_lock_enabled') === 'true';
+    if (lockEnabled && !isAuthenticated()) {
+      const hasPin = !!getStoredHash();
+      showOverlay(hasPin ? 'enter' : 'setup');
+    } else {
+      setAuthenticated();
+      hideOverlay();
+    }
   });
 
   // PIN auth disabled — visibility lock removed
