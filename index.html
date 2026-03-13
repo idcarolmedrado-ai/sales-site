@@ -963,7 +963,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
             <select id="f-stage" onchange="onFieldChange()"><option value="">Select…</option></select></div>
           <div class="field"><label data-i18n="lbl_prob">Probability (%)</label>
             <select id="f-probability" onchange="onFieldChange()"><option value="">Select…</option></select></div>
-          <div class="field"><label data-i18n="lbl_est">Estimate ($)</label>
+          <div class="field"><label>Product Value ($)</label>
             <input id="f-estimate" type="number" min="0" step="100" placeholder="15000" oninput="onFieldChange()"></div>
           <div class="field"><label data-i18n="lbl_followup">Follow-Up Date</label>
             <input id="f-followUpDate" type="date" onchange="onFieldChange()"></div>
@@ -982,9 +982,18 @@ tbody td { padding: 11px 12px; font-size: 13px; }
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
           <div class="field"><label data-i18n="lbl_gc">GoldComp?</label>
-            <select id="f-goldComp">
+            <select id="f-goldComp" onchange="onFieldChange()">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
+          <div class="field" id="goldCompValueField" style="display:none">
+            <label>GoldComp Value ($) <span style="font-size:10px;color:var(--gold)">(GoldComp program credit)</span></label>
+            <input id="f-goldCompValue" type="number" min="0" step="100" placeholder="0" oninput="onFieldChange()">
+          </div>
+        </div>
+        <div id="totalSaleDisplay" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(196,147,63,.1);border:1px solid var(--gold-dk);border-radius:8px">
+          <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dk)">Total Sale Value: </span>
+          <span id="totalSaleVal" style="font-family:var(--font-display);font-size:20px;color:var(--gold)">$0</span>
+          <span style="font-size:11px;color:var(--ink-40);margin-left:8px">(Product + GoldComp)</span>
         </div>
       </div>
 
@@ -1019,7 +1028,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
         <div class="form-grid">
           <div class="field">
             <label>Customer #</label>
-            <input id="f-customerNumber" type="text" readonly placeholder="Auto-assigned on sale"
+            <input id="f-customerNumber" type="text" placeholder="e.g. EA-2026-0001"
               style="background:var(--ink-70);color:var(--gold);font-family:var(--font-display);font-weight:700">
           </div>
           <div class="field">
@@ -1884,7 +1893,7 @@ Interior Design Consultant | Ethan Allen`
     const hot = opps.filter(o => o.saleMade !== 'Yes' && (Number(o.probability)||0) >= 75);
 
     const totalSales   = sold.reduce((s,o) => s + (Number(o.estimate)||0), 0);
-    const gcSales      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+    const gcSales      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
     const weightedPipe = active.reduce((s,o)=>s+this.getWeighted(o),0);
     const totalEst     = active.reduce((s,o)=>s+(Number(o.estimate)||0),0);
     const homeCalls    = src.filter(o=>o.homeCall==='Yes').length;
@@ -2340,6 +2349,7 @@ const DB = {
       issueFlag:      row.issueFlag      || '',
       issueType:      row.issueType      || '',
       issueResult:    row.issueResult    || '',
+      goldCompValue:  Number(row.goldCompValue) || 0,
     };
   },
 
@@ -2372,6 +2382,7 @@ const DB = {
       issueFlag:       o.issueFlag     || null,
       issueType:       o.issueType     || null,
       issueResult:     o.issueResult   || null,
+      goldCompValue:   Number(o.goldCompValue) || 0,
     };
   },
 
@@ -2431,6 +2442,8 @@ let state = {
   stageFilter: null,
   mailFilter: null,
   editingId: null,
+  analyticsYear: new Date().getFullYear(),
+  analyticsMonth: null,
 };
 
 /* ══════════════════════════════════════════════════
@@ -2901,7 +2914,7 @@ function getPost30ByOppId(oppId) { return getPost30Records().find(r => r.oppId =
 function getMileageRecords() { return Store.load('mileage'); }
 function saveMileageRecord(rec) { Store.upsert('mileage', rec, 'id'); }
 function deleteMileageRecord(id) { Store.remove('mileage', id, 'id'); }
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+// uid() defined above
 
 
 /* ════════════════════════════════════════════════════
@@ -2919,7 +2932,7 @@ async function renderPost30() {
   // For each sold opp, get or create a post30 record
   const rows = sold.map(o => {
     const rec = records.find(r => r.oppId === o.id) || { oppId: o.id, deliveryDate: '', contactReason: '', newOpportunity: '', notes: '' };
-    const delivDate   = rec.deliveryDate || '';
+    const delivDate   = o.deliveryDate || rec.deliveryDate || '';
     const followup30  = delivDate ? offsetDate(delivDate, 30) : '';
     const daysToFU    = followup30 ? daysDiff(today, followup30) : null;
     return { opp: o, rec, delivDate, followup30, daysToFU };
@@ -2952,8 +2965,12 @@ async function renderPost30() {
     return `<tr style="${noNew ? 'opacity:.55' : ''}">
       <td><strong style="color:white">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:var(--ink-40);font-size:11px">${opp.projectType||'—'}</span></td>
       <td><span style="color:var(--gold)">$${(opp.estimate||0).toLocaleString()}</span></td>
-      <td><input type="date" value="${delivDate}" style="width:140px"
-        onchange="updatePost30('${opp.id}','deliveryDate',this.value)" /></td>
+      <td>
+        ${opp.deliveryDate
+          ? '<span style="color:var(--gold);font-size:12px">📦 ' + fmtDate(opp.deliveryDate) + '<br><span style="font-size:10px;color:var(--ink-40)">from Active record</span></span>'
+          : '<input type="date" value="' + delivDate + '" style="width:140px" onchange="updatePost30(\'' + opp.id + '\',\'deliveryDate\',this.value)" />'
+        }
+      </td>
       <td style="color:var(--ink-20)">${followup30 ? formatDateShort(followup30) : '—'}</td>
       <td>${statusBadge}</td>
       <td><input type="text" value="${esc(rec.contactReason||'')}" placeholder="e.g. 3-week check-in"
@@ -3029,8 +3046,9 @@ async function renderPost60() {
   const rows = eligible.map(rec => {
     const opp = opps.find(o => o.id === rec.oppId);
     if (!opp) return null;
-    const followup60 = offsetDate(rec.deliveryDate, 60);
-    const daysToFU   = daysDiff(today, followup60);
+    const dvSrc = opp.deliveryDate || rec.deliveryDate || '';
+    const followup60 = dvSrc ? offsetDate(dvSrc, 60) : '';
+    const daysToFU   = followup60 ? daysDiff(today, followup60) : null;
     // Post60 has its own contact/notes — stored as rec.p60_*
     return { opp, rec, followup60, daysToFU };
   }).filter(Boolean);
@@ -3053,8 +3071,8 @@ async function renderPost60() {
     return `<tr style="${done&&rec.p60_newOpportunity==='No'?'opacity:.5':''}">
       <td><strong style="color:white">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:var(--ink-40);font-size:11px">${opp.projectType||'—'}</span></td>
       <td><span style="color:var(--gold)">$${(opp.estimate||0).toLocaleString()}</span></td>
-      <td style="color:var(--ink-20)">${formatDateShort(rec.deliveryDate)}</td>
-      <td style="color:var(--ink-20)">${formatDateShort(followup60)}</td>
+      <td style="color:var(--ink-20)">${formatDateShort(dvSrc)}</td>
+      <td style="color:var(--ink-20)">${followup60 ? formatDateShort(followup60) : '—'}</td>
       <td>${statusBadge}</td>
       <td><input type="text" value="${esc(rec.p60_contactReason||'')}" placeholder="Final nurture touchpoint"
         onchange="updatePost60('${rec.oppId}','p60_contactReason',this.value)" style="min-width:160px" /></td>
@@ -3131,6 +3149,23 @@ async function renderMileage() {
 
   let allRecs = getMileageRecords();
 
+  /* ── Sync auto-seed records from home call opps ── */
+  try {
+    const opps = await DB.getAll();
+    opps.filter(o => o.homeCall === 'Yes' && o.homeCallDate).forEach(o => {
+      const rec = allRecs.find(r => r.sourceOppId === o.id);
+      if (rec) {
+        let changed = false;
+        if (rec.date !== o.homeCallDate) { rec.date = o.homeCallDate; changed=true; }
+        const name = (o.firstName+' '+o.lastName).trim();
+        if (rec.clientName !== name) { rec.clientName = name; changed=true; }
+        if (rec.address !== (o.address||'')) { rec.address = o.address||''; changed=true; }
+        if (changed) saveMileageRecord(rec);
+      }
+    });
+    allRecs = getMileageRecords(); // reload after potential updates
+  } catch(e) {}
+
   /* ── Build month groups ── */
   const grouped = {};  // key: "YYYY-MM"
   allRecs.forEach(r => {
@@ -3183,6 +3218,10 @@ async function renderMileage() {
       placeholder="${ph}" style="width:${w};background:var(--ink-80);border:1px solid var(--ink-60);
       color:var(--ink-10);border-radius:5px;padding:3px 5px;font-size:12px;
       font-family:var(--font-body)">`;
+  const legInp = (id,f,v,w) =>
+    `<input oninput="updateMileage('${id}','${f}',this.value);recalcLegSum('${id}');recalcMileRow('${id}')" value="${esc(String(v||''))}" type="number"
+      min="0" step="0.1" style="width:${w};background:var(--ink-80);border:1px solid var(--ink-60);
+      color:var(--gold);border-radius:5px;padding:3px 5px;font-size:12px;font-family:var(--font-body)">`;
   const numInp = (id,f,v,w) =>
     `<input oninput="updateMileage('${id}','${f}',this.value);recalcMileRow('${id}')" value="${esc(String(v||''))}" type="number"
       min="0" step="0.1" style="width:${w};background:var(--ink-80);border:1px solid var(--ink-60);
@@ -3217,12 +3256,14 @@ async function renderMileage() {
       <td style="padding:3px 6px;min-width:128px">${inp(r.id,'date',r.date,'118px','date')}</td>
       <td style="padding:3px 6px;min-width:130px">${inp(r.id,'clientName',r.clientName,'118px','text','')}</td>
       <td style="padding:3px 6px;min-width:160px">${inp(r.id,'address',r.address,'148px','text','')}</td>
-      <td style="padding:3px 5px;min-width:56px">${inp(r.id,'stopHome1',r.stopHome1||'','48px')}</td>
-      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopDC1',r.stopDC1||'','40px')}</td>
-      <td style="padding:3px 5px;min-width:56px">${inp(r.id,'stopClient',r.stopClient||'','48px')}</td>
-      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopHome2',r.stopHome2||'','40px')}</td>
-      <td style="padding:3px 5px;min-width:48px">${inp(r.id,'stopDC2',r.stopDC2||'','40px')}</td>
-      <td style="padding:3px 5px;min-width:72px">${numInp(r.id,'totalMiles',r.totalMiles,'64px')}</td>
+      <td style="padding:3px 5px;min-width:56px">${legInp(r.id,'stopHome1',r.stopHome1||'','48px')}</td>
+      <td style="padding:3px 5px;min-width:48px">${legInp(r.id,'stopDC1',r.stopDC1||'','40px')}</td>
+      <td style="padding:3px 5px;min-width:56px">${legInp(r.id,'stopClient',r.stopClient||'','48px')}</td>
+      <td style="padding:3px 5px;min-width:48px">${legInp(r.id,'stopHome2',r.stopHome2||'','40px')}</td>
+      <td style="padding:3px 5px;min-width:48px">${legInp(r.id,'stopDC2',r.stopDC2||'','40px')}</td>
+      <td style="padding:3px 5px;min-width:72px;text-align:right">
+        <span id="totmi-${r.id}" style="font-weight:700;font-size:12px;color:${(parseFloat(r.totalMiles)||0)>0?'var(--gold)':'var(--ink-60)'}">${(parseFloat(r.totalMiles)||0)>0?(parseFloat(r.totalMiles)).toFixed(1):'—'}</span>
+      </td>
       <td style="padding:3px 5px;min-width:72px">${numInp(r.id,'commuteDeduct',r.commuteDeduct,'64px')}</td>
       <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;min-width:72px">
         <span id="net-${r.id}" style="color:${net>0?'var(--gold)':'var(--ink-60)'}">${net>0 ? net.toFixed(1) : '—'}</span>
@@ -3428,6 +3469,23 @@ function updateMileage(id, field, value) {
   Store.save('mileage', recs);
 }
 
+function recalcLegSum(id) {
+  /* Auto-calculate Total Miles = sum of all 5 leg fields */
+  const recs = getMileageRecords();
+  const r    = recs.find(x => x.id === id);
+  if (!r) return;
+  const legs = ['stopHome1','stopDC1','stopClient','stopHome2','stopDC2'];
+  const total = legs.reduce((sum, f) => sum + (parseFloat(r[f]) || 0), 0);
+  r.totalMiles = total > 0 ? total.toString() : '';
+  Store.save('mileage', recs);
+  // Update the read-only total display cell
+  const el = document.getElementById('totmi-' + id);
+  if (el) {
+    el.textContent = total > 0 ? total.toFixed(1) : '—';
+    el.style.color = total > 0 ? 'var(--gold)' : 'var(--ink-60)';
+  }
+}
+
 function recalcMileRow(id) {
   const RATE = 0.725;
   const recs = getMileageRecords();
@@ -3508,7 +3566,7 @@ function formatDateShort(dateStr) {
   const [y,m,d] = dateStr.split('-').map(Number);
   return new Date(y,m-1,d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
-function esc(str) { return String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// esc() defined above
 
 /* ── Mailing tone policy: positive-only selling ──
    No harsh, negative, or disrespectful language.
@@ -3554,9 +3612,37 @@ async function renderMailing() {
   if (state.mailFilter==='sold')    list = list.filter(o=>o.saleMade==='Yes');
   if (state.mailFilter==='nurture') list = list.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)<50);
 
+  const sentMails   = getSentMails();
+  const sentOppIds  = sentMails.map(s => s.oppId);
+  const pendingList = list.filter(o => !sentOppIds.includes(o.id));
   const grid = document.getElementById('mailingGrid');
-  if (!list.length) { grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon"></div><p>No contacts in this segment</p></div>'; return; }
+  if (!pendingList.length && !sentMails.length) { grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon">📧</div><p>No contacts in this segment</p></div>'; return; }
 
+  const _renderSentBox = () => {
+    if (!sentMails.length) return '';
+    return '<div id="sentMailsBox" style="grid-column:1/-1;margin-top:8px;background:var(--ink-85);border:1px solid rgba(76,175,125,.2);border-radius:12px;overflow:hidden">'
+      + '<div style="padding:10px 16px;background:rgba(76,175,125,.07);border-bottom:1px solid rgba(76,175,125,.2);display:flex;align-items:center;gap:10px">'
+      + '<span style="font-size:16px">📤</span>'
+      + '<span style="font-family:var(--font-display);font-size:14px;color:var(--green)">Emails Sent (' + sentMails.length + ')</span>'
+      + '<button onclick="clearSentMails()" style="margin-left:auto;background:transparent;border:1px solid var(--ink-50);color:var(--ink-40);border-radius:5px;font-size:10px;padding:3px 10px;cursor:pointer">Clear List</button>'
+      + '</div>'
+      + '<div style="padding:12px 16px;display:flex;flex-direction:column;gap:6px">'
+      + [...sentMails].reverse().map(s => {
+          const dt = new Date(s.sentAt);
+          const dtStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+          return '<div style="display:flex;align-items:center;gap:12px;padding:7px 10px;background:var(--ink-80);border-radius:6px">'
+            + '<span style="color:var(--green);font-size:13px;flex-shrink:0">✓</span>'
+            + '<div style="flex:1;min-width:0">'
+            + '<div style="font-weight:600;color:var(--ink-20);font-size:13px">' + (s.name||'') + '</div>'
+            + '<div style="font-size:11px;color:var(--ink-40);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (s.subject||'') + '</div>'
+            + '</div>'
+            + '<span style="font-size:10px;color:var(--ink-40);white-space:nowrap">' + dtStr + '</span>'
+            + '</div>';
+        }).join('')
+      + '</div></div>';
+  };
+
+  list = pendingList;
   grid.innerHTML = list.map(o=>{
     const email  = BL.generatePersuasionEmail(o);
     const prio   = BL.getCampaignPriority(o);
@@ -3596,6 +3682,10 @@ async function renderMailing() {
         ${o.notes?`<span style="font-size:10px;color:var(--ink-40);font-style:italic;width:100%;display:block;margin-top:4px">${esc(o.notes.slice(0,55))}${o.notes.length>55?'…':''}</span>`:''}
       </div>
       <div class="mail-actions" onclick="event.stopPropagation()">
+        <button class="mail-action-btn" onclick="markMailSent('${o.id}')"
+          style="background:rgba(76,175,125,.2);border-color:rgba(76,175,125,.5);color:var(--green);font-weight:700">
+          ✓ Mark Sent
+        </button>
         <button class="mail-action-btn gmail" onclick="openInGmail('${o.id}')">
           <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="18" height="14" rx="2"/><path d="M1 4l9 7 9-7"/></svg>
           Gmail
@@ -3609,7 +3699,36 @@ async function renderMailing() {
         </button>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + _renderSentBox();
+}
+
+
+/* ══════════════════════════════════════════════════
+   MAILING — SENT TRACKING
+══════════════════════════════════════════════════ */
+function getSentMails()   { return JSON.parse(localStorage.getItem('ea_mail_sent') || '[]'); }
+function saveSentMails(a) { localStorage.setItem('ea_mail_sent', JSON.stringify(a)); }
+
+async function markMailSent(oppId) {
+  const opps = await DB.getAll();
+  const o = opps.find(x => x.id === oppId);
+  if (!o) return;
+  const sent = getSentMails();
+  const existing = sent.find(s => s.oppId === oppId);
+  if (!existing) {
+    sent.push({ oppId, name: (o.firstName + ' ' + o.lastName).trim(),
+      email: o.email || '', subject: BL.generatePersuasionEmail(o).subject,
+      sentAt: new Date().toISOString() });
+    saveSentMails(sent);
+  }
+  toast('📧 Marked as sent: ' + (o.firstName || '') + ' ' + (o.lastName || ''), 'success');
+  renderMailing();
+}
+
+function clearSentMails() {
+  saveSentMails([]);
+  toast('Sent list cleared', 'success');
+  renderMailing();
 }
 
 function setMailFilter(f) { state.mailFilter = f; renderMailing(); }
@@ -3761,6 +3880,14 @@ async function editLead(id) {
   _sf('f-issueFlag',      o.issueFlag);
   _sf('f-issueType',      o.issueType);
   _sf('f-issueResult',    o.issueResult);
+  _sf('f-goldCompValue',  o.goldCompValue);
+  // Show/hide goldCompValue field based on goldComp value
+  const _gcf = document.getElementById('goldCompValueField');
+  const _tsd = document.getElementById('totalSaleDisplay');
+  const _tsv = document.getElementById('totalSaleVal');
+  if (_gcf)  _gcf.style.display  = o.goldComp === 'Yes' ? '' : 'none';
+  if (_tsd)  _tsd.style.display  = o.goldComp === 'Yes' ? '' : 'none';
+  if (_tsv)  { const p=Number(o.estimate)||0; const gv=Number(o.goldCompValue)||0; _tsv.textContent=fmt$(p+gv); }
   const _acs = document.getElementById('activeClientSection');
   if (_acs) _acs.style.display = (o.saleMade === 'Yes' || o.stage === 'Sale Made') ? '' : 'none';
   document.getElementById('deleteBtn').style.display = 'inline-flex';
@@ -3779,6 +3906,18 @@ function onFieldChange() {
   const st  = document.getElementById('f-stage')?.value   || '';
   const acs = document.getElementById('activeClientSection');
   if (acs) acs.style.display = (sm === 'Yes' || st === 'Sale Made') ? '' : 'none';
+  // GoldComp value field visibility
+  const gc     = document.getElementById('f-goldComp')?.value || '';
+  const gcFld  = document.getElementById('goldCompValueField');
+  const totDisp = document.getElementById('totalSaleDisplay');
+  const totVal  = document.getElementById('totalSaleVal');
+  if (gcFld)  gcFld.style.display  = gc === 'Yes' ? '' : 'none';
+  if (totDisp) totDisp.style.display = gc === 'Yes' ? '' : 'none';
+  if (totVal) {
+    const prod = Number(document.getElementById('f-estimate')?.value) || 0;
+    const gcv  = gc === 'Yes' ? (Number(document.getElementById('f-goldCompValue')?.value) || 0) : 0;
+    totVal.textContent = fmt$(prod + gcv);
+  }
 }
 
 function onDeliveryDateChange() {
@@ -3909,6 +4048,7 @@ async function saveLead() {
     stage,
     probability:    Number(document.getElementById('f-probability').value) || 0,
     estimate:       Number(document.getElementById('f-estimate').value)    || 0,
+    goldCompValue:  Number(document.getElementById('f-goldCompValue')?.value) || 0,
     nextStep:       document.getElementById('f-nextStep').value,
     followUpDate:   document.getElementById('f-followUpDate').value,
     homeCall:       document.getElementById('f-homeCall').value,
@@ -3933,6 +4073,21 @@ async function saveLead() {
 
   try {
     await DB.save(opp);
+    // Auto-seed mileage record when home call is added/updated
+    if (opp.homeCall === 'Yes' && opp.homeCallDate) {
+      const existingMile = getMileageRecords().find(r => r.sourceOppId === opp.id);
+      if (!existingMile || existingMile.date !== opp.homeCallDate) {
+        const mileRec = existingMile || {
+          id: uid(), sourceOppId: opp.id, isManual: false,
+          stopHome1:'', stopDC1:'', stopClient:'', stopHome2:'', stopDC2:'',
+          totalMiles:'', commuteDeduct:'', tollsParking:'', designPartner:'', purpose:'Home Call',
+        };
+        mileRec.date        = opp.homeCallDate;
+        mileRec.clientName  = (opp.firstName + ' ' + opp.lastName).trim();
+        mileRec.address     = opp.address || '';
+        saveMileageRecord(mileRec);
+      }
+    }
     // Auto-create link review mailing task if new delivery date set
     if (linkReviewDate && linkReviewDate !== (existingRec?.linkReviewDate || '')) {
       _scheduleReviewTask(opp, linkReviewDate);
@@ -5385,29 +5540,64 @@ function openEditMileage(id) {
                border-radius:7px;padding:8px 10px;font-size:13px;font-family:var(--font-body);
                box-sizing:border-box">
     </div>`;
+  const legFld = (label, field, val) => `
+    <div>
+      <div style="font-size:11px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;
+                  text-transform:uppercase;margin-bottom:5px">${label}</div>
+      <input id="me-${field}" type="number" min="0" step="0.1" value="${esc(String(val||''))}"
+        oninput="mileEditLegChanged()"
+        style="width:100%;background:var(--ink-70);border:1px solid var(--gold-dk);color:var(--gold);
+               border-radius:7px;padding:8px 10px;font-size:13px;font-family:var(--font-body);
+               box-sizing:border-box">
+    </div>`;
 
   document.getElementById('mileEditFields').innerHTML = `
     ${fld(T('mile_th_date'), 'date', r.date, 'date')}
     ${fld(T('mile_th_client'), 'clientName', r.clientName)}
     ${fld(T('mile_th_address'), 'address', r.address)}
-    ${fld(T('mile_th_home')+' 1 →', 'stopHome1', r.stopHome1)}
-    ${fld('DC 1 →', 'stopDC1', r.stopDC1)}
-    ${fld(T('mile_th_client_stop')+' →', 'stopClient', r.stopClient)}
-    ${fld(T('mile_th_home')+' 2 →', 'stopHome2', r.stopHome2)}
-    ${fld('DC 2 →', 'stopDC2', r.stopDC2)}
-    ${fld(T('mile_th_total'), 'totalMiles', r.totalMiles, 'number')}
+    ${legFld(T('mile_th_home')+' 1 →', 'stopHome1', r.stopHome1)}
+    ${legFld('DC 1 →', 'stopDC1', r.stopDC1)}
+    ${legFld(T('mile_th_client_stop')+' →', 'stopClient', r.stopClient)}
+    ${legFld(T('mile_th_home')+' 2 →', 'stopHome2', r.stopHome2)}
+    ${legFld('DC 2 →', 'stopDC2', r.stopDC2)}
+    <div>
+      <div style="font-size:11px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;
+                  text-transform:uppercase;margin-bottom:5px">${T('mile_th_total')} (auto)</div>
+      <div id="me-totalMiles-display" style="background:var(--ink-90);border:1px solid var(--ink-60);
+           color:var(--gold);font-weight:700;border-radius:7px;padding:8px 10px;font-size:15px;
+           font-family:var(--font-body)">—</div>
+      <input id="me-totalMiles" type="hidden" value="${esc(String(r.totalMiles||''))}">
+    </div>
     ${fld(T('mile_th_commute'), 'commuteDeduct', r.commuteDeduct, 'number')}
     ${fld(T('mile_th_tolls'), 'tollsParking', r.tollsParking, 'number')}
     ${fld(T('mile_th_partner'), 'designPartner', r.designPartner)}
   `;
+  // Trigger initial calculation display
+  mileEditLegChanged();
 
   const modal = document.getElementById('mileEditModal');
   modal.style.display = 'flex';
   setTimeout(() => modal.querySelector('input')?.focus(), 50);
 }
 
+function mileEditLegChanged() {
+  /* Live-update the Total Miles display in the edit modal */
+  const legs = ['stopHome1','stopDC1','stopClient','stopHome2','stopDC2'];
+  let total = 0;
+  legs.forEach(f => {
+    const el = document.getElementById('me-' + f);
+    if (el) total += parseFloat(el.value) || 0;
+  });
+  const disp = document.getElementById('me-totalMiles-display');
+  const hidden = document.getElementById('me-totalMiles');
+  if (disp) disp.textContent = total > 0 ? total.toFixed(1) + ' mi' : '—';
+  if (hidden) hidden.value = total > 0 ? total.toString() : '';
+}
+
 function saveMileEdit() {
   if (!_editingMileId) return;
+  // Recalculate totalMiles from legs before saving
+  mileEditLegChanged();
   const fields = ['date','clientName','address','stopHome1','stopDC1','stopClient',
                   'stopHome2','stopDC2','totalMiles','commuteDeduct','tollsParking','designPartner'];
   const updates = {};
@@ -5444,11 +5634,62 @@ function deleteMileEditRow() {
    TASK ENGINE
 ══════════════════════════════════════════════════ */
 
-function _buildTasks(opps) {
-  const todayS  = localDateStr(new Date());
-  const tasks   = [];
 
-  function addTask(t) { tasks.push(t); }
+/* ══════════════════════════════════════════════════
+   TASK COMPLETION & ACTIVE CLIENT ACTIONS
+══════════════════════════════════════════════════ */
+function getCompletedTasks()   { return JSON.parse(localStorage.getItem('ea_completed_tasks') || '[]'); }
+function saveCompletedTasks(a) { localStorage.setItem('ea_completed_tasks', JSON.stringify(a)); }
+
+function markTaskComplete(taskId, oppId, label) {
+  const done = getCompletedTasks();
+  if (!done.includes(taskId)) {
+    done.push(taskId);
+    saveCompletedTasks(done);
+  }
+  toast('✅ Task marked complete: ' + label, 'success');
+  // Refresh dashboard tasks widget
+  DB.getAll().then(opps => _updateTasksWidget(opps));
+}
+
+function clearCompletedTasks() {
+  saveCompletedTasks([]);
+  toast('Completed tasks cleared', 'success');
+  DB.getAll().then(opps => _updateTasksWidget(opps));
+}
+
+function getCompletedActives()   { return JSON.parse(localStorage.getItem('ea_completed_actives') || '[]'); }
+function saveCompletedActives(a) { localStorage.setItem('ea_completed_actives', JSON.stringify(a)); }
+
+async function markActiveComplete(oppId) {
+  const done = getCompletedActives();
+  if (!done.includes(oppId)) { done.push(oppId); saveCompletedActives(done); }
+  toast('✅ Client marked complete', 'success');
+  renderActive();
+}
+
+async function deleteActive(oppId) {
+  if (!confirm('Delete this active client record entirely? This cannot be undone.')) return;
+  await DB.delete(oppId);
+  toast('Client record deleted', 'success');
+  renderActive();
+}
+
+async function restoreActive(oppId) {
+  const done = getCompletedActives().filter(id => id !== oppId);
+  saveCompletedActives(done);
+  toast('Client restored', 'success');
+  renderActive();
+}
+
+function _buildTasks(opps) {
+  const todayS      = localDateStr(new Date());
+  const doneTasks   = getCompletedTasks();
+  const tasks       = [];
+
+  function addTask(t) {
+    if (!doneTasks.includes(t.id)) tasks.push(t);
+  }
 
   // ── Active pipeline: overdue & due today ──
   opps.forEach(o => {
@@ -5612,6 +5853,38 @@ function _buildTasks(opps) {
     });
   } catch(e) { /* post30 unavailable */ }
 
+  // ── Post60 overdue ──
+  try {
+    const p30b = getPost30Records();
+    p30b.filter(r => r.newOpportunity === 'No' && (r.deliveryDate || '')).forEach(rec => {
+      const opp = opps.find(o => o.id === rec.oppId);
+      if (!opp) return;
+      const fu60 = offsetDate(rec.deliveryDate, 60);
+      const d60  = daysDiff(todayS, fu60);
+      if (d60 <= 3) {
+        addTask({
+          id: rec.oppId + '_p60', oppId: rec.oppId,
+          type: d60 < 0 ? 'overdue' : 'today',
+          priority: d60 < 0 ? 17 : 15,
+          icon: '📋',
+          label: d60 < 0 ? 'Post-60 ' + Math.abs(d60) + 'd overdue' : 'Post-60 Due',
+          labelColor: 'var(--ink-20)',
+          firstName: opp.firstName||'', lastName: opp.lastName||'',
+          customerNumber: opp.customerNumber||'',
+          saleDate: opp.saleDate||opp.closeDate||'',
+          projectType: opp.projectType||'—',
+          estimate: Number(opp.estimate)||0,
+          goldComp: opp.goldComp||'',
+          stage: 'Post 60', activePhase: opp.activePhase||'',
+          deliveryDate: rec.deliveryDate, delivery2Day: false,
+          linkReviewDate: opp.linkReviewDate||'', dueDate: fu60,
+          activity: rec.p60_contactReason || '60-day loyalty check-in',
+          issueFlag:'', issueType:'', issueResult:'', source:'post60',
+        });
+      }
+    });
+  } catch(e) { /* post60 unavailable */ }
+
   tasks.sort((a, b) => b.priority !== a.priority ? b.priority - a.priority : (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
   return tasks;
 }
@@ -5627,18 +5900,23 @@ async function _updateTasksWidget(opps) {
     el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All caught up — no pending tasks</p></div>';
     return;
   }
-  el.innerHTML = tasks.slice(0, 8).map(t =>
-    '<div class="alert-row" onclick="editLead(\'' + t.oppId + '\')" style="border-left:3px solid ' + t.labelColor + ';padding-left:10px;cursor:pointer">'
-    + '<div style="font-size:18px;min-width:24px">' + t.icon + '</div>'
-    + '<div style="flex:1;min-width:0">'
+  const shown = tasks.slice(0, 10);
+  el.innerHTML = shown.map(t =>
+    '<div class="alert-row" style="border-left:3px solid ' + t.labelColor + ';padding-left:10px;align-items:flex-start;gap:8px">'
+    + '<div style="font-size:18px;min-width:24px;padding-top:2px">' + t.icon + '</div>'
+    + '<div style="flex:1;min-width:0;cursor:pointer" onclick="editLead(\'' + t.oppId + '\')">'
     + '<div style="font-weight:600;font-size:13px;color:var(--ink-10)">' + esc(t.firstName) + ' ' + esc(t.lastName)
     + (t.customerNumber ? ' <span style="font-size:10px;color:var(--gold)">#' + esc(t.customerNumber) + '</span>' : '') + '</div>'
     + '<div style="font-size:11px;color:var(--ink-40)">' + esc(t.activity) + '</div>'
     + '<div style="font-size:11px;color:var(--ink-40)">' + esc(t.projectType) + (t.dueDate ? ' · ' + fmtDate(t.dueDate) : '') + '</div>'
     + '</div>'
+    + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">'
     + '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:' + t.labelColor + '22;color:' + t.labelColor + '">' + esc(t.label) + '</span>'
+    + '<button onclick="markTaskComplete(\'' + t.id + '\',\'' + t.oppId + '\',\'' + (t.firstName+' '+t.lastName).trim() + '\')" style="font-size:9px;font-weight:700;letter-spacing:.05em;background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.35);color:var(--green);border-radius:4px;padding:2px 8px;cursor:pointer;white-space:nowrap">✓ Done</button>'
     + '</div>'
-  ).join('');
+    + '</div>'
+  ).join('')
+  + (tasks.length > 10 ? '<div style="text-align:center;padding:8px;font-size:11px;color:var(--ink-40)">' + (tasks.length-10) + ' more tasks — <a onclick="navigate(\'priorities\')" style="color:var(--gold);cursor:pointer">View All</a></div>' : '');
 }
 
 /* ══════════════════════════════════════════════════
@@ -5646,21 +5924,41 @@ async function _updateTasksWidget(opps) {
    All charts built with inline SVG — no external libs
 ══════════════════════════════════════════════════ */
 
-async function renderAnalytics() {
+async function renderAnalytics(analyticsFilter) {
+  if (analyticsFilter !== undefined) state.analyticsFilter = analyticsFilter;
   const opps  = await DB.getAll();
   const today = new Date();
   const el    = document.getElementById('page-analytics');
   if (!el) return;
 
-  // ── Derived data ──
-  const sold     = opps.filter(o => o.saleMade === 'Yes');
+  // ── Year/Month filter ──
+  const curYear = today.getFullYear();
+  const selYear = state.analyticsYear || curYear;
+  const selMonth= state.analyticsMonth || null; // null = full year
+
+  // ── Derived data (filtered by selected year/month) ──
+  const filterOpp = o => {
+    const d = o.closeDate || o.saleDate || o.createdAt || '';
+    if (!d) return true; // include if no date
+    const dt = new Date(d+'T12:00:00');
+    if (selMonth !== null) return dt.getFullYear() === selYear && dt.getMonth() === selMonth;
+    return dt.getFullYear() === selYear;
+  };
+  const sold     = opps.filter(o => o.saleMade === 'Yes' && filterOpp(o));
+  const allSold  = opps.filter(o => o.saleMade === 'Yes');
   const active   = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
   const canceled = opps.filter(o => o.stage === 'Canceled');
   const allKpis  = BL.calcKPIs(opps);
 
-  // Monthly revenue (last 12 months)
+  // Available years
+  const availYears = [...new Set(opps.map(o => {
+    const d = o.closeDate||o.saleDate||o.createdAt||''; return d?parseInt(d.slice(0,4)):null;
+  }).filter(Boolean))].sort((a,b)=>b-a);
+  if (!availYears.includes(selYear)) availYears.unshift(selYear);
+
+  // Monthly revenue (last 12 months — always full regardless of filter, for trend)
   const monthRevMap = {};
-  sold.forEach(o => {
+  allSold.forEach(o => {
     const d = o.closeDate || o.saleDate || o.createdAt || '';
     const key = d.slice(0,7);
     if (key) monthRevMap[key] = (monthRevMap[key]||0) + (Number(o.estimate)||0);
@@ -5715,42 +6013,86 @@ async function renderAnalytics() {
     b.val = active.filter(o => { const p=Number(o.probability)||0; return p>=b.min && p<=b.max; }).reduce((s,o)=>s+(Number(o.estimate)||0),0);
   });
 
-  // Helper: SVG bar chart
-  function barChart(data, {width=520, height=200, color='var(--gold)', valueFormat, maxVal, showGoal=false}={}) {
+  // Helper: SVG bar chart (improved with gridlines)
+  function barChart(data, {height=180, color='var(--gold)', valueFormat, maxVal, showGoal=false}={}) {
     if (!data.length) return '<p style="color:var(--ink-40);font-size:12px">No data yet</p>';
-    const max = maxVal || Math.max(...data.map(d=>Math.max(d.val||0, d.goal||0)), 1);
-    const barW = Math.max(Math.floor((width - data.length*4) / data.length), 8);
-    const fmt = valueFormat || (v => v >= 1000 ? '$' + Math.round(v/1000) + 'k' : String(v));
+    const max    = maxVal || Math.max(...data.map(d=>Math.max(d.val||0, d.goal||0)), 1);
+    const W      = data.length * 42;
+    const barW   = 28;
+    const fmt    = valueFormat || (v => v >= 1000 ? '$' + Math.round(v/1000) + 'k' : String(v));
+    const GRID   = [0.25,0.5,0.75,1.0];
+    const GSVG   = GRID.map(g => {
+      const y = Math.round((height-36)*(1-g));
+      return `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--ink-60)" stroke-width=".5" stroke-dasharray="3,3"/>
+        <text x="-2" y="${y+3}" text-anchor="end" font-size="8" fill="var(--ink-50)">${fmt(Math.round(max*g))}</text>`;
+    }).join('');
     const bars = data.map((d,i) => {
-      const h2 = Math.max(Math.round((d.val/max)*(height-40)), 2);
-      const x  = i * (barW + 4);
-      const goalH = d.goal ? Math.round((d.goal/max)*(height-40)) : 0;
-      const col = d.val >= (d.goal||0) ? 'var(--green)' : color;
+      const bh = Math.max(Math.round((d.val/max)*(height-36)), d.val>0?2:1);
+      const x  = i * 42;
+      const goalH = d.goal ? Math.round((d.goal/max)*(height-36)) : 0;
+      const col = showGoal && d.goal && d.val >= d.goal ? 'var(--green)' : color;
       return `<g transform="translate(${x},0)">
-        ${d.goal ? `<rect x="0" y="${height-40-goalH}" width="${barW}" height="${goalH}" fill="rgba(196,147,63,.12)" rx="2"/>
-          <line x1="0" y1="${height-40-goalH}" x2="${barW}" y2="${height-40-goalH}" stroke="var(--gold-dk)" stroke-width="1.5" stroke-dasharray="3,2"/>` : ''}
-        <rect x="0" y="${height-40-h2}" width="${barW}" height="${h2}" fill="${col}" rx="2" opacity=".9"/>
-        <text x="${barW/2}" y="${height-42-h2}" text-anchor="middle" font-size="9" fill="var(--ink-30)">${d.val>0?fmt(d.val):''}</text>
-        <text x="${barW/2}" y="${height-22}" text-anchor="middle" font-size="9" fill="var(--ink-40)" transform="rotate(-35,${barW/2},${height-22})">${d.lbl}</text>
+        ${d.goal&&showGoal?`<line x1="0" y1="${height-36-goalH}" x2="${barW+8}" y2="${height-36-goalH}" stroke="var(--gold-dk)" stroke-width="1.5" stroke-dasharray="4,3"/>`:'' }
+        <rect x="6" y="${height-36-bh}" width="${barW}" height="${bh}" fill="${col}" rx="3" opacity=".9"/>
+        <text x="${barW/2+6}" y="${height-38-bh}" text-anchor="middle" font-size="8.5" fill="${col}" font-weight="700">${d.val>0?fmt(d.val):''}</text>
+        <text x="${barW/2+6}" y="${height-16}" text-anchor="middle" font-size="8.5" fill="var(--ink-40)" transform="rotate(-30,${barW/2+6},${height-16})">${d.lbl}</text>
       </g>`;
     }).join('');
-    return `<svg width="100%" viewBox="0 0 ${data.length*(barW+4)} ${height}" preserveAspectRatio="xMidYMid meet" style="overflow:visible">${bars}</svg>`;
+    return `<svg width="100%" viewBox="-24 0 ${W+28} ${height}" preserveAspectRatio="xMidYMid meet" style="overflow:visible">${GSVG}${bars}</svg>`;
   }
 
-  // Helper: horizontal bar chart
+  // Helper: SVG line chart (smooth, clean)
+  function lineChart(data, {color='var(--gold)', fillColor, valueFormat, showGoal=false, goalColor='var(--gold-dk)'}={}) {
+    if (!data.length) return '<p style="color:var(--ink-40);font-size:12px">No data yet</p>';
+    const W=700, H=170, PAD=36, BOT=24;
+    const max = Math.max(...data.map(d=>Math.max(d.val||0, showGoal&&d.goal?d.goal:0)), 1);
+    const fmt = valueFormat || (v => v>=1000?'$'+Math.round(v/1000)+'k':'$'+v);
+    const fill = fillColor || color;
+    const pts = data.map((d,i)=>({
+      x: PAD + (i/Math.max(data.length-1,1))*(W-PAD*2),
+      y: H-BOT - Math.max((d.val/max)*(H-BOT-20), d.val>0?2:0),
+      v: d.val, lbl: d.lbl
+    }));
+    const area = 'M'+pts[0].x.toFixed(1)+','+(H-BOT)+' '+pts.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')+ ' '+pts[pts.length-1].x.toFixed(1)+','+(H-BOT)+' Z';
+    const line = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+    let goalSVG='';
+    if (showGoal) {
+      const gpts = data.map((d,i)=>{
+        const x=PAD+(i/Math.max(data.length-1,1))*(W-PAD*2);
+        const y=H-BOT-(Math.max((d.goal||0)/max,0))*(H-BOT-20);
+        return x.toFixed(1)+','+y.toFixed(1);
+      });
+      goalSVG='<polyline points="'+gpts.join(' ')+'" fill="none" stroke="'+goalColor+'" stroke-width="1.5" stroke-dasharray="5,3" opacity=".7"/>';
+    }
+    const GRID=[.25,.5,.75,1].map(g=>{
+      const y=(H-BOT)*(1-g);
+      return `<line x1="${PAD}" y1="${y.toFixed(0)}" x2="${W-PAD}" y2="${y.toFixed(0)}" stroke="var(--ink-60)" stroke-width=".5" stroke-dasharray="3,3"/>
+        <text x="${PAD-3}" y="${(y+3).toFixed(0)}" text-anchor="end" font-size="8" fill="var(--ink-50)">${fmt(Math.round(max*g))}</text>`;
+    }).join('');
+    const dots = pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${p.v>0?4:2}" fill="${p.v>0?color:'var(--ink-60)'}" stroke="var(--ink-90)" stroke-width="1.5"><title>${p.lbl}: ${fmt(p.v)}</title></circle>`).join('');
+    const vals = pts.filter(p=>p.v>0).map(p=>`<text x="${p.x.toFixed(1)}" y="${(p.y-8).toFixed(1)}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700">${fmt(p.v)}</text>`).join('');
+    const xlbls = pts.map(p=>`<text x="${p.x.toFixed(1)}" y="${H-4}" text-anchor="middle" font-size="8.5" fill="var(--ink-40)">${p.lbl}</text>`).join('');
+    return `<svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="overflow:visible">
+      <defs><linearGradient id="anaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${fill}" stop-opacity=".3"/><stop offset="100%" stop-color="${fill}" stop-opacity=".02"/></linearGradient></defs>
+      ${GRID}<path d="${area}" fill="url(#anaGrad)"/>${goalSVG}<path d="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      ${vals}${dots}${xlbls}</svg>`;
+  }
+
+  // Helper: horizontal bar chart (improved)
   function hBarChart(data, {color='var(--gold)', valueFormat}={}) {
     if (!data.length) return '<p style="color:var(--ink-40);font-size:12px">No data yet</p>';
     const max = Math.max(...data.map(d=>d[1]), 1);
     const fmt = valueFormat || (v => String(v));
     return data.map(([lbl, val]) => {
       const pct = Math.round((val/max)*100);
+      const col = pct === 100 ? 'var(--green)' : color;
       return `<div style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-          <span style="color:var(--ink-20);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lbl)}</span>
-          <span style="color:${color};font-weight:700">${fmt(val)}</span>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span style="color:var(--ink-20);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc(lbl)}</span>
+          <span style="color:${col};font-weight:700">${fmt(val)}</span>
         </div>
-        <div style="height:8px;background:var(--ink-70);border-radius:4px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width .3s"></div>
+        <div style="height:9px;background:var(--ink-70);border-radius:5px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${col};border-radius:5px;transition:width .4s"></div>
         </div>
       </div>`;
     }).join('');
@@ -5767,15 +6109,15 @@ async function renderAnalytics() {
       const len = (val/total)*circ;
       const arc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i%colors.length]}"
         stroke-width="${stroke}" stroke-dasharray="${len.toFixed(1)} ${(circ-len).toFixed(1)}"
-        stroke-dashoffset="${(-offset+circ/4).toFixed(1)}" style="transition:stroke-dasharray .4s"/>`;
+        stroke-dashoffset="${(-offset+circ/4).toFixed(1)}" style="transition:stroke-dasharray .4s"><title>${lbl}: ${val}</title></circle>`;
       offset += len;
       return arc;
     }).join('');
     const legend = segments.map(([lbl,val],i) =>
-      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
         <div style="width:10px;height:10px;border-radius:2px;background:${colors[i%colors.length]};flex-shrink:0"></div>
-        <span style="font-size:11px;color:var(--ink-20);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lbl)}</span>
-        <span style="font-size:11px;color:var(--ink-40);font-weight:600">${Math.round(val/total*100)}%</span>
+        <span style="font-size:11px;color:var(--ink-20);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc(lbl)}</span>
+        <span style="font-size:11px;color:${colors[i%colors.length]};font-weight:700">${Math.round(val/total*100)}%</span>
       </div>`
     ).join('');
     return `<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
@@ -5822,7 +6164,8 @@ async function renderAnalytics() {
 
   const totalRev = sold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
   const weightedPipe = active.filter(o=>o.stage!=='Canceled').reduce((s,o)=>s+Math.floor((Number(o.probability)||0)/100*(Number(o.estimate)||0)),0);
-  const gcSales = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+  const gcSales = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
+  const prodSales = sold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
   const gcPct   = totalRev > 0 ? Math.round(gcSales/totalRev*100) : 0;
   const avgOrder = sold.length > 0 ? Math.round(totalRev/sold.length) : 0;
 
@@ -5830,7 +6173,12 @@ async function renderAnalytics() {
   <div class="section-header"><div style="padding:0 24px;max-width:1320px;margin:0 auto">
     <span class="label" style="display:block;margin-bottom:6px">Performance Intelligence</span>
     <h2 class="display">📊 ANALYTICS</h2>
-    <p style="font-size:13px;color:var(--ink-40);margin-top:8px">Visual KPI overview — all metrics at a glance</p>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-40)">Year:</span>
+      ${availYears.map(y => '<button onclick="state.analyticsYear='+y+';state.analyticsMonth=null;renderAnalytics()" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;border:1px solid '+(y===selYear&&selMonth===null?'var(--gold-dk)':'var(--ink-60)')+';background:'+(y===selYear&&selMonth===null?'var(--gold-dk)':'var(--ink-70)')+';color:'+(y===selYear&&selMonth===null?'#000':'var(--ink-20)')+'">'+y+'</button>').join('')}
+      <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-40);margin-left:8px">Month:</span>
+      ${ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m,i) => '<button onclick="state.analyticsYear='+selYear+';state.analyticsMonth='+i+';renderAnalytics()" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;cursor:pointer;border:1px solid '+(selMonth===i?'var(--gold-dk)':'var(--ink-60)')+';background:'+(selMonth===i?'var(--gold-dk)':'var(--ink-70)')+';color:'+(selMonth===i?'#000':'var(--ink-20)')+'">'+m+'</button>').join('') }
+    </div>
   </div></div>
 
   <div class="container" style="margin-bottom:32px">
@@ -5845,13 +6193,13 @@ async function renderAnalytics() {
     ])}
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-      ${chartCard('Monthly Revenue vs Goal', 'Last 12 months — gold dashed line = goal',
-        barChart(last12.map(m=>({lbl:m.lbl,val:m.val,goal:getGoalForMonth(new Date(m.key+'-15').getMonth())})),
-          {color:'var(--gold)',valueFormat:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+v,showGoal:true})
+      ${chartCard('Revenue Trend (Last 12 Months)', 'Line = actual · dashed = monthly goal',
+        lineChart(last12.map(m=>({lbl:m.lbl,val:m.val,goal:getGoalForMonth(new Date(m.key+'-15').getMonth())})),
+          {color:'var(--green)',fillColor:'#4caf7d',valueFormat:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+v,showGoal:true})
       )}
-      ${chartCard('Monthly Goal vs Actual (Current Year)', 'Each bar = actual, dashed = goal',
+      ${chartCard('Goal vs Actual — ' + selYear + (selMonth!==null?' · '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][selMonth]:''), 'Bars = actual · dashed = target',
         barChart(goalVsActual.map(m=>({lbl:m.lbl,val:m.rev,goal:m.goal})),
-          {color:'var(--gold)',valueFormat:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+v})
+          {color:'var(--gold)',valueFormat:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+v,showGoal:true})
       )}
     </div>
 
@@ -5901,10 +6249,10 @@ async function renderAnalytics() {
         avgDaysData.length ? hBarChart(avgDaysData, {color:'var(--gold)',valueFormat:v=>v+'d'}) :
           '<p style="color:var(--ink-40);font-size:12px">Add leads to see stage timing</p>'
       )}
-      ${chartCard('GoldComp Mix', 'GoldComp sales vs standard sales',
+      ${chartCard('GoldComp Mix', 'GoldComp credit vs product revenue',
         donutChart(
-          [['GoldComp', gcSales], ['Standard', totalRev - gcSales]].filter(([,v])=>v>0),
-          totalRev || 1
+          [['GoldComp Credit', gcSales], ['Product Sales', prodSales - gcSales >= 0 ? prodSales - gcSales : prodSales]].filter(([,v])=>v>0),
+          Math.max(prodSales, gcSales) || 1
         )
       )}
     </div>
@@ -5936,13 +6284,16 @@ async function renderActive() {
   if (!el) return;
 
   /* ── Active clients = saleMade=Yes, sorted by deliveryDate then saleDate ── */
+  const doneActiveIds = getCompletedActives();
   const clients = opps
-    .filter(o => o.saleMade === 'Yes')
+    .filter(o => o.saleMade === 'Yes' && !doneActiveIds.includes(o.id))
     .sort((a, b) => {
       const da = a.deliveryDate || a.saleDate || '9999';
       const db = b.deliveryDate || b.saleDate || '9999';
       return da.localeCompare(db);
     });
+  const completedClients = opps
+    .filter(o => o.saleMade === 'Yes' && doneActiveIds.includes(o.id));
 
   const today = localDateStr(new Date());
 
@@ -5968,7 +6319,7 @@ async function renderActive() {
   /* ── Build rows ── */
   const rows = clients.map((o, i) => {
     const rowBg = i % 2 === 0 ? 'var(--ink-90)' : 'var(--ink-80)';
-    const gcVal = o.goldComp === 'Yes' ? (Number(o.estimate) || 0) : 0;
+    const gcVal = o.goldComp === 'Yes' ? (Number(o.goldCompValue) || Number(o.estimate) || 0) : 0;
 
     /* 2-Days-Before-Delivery */
     const twoDaysBefore = o.deliveryDate ? offsetDate(o.deliveryDate, -2) : '';
@@ -6064,8 +6415,9 @@ async function renderActive() {
       /* Edit button */
       + '<td style="padding:5px 8px;border-bottom:1px solid var(--ink-70);text-align:center">'
         + '<button onclick="event.stopPropagation();editLead(\'' + o.id + '\')" title="Edit"'
-        + ' style="background:none;border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;'
-        + 'font-size:10px;font-weight:700;padding:3px 9px;cursor:pointer;letter-spacing:.04em">EDIT ✏️</button>'
+        + ' style="background:none;border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">✏️</button>'
+        + '<button onclick="event.stopPropagation();markActiveComplete(\'' + o.id + '\')" style="background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.35);color:var(--green);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer" title="Mark Complete">✓</button>'
+        + '<button onclick="event.stopPropagation();deleteActive(\'' + o.id + '\')" style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer" title="Delete">🗑</button>'
         + '</td>'
       + '</tr>';
   }).join('');
@@ -6126,7 +6478,26 @@ async function renderActive() {
           + '</tr></thead>'
           + '<tbody>' + rows + '</tbody>'
           + '</table>')
-    + '</div>';
+    + '</div>'
+    + (completedClients.length > 0 ?
+        '<div style="margin:24px;background:var(--ink-85);border:1px solid var(--ink-60);border-radius:12px;overflow:hidden">'
+        + '<div style="padding:12px 16px;background:rgba(76,175,125,.07);border-bottom:1px solid var(--ink-60);display:flex;align-items:center;gap:10px">'
+        + '<span style="font-size:16px">✅</span>'
+        + '<span style="font-family:var(--font-display);font-size:14px;color:var(--green)">Completed Clients (' + completedClients.length + ')</span>'
+        + '<button onclick="saveCompletedActives([]);renderActive()" style="margin-left:auto;background:transparent;border:1px solid var(--ink-50);color:var(--ink-40);border-radius:5px;font-size:10px;padding:3px 10px;cursor:pointer">Clear All</button>'
+        + '</div>'
+        + '<div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">'
+        + completedClients.map(o =>
+            '<div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--ink-80);border-radius:7px;opacity:.7">'
+            + '<span style="color:var(--green);font-size:13px">✓</span>'
+            + '<span style="font-weight:600;color:var(--ink-20);font-size:13px">' + esc(o.lastName) + ', ' + esc(o.firstName) + '</span>'
+            + '<span style="font-size:11px;color:var(--ink-40)">' + esc(o.projectType||'') + '</span>'
+            + '<span style="font-size:11px;color:var(--green);margin-left:auto">' + (o.estimate ? fmt$(Number(o.estimate)) : '') + '</span>'
+            + '<button onclick="restoreActive(\'' + o.id + '\')" style="background:transparent;border:1px solid var(--ink-50);color:var(--ink-40);border-radius:4px;font-size:10px;padding:2px 8px;cursor:pointer">Restore</button>'
+            + '</div>'
+        ).join('')
+        + '</div></div>'
+      : '');
 }
 
 
@@ -6191,7 +6562,7 @@ async function renderSales() {
   /* ── Build month sections ── */
   const sectionsHTML = sortedKeys.map(k => {
     const recs = monthGroups[k];
-    const monthTotal = recs.reduce((s,o) => s+(Number(o.estimate)||0), 0);
+    const monthTotal = recs.reduce((s,o) => s+(Number(o.estimate)||0)+(o.goldComp==='Yes'?Number(o.goldCompValue)||0:0), 0);
     const qLabel = k !== 'unknown' ? (() => {
       const m = parseInt(k.split('-')[1],10);
       const q = m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';
@@ -6218,7 +6589,10 @@ async function renderSales() {
         </td>
         <td style="padding:9px 12px;font-size:12px;color:var(--ink-20)">${esc(o.projectType||'—')}</td>
         <td style="padding:9px 12px;font-size:11px;color:var(--ink-40)">${esc(o.leadSource||'—')}</td>
-        <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--green);font-size:14px">${fmt$(Number(o.estimate))}</td>
+        <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--green);font-size:14px">
+          ${fmt$(Number(o.estimate))}
+          ${o.goldComp==='Yes'&&Number(o.goldCompValue)>0?'<div style="font-size:9px;color:var(--gold);font-weight:600;margin-top:2px">+'+fmt$(Number(o.goldCompValue))+' GC</div>':''}
+        </td>
         <td style="padding:9px 12px;text-align:center">
           ${o.goldComp==='Yes'?'<span style="color:var(--gold);font-size:14px" title="GoldComp">⭐</span>':'<span style="color:var(--ink-60)">—</span>'}
         </td>
@@ -6272,23 +6646,87 @@ async function renderSales() {
       </div>`;
   }).join('');
 
-  /* ── Monthly bar chart ── */
+  /* ── SVG line+bar chart with year/month toggle ── */
   const months_short = T('months_short');
-  const chartBars = monthlyTotals.map((v,i) => {
+
+  // Build monthly totals for ALL years in data for multi-year view
+  const allYears = [...new Set(sold.map(o => {
+    const d = o.closeDate || o.followUpDate || '';
+    return d ? parseInt(d.slice(0,4),10) : null;
+  }).filter(Boolean))].sort();
+  const yearTotals = allYears.map(y => {
+    const tot = sold.filter(o => {
+      const d = o.closeDate || o.followUpDate || '';
+      return d && parseInt(d.slice(0,4),10) === y;
+    }).reduce((s,o) => s+(Number(o.estimate)||0), 0);
+    return { y, tot };
+  });
+
+  function buildSalesLineChart(data, labels, colorLine, colorFill, showGoals, goalsArr) {
+    const W = 800, H = 200, PAD = 40, BOTTOM = 28;
+    const maxV = Math.max(...data.map(v => Math.max(v, showGoals ? (goalsArr||[]).reduce((mx,g)=>Math.max(mx,g),0) : 0)), 1);
+    const pts = data.map((v,i) => {
+      const x = PAD + (i / Math.max(data.length-1,1)) * (W-PAD*2);
+      const y = H - BOTTOM - Math.max((v/maxV)*(H-BOTTOM-16), v>0?2:0);
+      return {x, y, v};
+    });
+    // Build area path
+    let areaPath = 'M' + pts.map(p => p.x.toFixed(1)+','+(H-BOTTOM)).join(' L');
+    areaPath = 'M'+pts[0].x.toFixed(1)+','+(H-BOTTOM)+' L'+pts.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' L')+' L'+pts[pts.length-1].x.toFixed(1)+','+(H-BOTTOM)+' Z';
+    // Line path
+    const linePath = 'M '+pts.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' L ');
+    // Goal line
+    let goalPathSVG = '';
+    if (showGoals && goalsArr && goalsArr.length === data.length) {
+      const gpts = goalsArr.map((g,i) => {
+        const x = PAD + (i/Math.max(data.length-1,1))*(W-PAD*2);
+        const y = H - BOTTOM - Math.max((g/maxV)*(H-BOTTOM-16),1);
+        return x.toFixed(1)+','+y.toFixed(1);
+      });
+      goalPathSVG = '<polyline points="'+gpts.join(' ')+'" fill="none" stroke="var(--gold-dk)" stroke-width="1.5" stroke-dasharray="5,3" opacity=".6"/>';
+    }
+    const dots = pts.map((p,i) => {
+      const val = p.v > 0 ? '<title>'+labels[i]+': '+fmt$(p.v)+'</title>' : '';
+      return '<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+(p.v>0?4:2)+'" fill="'+(p.v>0?colorLine:'var(--ink-60)')+'" stroke="var(--ink-90)" stroke-width="1.5">'+val+'</circle>';
+    }).join('');
+    const xLabels = labels.map((lbl,i) => {
+      const x = PAD + (i/Math.max(data.length-1,1))*(W-PAD*2);
+      return '<text x="'+x.toFixed(1)+'" y="'+(H-4)+'" text-anchor="middle" font-size="9" fill="var(--ink-40)">'+lbl+'</text>';
+    }).join('');
+    const valLabels = pts.filter(p=>p.v>0).map(p =>
+      '<text x="'+p.x.toFixed(1)+'" y="'+(p.y-7).toFixed(1)+'" text-anchor="middle" font-size="8" fill="var(--green)">'+fmt$(p.v,true)+'</text>'
+    ).join('');
+    return '<svg width="100%" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="overflow:visible">'
+      + '<defs><linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+colorFill+'" stop-opacity=".35"/><stop offset="100%" stop-color="'+colorFill+'" stop-opacity=".03"/></linearGradient></defs>'
+      + '<path d="'+areaPath+'" fill="url(#lineGrad)"/>'
+      + goalPathSVG
+      + '<path d="'+linePath+'" fill="none" stroke="'+colorLine+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
+      + valLabels + dots + xLabels
+      + '</svg>';
+  }
+
+  // Build bar chart HTML (current year monthly bars) 
+  const chartBarsHTML = monthlyTotals.map((v,i) => {
     const barH = v > 0 ? Math.max(Math.round(v/maxMonthly*88),4) : 2;
-    return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:32px;cursor:default">
-      <div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:4px;height:16px;
-                  display:flex;align-items:flex-end">${v>0?fmt$(v,true):''}</div>
-      <div style="width:100%;flex:1;display:flex;flex-direction:column;justify-content:flex-end;
-                  position:relative;min-height:80px">
+    const isGoalMet = v >= getGoalForMonth(i) && getGoalForMonth(i) > 0;
+    return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:28px;cursor:default">
+      <div style="font-size:9px;font-weight:700;color:${isGoalMet?'var(--green)':'var(--gold)'};margin-bottom:3px;height:14px;display:flex;align-items:flex-end">${v>0?fmt$(v,true):''}</div>
+      <div style="width:100%;flex:1;display:flex;flex-direction:column;justify-content:flex-end;position:relative;min-height:70px">
         <div title="${months_short[i]}: ${fmt$(v)}"
-          style="width:80%;margin:0 auto;background:${v>0?'var(--green)':'var(--ink-70)'};
-                 border-radius:4px 4px 0 0;height:${barH}%;min-height:${v>0?4:2}px;
-                 transition:height .3s;opacity:${v>0?1:0.3}"></div>
+          style="width:75%;margin:0 auto;background:${v>0?(isGoalMet?'var(--green)':'var(--gold)'):'var(--ink-70)'};
+                 border-radius:3px 3px 0 0;height:${barH}%;min-height:${v>0?4:2}px;opacity:${v>0?0.9:0.25}"></div>
       </div>
-      <div style="font-size:10px;color:var(--ink-40);margin-top:4px;font-weight:600">${months_short[i]}</div>
+      <div style="font-size:9px;color:var(--ink-40);margin-top:3px;font-weight:600">${months_short[i]}</div>
     </div>`;
   }).join('');
+
+  const salesLineData  = monthlyTotals;
+  const salesLineGoals = months_short.map((_,i) => getGoalForMonth(i));
+  const salesLineChart = buildSalesLineChart(salesLineData, months_short, 'var(--green)', '#4caf7d', true, salesLineGoals);
+  const yearLineChart  = yearTotals.length > 1
+    ? buildSalesLineChart(yearTotals.map(y=>y.tot), yearTotals.map(y=>String(y.y)), 'var(--gold)', '#c4933f', false, null)
+    : '';
+  const chartBars = chartBarsHTML;
 
   const canceled = opps.filter(o => o.stage === 'Canceled');
   const canceledHTML = !canceled.length ? '' :
@@ -6372,10 +6810,25 @@ async function renderSales() {
           <div class="dash-card-title">${T('sales_chart_title')}</div>
           <div class="dash-card-sub">${T('sales_chart_sub')}</div>
         </div>
+        <div style="display:flex;gap:6px">
+          <button id="salesViewMonthly" onclick="document.getElementById('salesViewMonthly').style.background='var(--gold-dk)';document.getElementById('salesViewYearly').style.background='var(--ink-70)';document.getElementById('salesChartMonthly').style.display='';document.getElementById('salesChartYearly').style.display='none';document.getElementById('salesChartLine').style.display='none'"
+            style="font-size:10px;font-weight:700;padding:4px 10px;border:1px solid var(--gold-dk);border-radius:5px;background:var(--gold-dk);color:#000;cursor:pointer">Monthly</button>
+          <button id="salesViewLine" onclick="document.getElementById('salesViewLine').style.background='var(--gold-dk)';document.getElementById('salesViewMonthly').style.background='var(--ink-70)';document.getElementById('salesViewYearly').style.background='var(--ink-70)';document.getElementById('salesChartMonthly').style.display='none';document.getElementById('salesChartLine').style.display='';document.getElementById('salesChartYearly').style.display='none'"
+            style="font-size:10px;font-weight:700;padding:4px 10px;border:1px solid var(--ink-60);border-radius:5px;background:var(--ink-70);color:var(--ink-10);cursor:pointer">Line</button>
+          ${yearTotals.length > 1 ? '<button id="salesViewYearly" onclick="document.getElementById(\'salesViewYearly\').style.background=\'var(--gold-dk)\';document.getElementById(\'salesViewMonthly\').style.background=\'var(--ink-70)\';document.getElementById(\'salesViewLine\').style.background=\'var(--ink-70)\';document.getElementById(\'salesChartMonthly\').style.display=\'none\';document.getElementById(\'salesChartLine\').style.display=\'none\';document.getElementById(\'salesChartYearly\').style.display=\'\'" style="font-size:10px;font-weight:700;padding:4px 10px;border:1px solid var(--ink-60);border-radius:5px;background:var(--ink-70);color:var(--ink-10);cursor:pointer">Yearly</button>' : ''}
+        </div>
       </div>
-      <div style="display:flex;gap:4px;align-items:flex-end;height:160px;padding:8px 0 0">
+      <div id="salesChartMonthly" style="display:flex;gap:3px;align-items:flex-end;height:120px;padding:6px 0 0">
         ${chartBars}
       </div>
+      <div id="salesChartLine" style="display:none;padding:6px 0 0">
+        ${salesLineChart}
+        <div style="display:flex;gap:16px;margin-top:6px;font-size:10px;color:var(--ink-40)">
+          <span>— <span style="color:var(--green)">Actual Sales</span></span>
+          <span>- - <span style="color:var(--gold-dk)">Monthly Goal</span></span>
+        </div>
+      </div>
+      ${yearTotals.length > 1 ? '<div id="salesChartYearly" style="display:none;padding:6px 0 0">' + yearLineChart + '</div>' : '<div id="salesChartYearly" style="display:none"></div>'}
     </div>`;
 }
 
