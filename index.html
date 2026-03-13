@@ -562,9 +562,9 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <!-- ══════════════════════════════════════════════════
      PIN LOCK SCREEN
 ════════════════════════════════════════════════════ -->
-<div id="pinOverlay" style="display:none !important;position:fixed;inset:0;z-index:99999;
+<div id="pinOverlay" style="position:fixed;inset:0;z-index:99999;
   background:linear-gradient(160deg,#0a0a0a 0%,#111 60%,#0d0d0d 100%);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">
+  flex-direction:column;align-items:center;justify-content:center;gap:0">
   <div style="text-align:center;margin-bottom:32px">
     <div style="font-size:38px;margin-bottom:10px">🔐</div>
     <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#c4933f;letter-spacing:.08em;font-weight:600">EA Sales Intelligence</div>
@@ -601,7 +601,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 </div>
 
 <!-- Auto-lock banner -->
-<div id="lockBanner" style="display:none !important;position:fixed;bottom:16px;right:16px;z-index:9000;
+<div id="lockBanner" style="position:fixed;bottom:16px;right:16px;z-index:9000;
   background:rgba(10,10,10,.95);border:1px solid rgba(196,147,63,.35);border-radius:10px;
   padding:10px 16px;font-size:12px;color:#c4933f;backdrop-filter:blur(8px)">
   🔒 Auto-locking in <span id="lockCountdown">60</span>s
@@ -610,6 +610,10 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 </div>
 
 <style>
+#pinOverlay { display: none !important; }
+#pinOverlay.visible { display: flex !important; }
+#lockBanner { display: none !important; }
+#lockBanner.visible { display: block !important; }
 .pin-dot {
   width:14px;height:14px;border-radius:50%;
   border:2px solid #444;background:transparent;transition:all .15s;
@@ -8270,6 +8274,13 @@ async function launchDemoMode() {
   }
 
   function showOverlay(mode) {
+    // Only show overlay if lock is enabled OR user explicitly opened from Security page
+    const lockEnabled = localStorage.getItem('ea_pin_lock_enabled') === 'true';
+    const fromSecurity = (mode === 'setup' || mode === 'verify-old') && 
+                         document.getElementById('page-security')?.classList.contains('active');
+    if (!lockEnabled && !fromSecurity && mode !== 'setup' && mode !== 'confirm' && mode !== 'verify-old') {
+      return; // Don't show PIN overlay when lock is disabled
+    }
     _pinMode = mode; _pinBuffer = '';
     _pinLength = (mode === 'setup') ? getPinLength() : getPinLength();
     rebuildDots();
@@ -8290,12 +8301,14 @@ async function launchDemoMode() {
       subEl().textContent = 'Enter your PIN to continue';
       setupEl().style.display = 'none';
     }
-    overlay().style.display = 'flex';
+    const el = overlay();
+    if (el) { el.classList.add('visible'); }
     document.body.style.overflow = 'hidden';
   }
 
   function hideOverlay() {
-    overlay().style.display = 'none';
+    const el = overlay();
+    if (el) { el.classList.remove('visible'); }
     document.body.style.overflow = '';
   }
 
@@ -8312,7 +8325,7 @@ async function launchDemoMode() {
 
   // ── Keyboard support ─────────────────────────────────────────────────
   function handleKeydown(e) {
-    if (overlay().style.display === 'none') return;
+    if (!overlay()?.classList.contains('visible')) return;
     if (e.key >= '0' && e.key <= '9') pinPress(e.key);
     if (e.key === 'Backspace') pinBackspace();
   }
@@ -8412,12 +8425,12 @@ async function launchDemoMode() {
   function startInactivityTimer() {
     clearTimeout(_inactTimer); clearTimeout(_warnTimer);
     clearInterval(_countdownInterval);
-    if (banner()) banner().style.display = 'none';
+    if (banner()) banner().classList.remove('visible');
 
     _warnTimer = setTimeout(() => {
       if (!isAuthenticated()) return;
       let secs = Math.round(WARN_BEFORE_MS / 1000);
-      if (banner()) { banner().style.display = 'block'; if(countdown()) countdown().textContent = secs; }
+      if (banner()) { banner().classList.add('visible'); if(countdown()) countdown().textContent = secs; }
       _countdownInterval = setInterval(() => {
         secs--;
         if (countdown()) countdown().textContent = secs;
@@ -8427,23 +8440,25 @@ async function launchDemoMode() {
 
     _inactTimer = setTimeout(() => {
       clearInterval(_countdownInterval);
-      if (banner()) banner().style.display = 'none';
+      if (banner()) banner().classList.remove('visible');
       lockApp();
     }, LOCK_AFTER_MS);
   }
 
   function lockApp() {
+    const lockEnabled = localStorage.getItem('ea_pin_lock_enabled') === 'true';
+    if (!lockEnabled) return; // Don't lock when PIN is disabled
     auditLog('APP_LOCKED', 'session locked');
     clearAuth();
     showOverlay('enter');
-    if (banner()) banner().style.display = 'none';
+    if (banner()) banner().classList.remove('visible');
     clearTimeout(_inactTimer); clearTimeout(_warnTimer);
     clearInterval(_countdownInterval);
     toast('🔒 Session locked due to inactivity', 'error');
   }
 
   window.resetInactivity = function() {
-    if (banner()) banner().style.display = 'none';
+    if (banner()) banner().classList.remove('visible');
     clearInterval(_countdownInterval);
     startInactivityTimer();
   };
@@ -8506,14 +8521,11 @@ async function launchDemoMode() {
   document.addEventListener('keydown', handleKeydown);
 
   document.addEventListener('DOMContentLoaded', () => {
-    const lockEnabled = localStorage.getItem('ea_pin_lock_enabled') === 'true';
-    if (lockEnabled && !isAuthenticated()) {
-      const hasPin = !!getStoredHash();
-      showOverlay(hasPin ? 'enter' : 'setup');
-    } else {
-      setAuthenticated();
-      hideOverlay();
-    }
+    // PIN lock disabled by default — always open freely
+    // User can re-enable from Security page if desired
+    localStorage.setItem('ea_pin_lock_enabled', 'false');
+    setAuthenticated();
+    hideOverlay();
   });
 
   // PIN auth disabled — visibility lock removed
@@ -8532,6 +8544,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   initDropdowns();
   document.getElementById('configScreen').style.display = 'flex'; // show loading state
+  document.getElementById('cfg-loading-msg').textContent = 'Connecting to database… (auto Demo Mode in ~15s)';
 
   /* ── helper: diagnose error and return {msg, steps} ── */
   function diagnose(e) {
@@ -8621,7 +8634,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       diag.steps.map(s => '<div style="margin-bottom:4px">→ ' + s + '</div>').join('');
 
     // Auto-countdown to demo mode
-    let secs = 12;
+    let secs = 5;
     const countEl = document.getElementById('cfg-countdown');
     const tick = () => {
       if (secs <= 0) { launchDemoMode(); return; }
@@ -8654,8 +8667,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ── Connection with retry (handles Supabase cold-start / free-tier sleep) ── */
-  const RETRIES = 3;
-  const DELAYS  = [0, 3000, 8000]; // immediate, 3s, 8s
+  const RETRIES = 2;
+  const DELAYS  = [0, 2000]; // immediate, 2s
   let lastErr = null;
 
   for (let attempt = 0; attempt < RETRIES; attempt++) {
@@ -8664,7 +8677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const msgEl = document.getElementById('cfg-loading-msg');
       if (msgEl) {
         msgEl.textContent = attempt === 1
-          ? 'Waking up database… (Supabase free tier may take 30s)' 
+          ? 'Connecting to database… switching to Demo Mode if unreachable.' 
           : 'Retrying connection (' + attempt + '/' + (RETRIES-1) + ')…';
       }
       await new Promise(r => setTimeout(r, wait));
@@ -8672,9 +8685,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       const client = window.supabase.createClient(SB_URL, SB_KEY);
-      // Use Promise.race with a 15s timeout per attempt
+      // Use Promise.race with a 6s timeout per attempt
       const testQuery = client.from('opportunities').select('id').limit(1);
-      const timeout   = new Promise((_, rej) => setTimeout(() => rej(new Error('Request timed out after 15s')), 15000));
+      const timeout   = new Promise((_, rej) => setTimeout(() => rej(new Error('Request timed out after 6s')), 6000));
       const { data, error } = await Promise.race([testQuery, timeout]);
       if (error) throw Object.assign(new Error(error.message), { code: error.code });
       // ✅ Success
