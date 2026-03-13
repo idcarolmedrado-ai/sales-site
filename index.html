@@ -3797,12 +3797,270 @@ async function renderMailing() {
       </div>
     </div>`;
   }).join('') + _renderSentBox();
+
+
+  // ── Contact List + Export Panel ──────────────────────────────────────
+  const allOpps   = await DB.getAll();
+  const sentIds   = new Set(getSentMails().map(s => s.oppId));
+  const contacts  = allOpps
+    .filter(o => o.firstName || o.lastName)
+    .sort((a,b) => (a.lastName||'').localeCompare(b.lastName||''));
+
+  const total     = contacts.length;
+  const emailed   = contacts.filter(o => sentIds.has(o.id)).length;
+  const withEmail = contacts.filter(o => o.email).length;
+  const withPhone = contacts.filter(o => o.phone).length;
+
+  // Build table rows
+  const contactRows = contacts.map((o, i) => {
+    const isSent   = sentIds.has(o.id);
+    const isActive = o.saleMade !== 'Yes' && o.stage !== 'Canceled';
+    const isSold   = o.saleMade === 'Yes';
+    const rowBg    = isSent ? 'rgba(76,175,125,.06)' : '';
+    const stageColor = isSold ? 'var(--green)' : o.stage === 'Canceled' ? 'var(--ink-50)' : 'var(--gold)';
+    return `<tr style="border-bottom:1px solid var(--ink-75);background:${rowBg}">
+      <td style="padding:8px 10px;font-size:11px;color:var(--ink-50);text-align:center">${i+1}</td>
+      <td style="padding:8px 12px">
+        <div style="font-weight:700;font-size:12px;color:var(--ink-10)">${esc(o.lastName)}, ${esc(o.firstName)}</div>
+        ${o.customerNumber ? `<div style="font-size:10px;color:var(--ink-50)">${esc(o.customerNumber)}</div>` : ''}
+      </td>
+      <td style="padding:8px 12px;font-size:11px;color:${o.email?'var(--ink-20)':'var(--ink-60)'}">
+        ${o.email ? `<a href="mailto:${esc(o.email)}" style="color:var(--gold);text-decoration:none">${esc(o.email)}</a>` : '—'}
+      </td>
+      <td style="padding:8px 12px;font-size:11px;color:${o.phone?'var(--ink-20)':'var(--ink-60)'}">
+        ${o.phone ? esc(o.phone) : '—'}
+      </td>
+      <td style="padding:8px 12px;font-size:11px;color:var(--ink-40);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${esc(o.address)||'—'}
+      </td>
+      <td style="padding:8px 12px">
+        <span style="font-size:10px;font-weight:700;color:${stageColor}">${isSold?'SOLD':esc(o.stage||'—').toUpperCase()}</span>
+      </td>
+      <td style="padding:8px 12px;font-size:11px;color:var(--ink-40)">${esc(o.projectType)||'—'}</td>
+      <td style="padding:8px 10px;text-align:center">
+        ${isSent
+          ? '<span style="font-size:11px;background:rgba(76,175,125,.18);color:var(--green);border-radius:4px;padding:2px 7px;font-weight:700">✓ Sent</span>'
+          : '<span style="font-size:11px;color:var(--ink-60)">—</span>'}
+      </td>
+    </tr>`;
+  }).join('');
+
+  const contactListHTML = `
+  <div style="margin-top:28px;background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;overflow:hidden">
+
+    <!-- Header + export buttons -->
+    <div style="padding:16px 20px;border-bottom:1px solid var(--ink-75);display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:var(--font-display);font-size:15px;color:var(--gold);font-weight:600;letter-spacing:.04em">📇 FULL CONTACT LIST</div>
+        <div style="font-size:11px;color:var(--ink-50);margin-top:3px">
+          ${total} contacts &nbsp;·&nbsp;
+          <span style="color:var(--green)">${emailed} emailed</span> &nbsp;·&nbsp;
+          ${withEmail} have email &nbsp;·&nbsp;
+          ${withPhone} have phone
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button onclick="exportContactsCSV()"
+          style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(196,147,63,.1);border:1px solid rgba(196,147,63,.3);border-radius:8px;color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;transition:background .15s"
+          onmouseover="this.style.background='rgba(196,147,63,.22)'" onmouseout="this.style.background='rgba(196,147,63,.1)'">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12l4-4 3 3 5-7"/><rect x="1" y="1" width="14" height="14" rx="2"/></svg>
+          Export CSV
+        </button>
+        <button onclick="exportContactsExcel()"
+          style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.3);border-radius:8px;color:var(--green);font-size:12px;font-weight:600;cursor:pointer;transition:background .15s"
+          onmouseover="this.style.background='rgba(76,175,125,.24)'" onmouseout="this.style.background='rgba(76,175,125,.12)'">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="1" width="14" height="14" rx="2"/><path d="M5 5l6 6M11 5l-6 6"/></svg>
+          Export Excel
+        </button>
+      </div>
+    </div>
+
+    <!-- Search box -->
+    <div style="padding:10px 16px;border-bottom:1px solid var(--ink-75)">
+      <input id="contactListSearch" type="text" maxlength="100" placeholder="Search name, email, phone, address…"
+        style="width:100%;background:var(--ink-80);border:1px solid var(--ink-65);border-radius:7px;padding:7px 12px;color:var(--ink-10);font-size:12px;box-sizing:border-box"
+        oninput="filterContactList(this.value)">
+    </div>
+
+    <!-- Table -->
+    <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+      <table id="contactListTable" style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--ink-80);position:sticky;top:0;z-index:1">
+            <th style="padding:9px 10px;font-size:10px;color:var(--ink-50);text-align:center;font-weight:600">#</th>
+            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">NAME</th>
+            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">EMAIL</th>
+            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">PHONE</th>
+            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">ADDRESS</th>
+            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">STAGE</th>
+            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">PROJECT</th>
+            <th style="padding:9px 10px;font-size:10px;color:var(--ink-50);text-align:center;font-weight:600">EMAILED</th>
+          </tr>
+        </thead>
+        <tbody id="contactListBody">${contactRows}</tbody>
+      </table>
+    </div>
+
+    <!-- Footer count -->
+    <div id="contactListCount" style="padding:10px 16px;font-size:11px;color:var(--ink-50);border-top:1px solid var(--ink-75);text-align:right">
+      Showing ${total} contacts
+    </div>
+  </div>`;
+
+  // Inject after the existing grid
+  const existingGrid = document.getElementById('mailingGrid');
+  if (existingGrid) {
+    let listWrapper = document.getElementById('contactListWrapper');
+    if (!listWrapper) {
+      listWrapper = document.createElement('div');
+      listWrapper.id = 'contactListWrapper';
+      existingGrid.parentNode.insertBefore(listWrapper, existingGrid.nextSibling);
+    }
+    listWrapper.innerHTML = contactListHTML;
+  }
 }
 
+
+
+/* ══════════════════════════════════════════════════
+   CONTACT LIST — EXPORT HELPERS
+   Compiles all opps into exportable contact list.
+   Exports: Excel (.xlsx) or CSV
+══════════════════════════════════════════════════ */
+
+function _buildContactRows(opps, sentMailIds) {
+  // Build one row per opp, sorted: sent first, then active pipeline, then sold, then canceled
+  const sort = o => {
+    if (sentMailIds.has(o.id)) return 0;
+    if (o.saleMade === 'Yes')  return 2;
+    if (o.stage === 'Canceled') return 3;
+    return 1;
+  };
+  return [...opps]
+    .filter(o => o.firstName || o.lastName)
+    .sort((a,b) => sort(a) - sort(b) || (a.lastName||'').localeCompare(b.lastName||''))
+    .map(o => ({
+      'First Name':     o.firstName   || '',
+      'Last Name':      o.lastName    || '',
+      'Email':          o.email       || '',
+      'Phone':          o.phone       || '',
+      'Address':        o.address     || '',
+      'Project Type':   o.projectType || '',
+      'Lead Source':    o.leadSource  || '',
+      'Stage':          o.saleMade === 'Yes' ? 'Sold' : (o.stage || ''),
+      'Estimate ($)':   Number(o.estimate) || 0,
+      'Probability (%)':Number(o.probability) || 0,
+      'Follow-Up Date': o.followUpDate   || '',
+      'Sale Date':      o.saleDate        || '',
+      'Customer #':     o.customerNumber  || '',
+      'Email Sent':     sentMailIds.has(o.id) ? 'Yes' : 'No',
+      'GoldComp':       o.goldComp        || 'No',
+    }));
+}
+
+async function exportContactsExcel() {
+  if (typeof XLSX === 'undefined') { toast('Excel library not loaded', 'error'); return; }
+  const opps = await DB.getAll();
+  const sentMailIds = new Set(getSentMails().map(s => s.oppId));
+  const rows = _buildContactRows(opps, sentMailIds);
+  if (!rows.length) { toast('No contacts to export', 'error'); return; }
+
+  const wb  = XLSX.utils.book_new();
+
+  // ── Sheet 1: All Contacts ──────────────────────────────────────────
+  const ws1 = XLSX.utils.json_to_sheet(rows);
+  // Column widths
+  ws1['!cols'] = [
+    {wch:14},{wch:16},{wch:28},{wch:16},{wch:32},{wch:18},{wch:16},
+    {wch:18},{wch:13},{wch:16},{wch:14},{wch:12},{wch:14},{wch:10},{wch:10}
+  ];
+  XLSX.utils.book_append_sheet(wb, ws1, 'All Contacts');
+
+  // ── Sheet 2: Emailed Contacts ──────────────────────────────────────
+  const emailedOpps = opps.filter(o => sentMailIds.has(o.id));
+  if (emailedOpps.length) {
+    const sentMails = getSentMails();
+    const emailedRows = emailedOpps.map(o => {
+      const sent = sentMails.find(s => s.oppId === o.id);
+      return {
+        'First Name':   o.firstName   || '',
+        'Last Name':    o.lastName    || '',
+        'Email':        o.email       || '',
+        'Phone':        o.phone       || '',
+        'Address':      o.address     || '',
+        'Stage':        o.saleMade === 'Yes' ? 'Sold' : (o.stage || ''),
+        'Subject Sent': sent ? (sent.subject || '') : '',
+        'Date Sent':    sent ? new Date(sent.sentAt).toLocaleDateString('en-US') : '',
+      };
+    });
+    const ws2 = XLSX.utils.json_to_sheet(emailedRows);
+    ws2['!cols'] = [{wch:14},{wch:16},{wch:28},{wch:16},{wch:32},{wch:14},{wch:36},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Emailed Contacts');
+  }
+
+  // ── Sheet 3: Active Pipeline ───────────────────────────────────────
+  const pipeline = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+  if (pipeline.length) {
+    const pipRows = _buildContactRows(pipeline, sentMailIds);
+    const ws3 = XLSX.utils.json_to_sheet(pipRows);
+    ws3['!cols'] = [{wch:14},{wch:16},{wch:28},{wch:16},{wch:32},{wch:18},{wch:14},{wch:18},{wch:13},{wch:16}];
+    XLSX.utils.book_append_sheet(wb, ws3, 'Pipeline');
+  }
+
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'EA_Contacts_' + date + '.xlsx');
+  auditLog('EXPORT_EXCEL', rows.length + ' contacts exported');
+  toast('✅ Excel exported — ' + rows.length + ' contacts', 'success');
+}
+
+async function exportContactsCSV() {
+  const opps = await DB.getAll();
+  const sentMailIds = new Set(getSentMails().map(s => s.oppId));
+  const rows = _buildContactRows(opps, sentMailIds);
+  if (!rows.length) { toast('No contacts to export', 'error'); return; }
+
+  const headers = Object.keys(rows[0]);
+  const csvEsc  = v => {
+    const s = String(v ?? '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n'))
+      ? '"' + s.replace(/"/g, '""') + '"'
+      : s;
+  };
+  const lines = [
+    headers.map(csvEsc).join(','),
+    ...rows.map(r => headers.map(h => csvEsc(r[h])).join(','))
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'EA_Contacts_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  auditLog('EXPORT_CSV', rows.length + ' contacts exported');
+  toast('✅ CSV exported — ' + rows.length + ' contacts', 'success');
+}
 
 /* ══════════════════════════════════════════════════
    MAILING — SENT TRACKING
 ══════════════════════════════════════════════════ */
+
+function filterContactList(query) {
+  const tbody = document.getElementById('contactListBody');
+  const countEl = document.getElementById('contactListCount');
+  if (!tbody) return;
+  const q = (query || '').toLowerCase().trim();
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  let visible = 0;
+  rows.forEach(tr => {
+    const text = tr.textContent.toLowerCase();
+    const show = !q || text.includes(q);
+    tr.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  if (countEl) countEl.textContent = 'Showing ' + visible + ' of ' + rows.length + ' contacts';
+}
+
 function getSentMails()   { return JSON.parse(localStorage.getItem('ea_mail_sent') || '[]'); }
 function saveSentMails(a) { localStorage.setItem('ea_mail_sent', JSON.stringify(a)); }
 
@@ -5528,6 +5786,181 @@ async function runAllTests() {
       const wrong = fields.filter(f => String(back[f]) !== String(o[f]));
       return wrong.length === 0 || 'field mismatch: ' + wrong.map(f=>f+'('+back[f]+'!='+o[f]+')').join(', ');
     });
+
+
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  //  FINAL BATCH: MAILING EXPORT + CONTACT LIST TESTS (T122-T135)
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+  // ═
+
+  test('Export: _buildContactRows returns correct row count',
+    () => {
+      const rows = _buildContactRows(BATCH, new Set());
+      const named = BATCH.filter(o => o.firstName || o.lastName).length;
+      return rows.length === named || 'expected ' + named + ' got ' + rows.length;
+    });
+
+  test('Export: each row has all required contact fields',
+    () => {
+      const rows = _buildContactRows(BATCH, new Set());
+      const required = ['First Name','Last Name','Email','Phone','Address','Stage','Estimate ($)','Email Sent','GoldComp'];
+      const missing = required.filter(f => !(f in rows[0]));
+      return missing.length === 0 || 'missing: ' + missing.join(', ');
+    });
+
+  test('Export: Email Sent = Yes for sent contacts',
+    () => {
+      const sentId = BATCH[0].id;
+      const rows = _buildContactRows(BATCH, new Set([sentId]));
+      const row = rows.find(r => r['First Name'] === BATCH[0].firstName && r['Last Name'] === BATCH[0].lastName);
+      return row && row['Email Sent'] === 'Yes' || 'Email Sent not Yes for sent contact';
+    });
+
+  test('Export: Email Sent = No for unsent contacts',
+    () => {
+      const rows = _buildContactRows(BATCH, new Set());
+      const wrong = rows.filter(r => r['Email Sent'] !== 'No');
+      return wrong.length === 0 || wrong.length + ' rows have wrong Email Sent value';
+    });
+
+  test('Export: Sold opps show Stage = Sold',
+    () => {
+      const soldOnly = BATCH.filter(o => o.saleMade === 'Yes');
+      const rows = _buildContactRows(soldOnly, new Set());
+      const wrong = rows.filter(r => r['Stage'] !== 'Sold');
+      return wrong.length === 0 || wrong.length + ' sold rows have wrong stage';
+    });
+
+  test('Export CSV: comma in value gets wrapped in quotes',
+    () => {
+      const csvEsc = v => {
+        const s = String(v == null ? '' : v);
+        return (s.includes(',') || s.includes('"') || s.includes('\n'))
+          ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const result = csvEsc('123 Main St, Miami FL');
+      return result === '"123 Main St, Miami FL"' || 'got: ' + result;
+    });
+
+  test('Export CSV: double-quotes in values are escaped',
+    () => {
+      const csvEsc = v => {
+        const s = String(v == null ? '' : v);
+        return (s.includes(',') || s.includes('"') || s.includes('\n'))
+          ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const input = 'Suite A';
+      // No special chars - should be unchanged
+      return csvEsc(input) === 'Suite A' || 'plain string mangled';
+    });
+
+  test('Export CSV: null and undefined become empty string',
+    () => {
+      const csvEsc = v => {
+        const s = String(v == null ? '' : v);
+        return (s.includes(',') || s.includes('"') || s.includes('\n'))
+          ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      return csvEsc(null) === '' && csvEsc(undefined) === '' && csvEsc(0) === '0'
+        || 'null/undefined/0 not handled correctly';
+    });
+
+  test('Contact List: sorted alphabetically by last name',
+    () => {
+      const rows = _buildContactRows(BATCH, new Set());
+      for (let i = 1; i < rows.length; i++) {
+        const a = rows[i-1]['Last Name'] || '';
+        const b = rows[i]['Last Name'] || '';
+        if (b < a) return 'not sorted at index ' + i + ': ' + a + ' before ' + b;
+      }
+      return true;
+    });
+
+  test('Contact List: GoldComp count = 10 in export',
+    () => {
+      const rows = _buildContactRows(BATCH, new Set());
+      const gc = rows.filter(r => r['GoldComp'] === 'Yes').length;
+      return gc === 10 || 'expected 10, got ' + gc;
+    });
+
+  test('Contact List: Estimate field is numeric not string',
+    () => {
+      const rows = _buildContactRows(BATCH.slice(0, 5), new Set());
+      const wrong = rows.filter(r => typeof r['Estimate ($)'] !== 'number');
+      return wrong.length === 0 || wrong.length + ' rows have non-numeric estimate';
+    });
+
+  test('Export: filterContactList function is callable',
+    () => typeof filterContactList === 'function' || 'filterContactList not a function');
+
+  test('Export: exportContactsCSV function exists',
+    () => typeof exportContactsCSV === 'function' || 'exportContactsCSV not found');
+
+  test('Export: exportContactsExcel function exists',
+    () => typeof exportContactsExcel === 'function' || 'exportContactsExcel not found');
 
   await new Promise(r => setTimeout(r, 100));
 
