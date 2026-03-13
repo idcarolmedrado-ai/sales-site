@@ -19,10 +19,14 @@
 --                     mileage auto-seed from home calls; Post-30/60 auto-sync
 --                     delivery date from opportunity; sales/analytics line
 --                     charts with year/month filter toggles.
---                     Mileage tab fully manual (auto-seed removed),
---                     month_auto trigger uses FMMonth for clean labels,
---                     getDaysOverdue guards SOLD/Canceled (always 0),
---                     esc() null/falsy-safe fix
+--    v4.3 (2026-03) — Contact List export (CSV + Excel 3-sheet) on Mailing tab;
+--                     Security Center page with score, audit log, PIN settings;
+--                     PIN system: optional startup lock (off by default),
+--                     device-unique salt, 4/6-digit support, verify-old flow;
+--                     CSP hardened (frame-ancestors:none, no CDN scripts);
+--                     Input validation (email, phone, prob, estimate);
+--                     getQuarter() fixed to EA fiscal year (Jul=Q1);
+--                     135 automated tests (batch 50-opp suite).
 --
 --  FISCAL QUARTERS (EA year):
 --    Q1 = Jul–Sep  |  Q2 = Oct–Dec
@@ -180,12 +184,22 @@ CREATE TRIGGER trg_opp_compute
 
 ALTER TABLE opportunities ENABLE ROW LEVEL SECURITY;
 
+-- ── Per-operation policies (v4.3 — more granular than anon_all) ─────
+--    Replaces the single "anon_all" catch-all with explicit policies.
+--    This is the recommended setup. Run the DROP first if upgrading.
 DROP POLICY IF EXISTS "anon_all" ON opportunities;
-CREATE POLICY "anon_all" ON opportunities
-  FOR ALL
-  TO   anon
-  USING      (true)
-  WITH CHECK (true);
+
+CREATE POLICY "anon_select" ON opportunities
+  FOR SELECT TO anon USING (true);
+
+CREATE POLICY "anon_insert" ON opportunities
+  FOR INSERT TO anon WITH CHECK (true);
+
+CREATE POLICY "anon_update" ON opportunities
+  FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+CREATE POLICY "anon_delete" ON opportunities
+  FOR DELETE TO anon USING (true);
 
 
 -- ── Step 5: Verify ──────────────────────────────────────────
