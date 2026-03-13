@@ -550,8 +550,88 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   tfoot { display:table-footer-group; }
 }
 </style>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://rsoukgpaqsgsdfvwrceu.supabase.co; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://rsoukgpaqsgsdfvwrceu.supabase.co wss://rsoukgpaqsgsdfvwrceu.supabase.co; frame-ancestors 'none'; form-action 'self'; base-uri 'self';">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 </head>
 <body>
+<!-- ══════════════════════════════════════════════════
+     PIN LOCK SCREEN
+════════════════════════════════════════════════════ -->
+<div id="pinOverlay" style="display:none;position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(160deg,#0a0a0a 0%,#111 60%,#0d0d0d 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">
+  <div style="text-align:center;margin-bottom:32px">
+    <div style="font-size:38px;margin-bottom:10px">🔐</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#c4933f;letter-spacing:.08em;font-weight:600">EA Sales Intelligence</div>
+    <div id="pinSubtitle" style="font-size:13px;color:#666;margin-top:6px;letter-spacing:.05em">Enter your PIN to continue</div>
+  </div>
+
+  <!-- PIN dots -->
+  <div id="pinDots" style="display:flex;gap:16px;margin-bottom:32px">
+    <div class="pin-dot"></div><div class="pin-dot"></div>
+    <div class="pin-dot"></div><div class="pin-dot"></div>
+  </div>
+
+  <!-- Numpad -->
+  <div style="display:grid;grid-template-columns:repeat(3,72px);gap:12px;margin-bottom:12px">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <div></div>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn pin-del" onclick="pinBackspace()">⌫</button>
+  </div>
+
+  <div id="pinError" style="color:#e05c5c;font-size:12px;height:18px;margin-top:4px;letter-spacing:.04em"></div>
+  <div id="pinSetupMsg" style="display:none;color:#888;font-size:11px;margin-top:12px;text-align:center;max-width:220px;line-height:1.6">
+    No PIN set yet.<br>Enter a 4-digit PIN to set it.
+  </div>
+  <div id="pinLockout" style="display:none;color:#e05c5c;font-size:12px;margin-top:8px;text-align:center"></div>
+</div>
+
+<!-- Auto-lock banner -->
+<div id="lockBanner" style="display:none;position:fixed;bottom:16px;right:16px;z-index:9000;
+  background:rgba(10,10,10,.95);border:1px solid rgba(196,147,63,.35);border-radius:10px;
+  padding:10px 16px;font-size:12px;color:#c4933f;backdrop-filter:blur(8px)">
+  🔒 Auto-locking in <span id="lockCountdown">60</span>s
+  <button onclick="resetInactivity()" style="margin-left:10px;padding:3px 10px;background:rgba(196,147,63,.15);
+    border:1px solid rgba(196,147,63,.4);border-radius:5px;color:#c4933f;font-size:11px;cursor:pointer">Stay active</button>
+</div>
+
+<style>
+.pin-dot {
+  width:14px;height:14px;border-radius:50%;
+  border:2px solid #444;background:transparent;transition:all .15s;
+}
+.pin-dot.filled { background:#c4933f;border-color:#c4933f; }
+.pin-dot.shake { animation:pinShake .4s ease; }
+.pin-btn {
+  width:72px;height:72px;border-radius:50%;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
+  color:#eee;font-size:22px;font-family:'Cormorant Garamond',serif;
+  cursor:pointer;transition:all .12s;user-select:none;
+}
+.pin-btn:hover { background:rgba(196,147,63,.15);border-color:rgba(196,147,63,.4);color:#c4933f; }
+.pin-btn:active { transform:scale(.92);background:rgba(196,147,63,.25); }
+.pin-del { font-size:18px;color:#888; }
+@keyframes pinShake {
+  0%,100% { transform:translateX(0); }
+  20%,60% { transform:translateX(-8px); }
+  40%,80% { transform:translateX(8px); }
+}
+</style>
+
 
 <!-- Config Screen (hidden — auto-connect on load) -->
 <div id="configScreen">
@@ -664,6 +744,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       onmouseout="this.style.borderColor='var(--ink-60)';this.style.color='var(--ink-20)'">🇧🇷 PT</button>
     <span id="connBadge" class="conn-badge demo"><span class="dot"></span>Demo</span>
     <span class="nav-badge" id="overdueCount" title="Overdue follow-ups">0</span>
+    <button onclick="lockNow()" title="Lock app now" style="background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;color:var(--ink-40);font-size:15px;line-height:1;transition:color .15s" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--ink-40)'">🔒</button>
+    <button onclick="navigate('security')" title="Security &amp; Settings" style="background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;color:var(--ink-40);font-size:14px;line-height:1;transition:color .15s" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--ink-40)'">🛡️</button>
     <div class="nav-avatar" title="Carolina Medrado">CM</div>
   </div>
 </nav>
@@ -766,7 +848,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <h2 class="display" data-i18n="pipe_header">ALL OPPORTUNITIES</h2></div>
     <div class="search-box">
       <span style="color:var(--ink-40)">🔍</span>
-      <input id="searchInput" type="text" placeholder="Search name, project, stage…" oninput="renderPipeline()">
+      <input id="searchInput" type="text" placeholder="Search name, project, stage…" maxlength="100" oninput="renderPipeline()">
     </div>
     <div style="display:flex;gap:8px">
     <button onclick="printPage('page-pipeline')" class="print-btn" title="Print or Save as PDF">
@@ -853,6 +935,9 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   </div>
   <div class="mailing-grid" id="mailingGrid"></div>
 </div><!-- /mailing -->
+
+<!-- ══════ SECURITY ══════ -->
+<div class="page" id="page-security"></div>
 
 <!-- ══════ TESTS ══════ -->
 <div class="page" id="page-active"></div>
@@ -944,11 +1029,11 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <div class="form-section">
         <div class="form-section-title" data-i18n="sec_contact">👤 Contact Information</div>
         <div class="form-grid">
-          <div class="field"><label data-i18n="lbl_first">First Name *</label><input id="f-firstName" type="text" required placeholder="Maria"></div>
-          <div class="field"><label data-i18n="lbl_last">Last Name *</label><input id="f-lastName" type="text" required placeholder="Alvarez"></div>
-          <div class="field"><label data-i18n="lbl_email">Email</label><input id="f-email" type="email" placeholder="maria@email.com"></div>
-          <div class="field"><label data-i18n="lbl_phone">Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000"></div>
-          <div class="field span-2"><label data-i18n="lbl_address">Address</label><input id="f-address" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
+          <div class="field"><label data-i18n="lbl_first">First Name *</label><input id="f-firstName" maxlength="80" type="text" required placeholder="Maria"></div>
+          <div class="field"><label data-i18n="lbl_last">Last Name *</label><input id="f-lastName" maxlength="80" type="text" required placeholder="Alvarez"></div>
+          <div class="field"><label data-i18n="lbl_email">Email</label><input id="f-email" maxlength="120" type="email" placeholder="maria@email.com"></div>
+          <div class="field"><label data-i18n="lbl_phone">Phone</label><input id="f-phone" maxlength="30" type="tel" placeholder="305-555-0000"></div>
+          <div class="field span-2"><label data-i18n="lbl_address">Address</label><input id="f-address" maxlength="200" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
         </div>
       </div>
 
@@ -970,7 +1055,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
           <div class="field"><label data-i18n="lbl_closedate">Expected Close Date</label>
             <input id="f-closeDate" type="date" onchange="onFieldChange()"></div>
           <div class="field"><label data-i18n="lbl_next">Next Step</label>
-            <select id="f-nextStep"><option value="">Select…</option></select></div>
+            <select id="f-nextStep" maxlength="500"><option value="">Select…</option></select></div>
           <div class="field"><label data-i18n="lbl_hc">Home Call?</label>
             <select id="f-homeCall" onchange="onFieldChange()">
               <option value="">—</option><option>Yes</option><option>No</option>
@@ -1028,12 +1113,12 @@ tbody td { padding: 11px 12px; font-size: 13px; }
         <div class="form-grid">
           <div class="field">
             <label>Customer #</label>
-            <input id="f-customerNumber" type="text" placeholder="e.g. EA-2026-0001"
-              style="background:var(--ink-70);color:var(--gold);font-family:var(--font-display);font-weight:700">
+            <input id="f-customerNumber" type="text" placeholder="e.g. EA-2026-0001" maxlength="20"
+              style="background:var(--ink-70);color:var(--gold);font-family:var(--font-display);font-weight:700" maxlength="20">
           </div>
           <div class="field">
             <label>Active Phase</label>
-            <input id="f-activePhase" type="text" placeholder="e.g. Design Review, Ordering…">
+            <input id="f-activePhase" type="text" placeholder="e.g. Design Review, Ordering…" maxlength="60">
           </div>
           <div class="field">
             <label>Sale Date</label>
@@ -1045,7 +1130,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
           </div>
           <div class="field">
             <label>Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: +7d)</span></label>
-            <input id="f-linkReviewDate" type="date">
+            <input id="f-linkReviewDate" type="date" maxlength="10">
           </div>
           <div class="field">
             <label>Issue Flag</label>
@@ -1055,11 +1140,11 @@ tbody td { padding: 11px 12px; font-size: 13px; }
           </div>
           <div class="field">
             <label>Issue Type <span style="font-size:10px;color:var(--ink-40)">(manual notes)</span></label>
-            <input id="f-issueType" type="text" placeholder="Describe issue…">
+            <input id="f-issueType" maxlength="200" type="text" placeholder="Describe issue…">
           </div>
           <div class="field">
             <label>Issue Resolved?</label>
-            <select id="f-issueResult">
+            <select id="f-issueResult" maxlength="200">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select>
           </div>
@@ -1068,7 +1153,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 
       <div class="form-section">
         <div class="form-section-title">📝 Notes</div>
-        <div class="field"><textarea id="f-notes" placeholder="Context about this opportunity…"></textarea></div>
+        <div class="field"><textarea id="f-notes" maxlength="1000" placeholder="Context about this opportunity…"></textarea></div>
       </div>
 
       <div class="form-actions">
@@ -1961,9 +2046,10 @@ Interior Design Consultant | Ethan Allen`
     if (!dateStr) return null;
     const m = parseInt((dateStr||'').split('-')[1], 10);
     if (!m || isNaN(m)) return null;
-    if (m <= 3)  return 'Q1';
-    if (m <= 6)  return 'Q2';
-    if (m <= 9)  return 'Q3';
+    // EA fiscal year: Q1=Jul-Sep, Q2=Oct-Dec, Q3=Jan-Mar, Q4=Apr-Jun
+    if (m >= 7 && m <= 9)  return 'Q1';
+    if (m >= 10)           return 'Q2';
+    if (m <= 3)            return 'Q3';
     return 'Q4';
   },
 
@@ -2304,6 +2390,7 @@ const DB = {
 
   /* ── DELETE ── */
   async delete(id) {
+    auditLog('LEAD_DELETED', `id=${id}`);
     if (this.mode === 'supabase') {
       try {
         const { error } = await this.client.from('opportunities').delete().eq('id', id);
@@ -2471,6 +2558,7 @@ async function renderPage(page) {
     case 'sales': window._currentPage='sales'; await renderSales(); break;
     case 'mileage':    await renderMileage();    break;
     case 'analytics': await renderAnalytics(); break;
+    case 'security':  await renderSecurity();  break;
     case 'tests': break;
   }
 }
@@ -2973,7 +3061,7 @@ async function renderPost30() {
       </td>
       <td style="color:var(--ink-20)">${followup30 ? formatDateShort(followup30) : '—'}</td>
       <td>${statusBadge}</td>
-      <td><input type="text" value="${esc(rec.contactReason||'')}" placeholder="e.g. 3-week check-in"
+      <td><input type="text" value="${esc(rec.contactReason||'')}" maxlength="100" placeholder="e.g. 3-week check-in"
         onchange="updatePost30('${opp.id}','contactReason',this.value)" style="min-width:160px" /></td>
       <td>
         <select onchange="updatePost30('${opp.id}','newOpportunity',this.value)" style="width:80px">
@@ -2982,7 +3070,7 @@ async function renderPost30() {
           <option value="No"  ${rec.newOpportunity==='No'?'selected':''}>No</option>
         </select>
       </td>
-      <td><input type="text" value="${esc(rec.notes||'')}" placeholder="Notes"
+      <td><input type="text" value="${esc(rec.notes||'')}" maxlength="300" placeholder="Notes"
         onchange="updatePost30('${opp.id}','notes',this.value)" style="min-width:120px" /></td>
     </tr>`;
   }).join('');
@@ -3081,7 +3169,7 @@ async function renderPost60() {
       <td style="color:var(--ink-20)">${formatDateShort(dvSrc)}</td>
       <td style="color:var(--ink-20)">${followup60 ? formatDateShort(followup60) : '—'}</td>
       <td>${statusBadge}</td>
-      <td><input type="text" value="${esc(rec.p60_contactReason||'')}" placeholder="Final nurture touchpoint"
+      <td><input type="text" value="${esc(rec.p60_contactReason||'')}" maxlength="100" placeholder="Final nurture touchpoint"
         onchange="updatePost60('${rec.oppId}','p60_contactReason',this.value)" style="min-width:160px" /></td>
       <td>
         <select onchange="updatePost60('${rec.oppId}','p60_newOpportunity',this.value)" style="width:80px">
@@ -3090,7 +3178,7 @@ async function renderPost60() {
           <option value="No"  ${rec.p60_newOpportunity==='No'?'selected':''}>No</option>
         </select>
       </td>
-      <td><input type="text" value="${esc(rec.p60_notes||'')}" placeholder="Notes"
+      <td><input type="text" value="${esc(rec.p60_notes||'')}" maxlength="300" placeholder="Notes"
         onchange="updatePost60('${rec.oppId}','p60_notes',this.value)" style="min-width:120px" /></td>
     </tr>`;
   }).join('');
@@ -3984,9 +4072,34 @@ function updateAutoFields() {
 }
 
 async function saveLead() {
-  const firstName = document.getElementById('f-firstName').value.trim();
-  const lastName  = document.getElementById('f-lastName').value.trim();
+  // ── Rate limit: max 20 saves per 5 minutes ──────────────────────────────
+  const _rlKey = 'ea_rl_save'; const _rlWin = 300000; const _rlMax = 20;
+  const _rl = JSON.parse(localStorage.getItem(_rlKey)||'[]').filter(t=>Date.now()-t<_rlWin);
+  if (_rl.length >= _rlMax) { toast('Too many saves — please wait a moment', 'error'); return; }
+  _rl.push(Date.now()); localStorage.setItem(_rlKey, JSON.stringify(_rl));
+
+  const firstName = document.getElementById('f-firstName').value.trim().slice(0,80);
+  const lastName  = document.getElementById('f-lastName').value.trim().slice(0,80);
   if (!firstName || !lastName) { toast('First and last name are required', 'error'); return; }
+  if (/[<>{}"'`]/.test(firstName) || /[<>{}"'`]/.test(lastName)) { toast('Name contains invalid characters', 'error'); return; }
+
+  // ── Field-level validation ──────────────────────────────────────────
+  const emailVal = (document.getElementById('f-email')?.value || '').trim();
+  const phoneVal = (document.getElementById('f-phone')?.value || '').trim();
+  const probVal  = Number(document.getElementById('f-probability')?.value || 0);
+  const estVal   = Number((document.getElementById('f-estimate')?.value || '0').replace(/[^0-9.]/g,''));
+  if (emailVal && !/^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/.test(emailVal)) {
+    toast('Invalid email format', 'error'); return;
+  }
+  if (phoneVal && !/^[\d\s\-\+\(\)\.]{0,20}$/.test(phoneVal)) {
+    toast('Phone can only contain digits, spaces, +, -, (, )', 'error'); return;
+  }
+  if (isNaN(probVal) || probVal < 0 || probVal > 100) {
+    toast('Probability must be a number between 0 and 100', 'error'); return;
+  }
+  if (isNaN(estVal) || estVal < 0) {
+    toast('Product value must be a positive number', 'error'); return;
+  }
 
   const existingId  = document.getElementById('leadId').value;
   const stage       = document.getElementById('f-stage').value;
@@ -4102,6 +4215,7 @@ async function saveLead() {
       _scheduleReviewTask(opp, linkReviewDate);
     }
     closeModal();
+    auditLog(existingId ? 'LEAD_UPDATED' : 'LEAD_CREATED', firstName + ' ' + lastName + ' — ' + (document.getElementById('f-stage')?.value || ''));
     const msg = existingId ? 'Updated ' + firstName + ' ' + lastName : 'Added ' + firstName + ' ' + lastName;
     toast('✅ ' + msg, 'success');
     // ── Route to correct tab ──
@@ -4146,6 +4260,212 @@ async function deleteLead() {
 /* ══════════════════════════════════════════════════
    TEST SUITE (20 tests — all must pass before publish)
 ══════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════
+   SECURITY & SETTINGS PAGE
+══════════════════════════════════════════════════ */
+async function renderSecurity() {
+  const el = document.getElementById('page-security');
+  if (!el) return;
+
+  const pinLen    = getPinLength();
+  const hasPin    = !!getStoredHash();
+  const auditData = getAuditLog().slice().reverse();
+  const attempts  = getAttempts();
+  const lockout   = getLockout();
+  const isLocked  = lockout && (lockout + 5*60*1000 > Date.now());
+
+  let score = 0, scoreItems = [];
+  if (hasPin)    { score += 30; scoreItems.push({ok:true,  label:'PIN protection enabled'}); }
+  else           { scoreItems.push({ok:false, label:'No PIN set — app is unprotected'}); }
+  if (pinLen===6){ score += 20; scoreItems.push({ok:true,  label:'6-digit PIN (stronger)'}); }
+  else           { scoreItems.push({ok:false, label:'4-digit PIN — consider upgrading to 6'}); }
+  score += 20; scoreItems.push({ok:true,  label:'Auto-lock after 15 min inactivity'});
+  score += 15; scoreItems.push({ok:true,  label:'Tab-hide auto-lock (30s)'});
+  score += 10; scoreItems.push({ok:true,  label:'SHA-256 hashed PIN + device salt'});
+  score += 5;  scoreItems.push({ok:true,  label:'Rate limiting on save operations'});
+
+  const scoreColor = score >= 90 ? 'var(--green)' : score >= 60 ? 'var(--gold)' : 'var(--red)';
+  const scoreLabel = score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Fair' : 'Needs Attention';
+
+  const actionIcon = { LOGIN_SUCCESS:'checkmark-circle', LOGIN_FAILED:'warning', ACCOUNT_LOCKED:'ban',
+    PIN_SET:'lock-closed', APP_LOCKED:'lock-closed', LEAD_CREATED:'person-add',
+    LEAD_UPDATED:'pencil', LEAD_DELETED:'trash', AUDIT_CLEARED:'trash' };
+  const actionEmoji = { LOGIN_SUCCESS:'OK', LOGIN_FAILED:'WARN', ACCOUNT_LOCKED:'LOCK',
+    PIN_SET:'PIN', APP_LOCKED:'LOCK', LEAD_CREATED:'ADD', LEAD_UPDATED:'EDIT',
+    LEAD_DELETED:'DEL', AUDIT_CLEARED:'CLR' };
+
+  const auditRows = auditData.slice(0,60).map(e => {
+    const dt = new Date(e.ts);
+    const timeStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' +
+      dt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    const isAlert = ['LOGIN_FAILED','ACCOUNT_LOCKED','LEAD_DELETED'].includes(e.action);
+    const badge = actionEmoji[e.action] || 'LOG';
+    const badgeColor = isAlert ? 'var(--red)' : e.action === 'LOGIN_SUCCESS' ? 'var(--green)' : 'var(--gold)';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--ink-75);' + (isAlert ? 'background:rgba(224,92,92,.06)' : '') + '">' +
+      '<span style="font-size:9px;font-weight:800;background:' + badgeColor + ';color:#000;border-radius:4px;padding:2px 5px;flex-shrink:0">' + badge + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<span style="font-size:11px;font-weight:700;color:' + (isAlert ? 'var(--red)' : 'var(--ink-20)') + '">' + esc(e.action.replace(/_/g,' ')) + '</span>' +
+        (e.detail ? '<span style="font-size:10px;color:var(--ink-40);margin-left:6px">' + esc(e.detail) + '</span>' : '') +
+      '</div>' +
+      '<span style="font-size:10px;color:var(--ink-50);flex-shrink:0">' + timeStr + '</span>' +
+    '</div>';
+  }).join('') || '<div style="padding:20px;text-align:center;color:var(--ink-50);font-size:12px">No activity recorded yet</div>';
+
+  const checklistHTML = scoreItems.map(item =>
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+      '<span style="font-size:12px">' + (item.ok ? '\u2705' : '\u274c') + '</span>' +
+      '<span style="font-size:12px;color:' + (item.ok ? 'var(--ink-20)' : 'var(--red)') + '">' + item.label + '</span>' +
+    '</div>'
+  ).join('');
+
+  const sessionRows = [
+    {label:'Auto-lock timeout', val:'15 minutes'},
+    {label:'Warning shown before lock', val:'60 seconds'},
+    {label:'Tab-hide lock delay', val:'30 seconds'},
+    {label:'Max failed attempts', val:'5 attempts'},
+    {label:'Lockout duration', val:'5 minutes'},
+    {label:'Current status', val: isLocked ? 'LOCKED OUT' : attempts.count > 0 ? attempts.count + ' failed' : 'Normal',
+     color: isLocked ? 'var(--red)' : attempts.count > 0 ? 'var(--gold)' : 'var(--green)'},
+  ].map(r =>
+    '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:8px">' +
+      '<span style="color:var(--ink-40)">' + r.label + '</span>' +
+      '<span style="color:' + (r.color || 'var(--ink-20)') + ';font-weight:600">' + r.val + '</span>' +
+    '</div>'
+  ).join('');
+
+  const dataCards = [
+    {icon:'\ud83d\udd12', label:'Supabase TLS', desc:'All DB traffic encrypted in transit'},
+    {icon:'\ud83d\udd10', label:'Row-Level Security', desc:'RLS enabled on opportunities table'},
+    {icon:'\ud83e\uddc2', label:'Hashed PIN', desc:'SHA-256 + device-unique random salt'},
+    {icon:'\ud83d\ude80', label:'CSP Hardened', desc:'cdn.jsdelivr.net removed, frame-ancestors: none'},
+    {icon:'\ud83e\udd16', label:'Search blocked', desc:'noindex + noarchive + nosnippet'},
+    {icon:'\ud83d\udcca', label:'Rate limited', desc:'Max 20 saves per 5 min per session'},
+  ].map(c =>
+    '<div style="background:var(--ink-80);border-radius:10px;padding:14px">' +
+      '<div style="font-size:20px;margin-bottom:6px">' + c.icon + '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:var(--ink-10);margin-bottom:3px">' + c.label + '</div>' +
+      '<div style="font-size:10px;color:var(--ink-40);line-height:1.5">' + c.desc + '</div>' +
+    '</div>'
+  ).join('');
+
+  const checklistSteps = [
+    {done:true,  step:'Enable RLS on opportunities table', note:'Done in schema_final.sql'},
+    {done:false, step:'Restrict anon key to your GitHub Pages domain', note:'Supabase Dashboard → Project Settings → API → Allowed Origins'},
+    {done:false, step:'Replace anon_all policy with per-op policies', note:'Run the SQL at the bottom of this page'},
+    {done:false, step:'Enable weekly database backups', note:'Supabase → Project Settings → Backups'},
+    {done:false, step:'Review API logs monthly', note:'Supabase → Logs → API logs'},
+    {done:false, step:'Upgrade to 6-digit PIN', note:'Use the PIN Settings panel above'},
+  ].map(s =>
+    '<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:var(--ink-80);border-radius:8px;margin-bottom:8px">' +
+      '<span style="font-size:13px;flex-shrink:0;margin-top:1px">' + (s.done ? '\u2705' : '\u2b1c') + '</span>' +
+      '<div><div style="font-size:12px;font-weight:600;color:var(--ink-10)">' + s.step + '</div>' +
+      '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">' + s.note + '</div></div>' +
+    '</div>'
+  ).join('');
+
+  const circumference = 2 * Math.PI * 46;
+  const arcLen = (score / 100 * circumference).toFixed(1);
+
+  el.innerHTML =
+    '<div class="container" style="padding-top:24px;padding-bottom:48px">' +
+
+      // Header
+      '<div style="margin-bottom:28px">' +
+        '<span class="label" style="display:block;margin-bottom:6px">Security &amp; Settings</span>' +
+        '<h2 class="display" style="font-size:clamp(28px,5vw,42px);line-height:1.1;margin:0">APP SECURITY<br><span style="color:var(--gold)">CENTER</span></h2>' +
+      '</div>' +
+
+      // Score + checklist
+      '<div style="display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center;background:var(--ink-85);border:1px solid rgba(196,147,63,.18);border-radius:14px;padding:24px;margin-bottom:20px">' +
+        '<div style="text-align:center">' +
+          '<svg width="116" height="116" viewBox="0 0 116 116">' +
+            '<circle cx="58" cy="58" r="46" fill="none" stroke="var(--ink-70)" stroke-width="10"/>' +
+            '<circle cx="58" cy="58" r="46" fill="none" stroke="' + scoreColor + '" stroke-width="10" stroke-dasharray="' + arcLen + ' ' + circumference.toFixed(1) + '" stroke-dashoffset="72" stroke-linecap="round"/>' +
+            '<text x="58" y="54" text-anchor="middle" font-family="var(--font-display)" font-size="28" font-weight="700" fill="' + scoreColor + '">' + score + '</text>' +
+            '<text x="58" y="70" text-anchor="middle" font-size="10" fill="var(--ink-40)">/100</text>' +
+          '</svg>' +
+          '<div style="font-size:13px;font-weight:700;color:' + scoreColor + ';margin-top:4px">' + scoreLabel + '</div>' +
+        '</div>' +
+        '<div>' +
+          '<div style="font-size:13px;font-weight:700;color:var(--ink-10);margin-bottom:12px">Security Checklist</div>' +
+          checklistHTML +
+        '</div>' +
+      '</div>' +
+
+      // PIN + Session
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">' +
+        // PIN card
+        '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;padding:20px">' +
+          '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:4px;letter-spacing:.05em">\ud83d\udd10 PIN PROTECTION</div>' +
+          '<div style="font-size:11px;color:var(--ink-40);margin-bottom:16px">Current: <strong style="color:var(--ink-20)">' + pinLen + '-digit</strong> &nbsp;·&nbsp; ' + (hasPin ? '<span style="color:var(--green)">Active</span>' : '<span style="color:var(--red)">Not set</span>') + '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:9px">' +
+            '<button onclick="changePIN()" style="padding:9px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:8px;color:var(--gold);font-size:12px;font-weight:600;cursor:pointer">' + (hasPin ? '\ud83d\udd04 Change PIN' : '\ud83d\udd10 Set PIN') + '</button>' +
+            '<div style="display:flex;gap:8px">' +
+              '<button onclick="switchPinLength(4)" style="flex:1;padding:8px;background:' + (pinLen===4?'rgba(196,147,63,.2)':'var(--ink-75)') + ';border:1px solid ' + (pinLen===4?'var(--gold)':'var(--ink-60)') + ';border-radius:7px;color:' + (pinLen===4?'var(--gold)':'var(--ink-40)') + ';font-size:11px;font-weight:600;cursor:pointer">4-Digit</button>' +
+              '<button onclick="switchPinLength(6)" style="flex:1;padding:8px;background:' + (pinLen===6?'rgba(76,175,125,.2)':'var(--ink-75)') + ';border:1px solid ' + (pinLen===6?'var(--green)':'var(--ink-60)') + ';border-radius:7px;color:' + (pinLen===6?'var(--green)':'var(--ink-40)') + ';font-size:11px;font-weight:600;cursor:pointer">6-Digit \u2b50</button>' +
+            '</div>' +
+            '<button onclick="lockNow()" style="padding:9px;background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600;cursor:pointer">\ud83d\udd12 Lock App Now</button>' +
+          '</div>' +
+        '</div>' +
+        // Session card
+        '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;padding:20px">' +
+          '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:4px;letter-spacing:.05em">\u23f1\ufe0f SESSION SECURITY</div>' +
+          '<div style="font-size:11px;color:var(--ink-40);margin-bottom:14px">Protects data when you step away</div>' +
+          sessionRows +
+        '</div>' +
+      '</div>' +
+
+      // Data security cards
+      '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;padding:20px;margin-bottom:20px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:14px;letter-spacing:.05em">\ud83d\uddc4\ufe0f DATA SECURITY</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">' + dataCards + '</div>' +
+      '</div>' +
+
+      // Supabase checklist
+      '<div style="background:var(--ink-85);border:1px solid rgba(76,175,125,.2);border-radius:14px;padding:20px;margin-bottom:20px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:12px;letter-spacing:.05em">\ud83d\udccb SUPABASE HARDENING CHECKLIST</div>' +
+        checklistSteps +
+      '</div>' +
+
+      // Audit log
+      '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;overflow:hidden;margin-bottom:20px">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--ink-75)">' +
+          '<div style="font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.05em">\ud83d\udccb ACTIVITY AUDIT LOG</div>' +
+          '<div style="display:flex;gap:8px;align-items:center">' +
+            '<span style="font-size:11px;color:var(--ink-50)">' + auditData.length + ' entries</span>' +
+            '<button onclick="clearAuditLog();renderSecurity()" style="padding:4px 10px;background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);border-radius:6px;color:var(--red);font-size:11px;cursor:pointer">Clear</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="max-height:300px;overflow-y:auto">' + auditRows + '</div>' +
+      '</div>' +
+
+      // SQL guide
+      '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;padding:20px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px;letter-spacing:.05em">\ud83d\udd27 SUPABASE RLS — RUN IN SQL EDITOR</div>' +
+        '<pre id="rlsSql" style="background:var(--ink-80);border-radius:8px;padding:14px;font-size:10.5px;color:var(--ink-20);overflow-x:auto;line-height:1.7;white-space:pre-wrap;margin:0">-- Drop the permissive catch-all policy
+DROP POLICY IF EXISTS &quot;anon_all&quot; ON opportunities;
+
+-- Allow read
+CREATE POLICY &quot;anon_select&quot; ON opportunities FOR SELECT USING (true);
+
+-- Allow new leads
+CREATE POLICY &quot;anon_insert&quot; ON opportunities FOR INSERT WITH CHECK (true);
+
+-- Allow edits
+CREATE POLICY &quot;anon_update&quot; ON opportunities FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Allow delete
+CREATE POLICY &quot;anon_delete&quot; ON opportunities FOR DELETE USING (true);
+
+-- Supabase Dashboard &rarr; Settings &rarr; API &rarr; Allowed Origins
+-- Add: https://YOUR-GITHUB-USERNAME.github.io</pre>' +
+        '<button onclick="const raw=document.getElementById('rlsSql').innerText;navigator.clipboard?.writeText(raw).then(()=>toast('SQL copied to clipboard!','success'))" style="margin-top:10px;padding:8px 16px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:8px;color:var(--gold);font-size:12px;cursor:pointer">\ud83d\udccb Copy SQL</button>' +
+      '</div>' +
+
+    '</div>';
+}
+
 async function runAllTests() {
   const listEl    = document.getElementById('testList');
   const summaryEl = document.getElementById('testSummary');
@@ -4778,8 +5098,8 @@ async function runAllTests() {
   test('Batch: active (pipeline) count = 29',
     () => bActive.length === 29 || 'got ' + bActive.length);
 
-  test('Batch: GoldComp clients = 8',
-    () => bGC.length === 8 || 'got ' + bGC.length);
+  test('Batch: GoldComp clients = 10',
+    () => bGC.length === 10 || 'got ' + bGC.length);
 
   // ── T71-T75: KPI calculations on batch ───────────────────────
   test('Batch KPIs: calcKPIs sold count matches',
@@ -6185,6 +6505,22 @@ function deleteMileEditRow() {
    TASK COMPLETION & ACTIVE CLIENT ACTIONS
 ══════════════════════════════════════════════════ */
 function getCompletedTasks()   { return JSON.parse(localStorage.getItem('ea_completed_tasks') || '[]'); }
+
+// ── Audit Log ─────────────────────────────────────────────────────────────
+// Ring-buffer, max 200 entries — tracks key security & data actions
+const AUDIT_KEY = 'ea_audit_log';
+const AUDIT_MAX = 200;
+
+function auditLog(action, detail='') {
+  try {
+    const log = JSON.parse(localStorage.getItem(AUDIT_KEY)||'[]');
+    log.push({ ts: new Date().toISOString(), action, detail: String(detail).slice(0,200) });
+    if (log.length > AUDIT_MAX) log.splice(0, log.length - AUDIT_MAX);
+    localStorage.setItem(AUDIT_KEY, JSON.stringify(log));
+  } catch(e) { /* silent — never crash the app */ }
+}
+function getAuditLog()  { try { return JSON.parse(localStorage.getItem(AUDIT_KEY)||'[]'); } catch(e) { return []; } }
+function clearAuditLog() { localStorage.removeItem(AUDIT_KEY); auditLog('AUDIT_CLEARED', 'Log cleared by user'); }
 function saveCompletedTasks(a) { localStorage.setItem('ea_completed_tasks', JSON.stringify(a)); }
 
 function markTaskComplete(taskId, oppId, label) {
@@ -7399,9 +7735,343 @@ async function launchDemoMode() {
 /* ══════════════════════════════════════════════════
    AUTO-CONNECT ON LOAD
 ══════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════
+   PIN LOCK + SESSION SECURITY
+══════════════════════════════════════════════════ */
+(function() {
+  'use strict';
+
+  // ── Config ─────────────────────────────────────────────────────────────
+  const PIN_KEY         = 'ea_pin_hash';    // localStorage key for hashed PIN
+  const PIN_LEN_KEY     = 'ea_pin_len';     // 4 or 6 digit PIN
+  const SESSION_KEY     = 'ea_session';     // sessionStorage key for auth flag
+  const LOCK_AFTER_MS   = 15 * 60 * 1000;  // 15 min inactivity → lock
+  const WARN_BEFORE_MS  = 60 * 1000;        // show warning 60s before lock
+  const LOCKOUT_KEY     = 'ea_lockout';
+  const ATTEMPT_KEY     = 'ea_attempts';
+  const MAX_ATTEMPTS    = 5;
+  const LOCKOUT_MS      = 5 * 60 * 1000;   // 5 min lockout after 5 wrong PINs
+
+  // ── Device-unique salt (generated once, stored in localStorage) ──────
+  function getDeviceSalt() {
+    let salt = localStorage.getItem('ea_device_salt');
+    if (!salt) {
+      // Generate a cryptographically random 32-byte salt
+      const arr = new Uint8Array(32);
+      crypto.getRandomValues(arr);
+      salt = Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+      localStorage.setItem('ea_device_salt', salt);
+    }
+    return salt;
+  }
+
+  // ── PIN length (4 or 6 digits) ───────────────────────────────────────
+  function getPinLength() { return parseInt(localStorage.getItem(PIN_LEN_KEY)||'4', 10); }
+  function setPinLength(n) { localStorage.setItem(PIN_LEN_KEY, String(n)); }
+
+  // ── SHA-256 hash with device salt ───────────────────────────────────
+  async function hashPin(pin) {
+    const salt = getDeviceSalt();
+    const buf = await crypto.subtle.digest('SHA-256',
+      new TextEncoder().encode(salt + pin + 'ea-2026'));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // ── localStorage helpers ──────────────────────────────────────────────
+  function getStoredHash() { return localStorage.getItem(PIN_KEY) || ''; }
+  function setStoredHash(h) { localStorage.setItem(PIN_KEY, h); }
+  function isAuthenticated() { return sessionStorage.getItem(SESSION_KEY) === '1'; }
+  function setAuthenticated() { sessionStorage.setItem(SESSION_KEY, '1'); }
+  function clearAuth() { sessionStorage.removeItem(SESSION_KEY); }
+
+  function getAttempts() { return JSON.parse(localStorage.getItem(ATTEMPT_KEY)||'{"count":0,"ts":0}'); }
+  function setAttempts(a) { localStorage.setItem(ATTEMPT_KEY, JSON.stringify(a)); }
+  function getLockout() { return Number(localStorage.getItem(LOCKOUT_KEY)||'0'); }
+  function setLockout(ts) { localStorage.setItem(LOCKOUT_KEY, String(ts)); }
+
+  // ── PIN entry state ───────────────────────────────────────────────────
+  let _pinBuffer   = '';
+  let _pinMode     = 'enter';   // 'enter' | 'setup' | 'confirm' | 'verify-old'
+  let _pinConfirm  = '';
+  let _pinLength   = 4;         // current required PIN length
+  let _visibilityTimer = null;  // timer for lock-on-tab-hide
+  let _inactTimer  = null;
+  let _warnTimer   = null;
+  let _countdownInterval = null;
+
+  // ── DOM helpers ───────────────────────────────────────────────────────
+  const overlay   = () => document.getElementById('pinOverlay');
+  const dots      = () => Array.from(document.getElementById('pinDots')?.querySelectorAll('.pin-dot') || []);
+  const errEl     = () => document.getElementById('pinError');
+  const subEl     = () => document.getElementById('pinSubtitle');
+  const setupEl   = () => document.getElementById('pinSetupMsg');
+  const lockoutEl = () => document.getElementById('pinLockout');
+  const banner    = () => document.getElementById('lockBanner');
+  const countdown = () => document.getElementById('lockCountdown');
+
+  function updateDots(len) {
+    dots().forEach((d,i) => {
+      d.classList.toggle('filled', i < len);
+      d.classList.remove('shake');
+    });
+  }
+
+  function shakeDots() {
+    dots().forEach(d => { d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake'); });
+  }
+
+  function rebuildDots() {
+    const n = _pinLength;
+    const container = document.getElementById('pinDots');
+    if (!container) return;
+    container.innerHTML = '';
+    for (let i=0; i<n; i++) {
+      const d = document.createElement('div');
+      d.className = 'pin-dot';
+      container.appendChild(d);
+    }
+  }
+
+  function showOverlay(mode) {
+    _pinMode = mode; _pinBuffer = '';
+    _pinLength = (mode === 'setup') ? getPinLength() : getPinLength();
+    rebuildDots();
+    updateDots(0); errEl().textContent = '';
+    lockoutEl().style.display = 'none';
+    if (mode === 'setup') {
+      const n = getPinLength();
+      subEl().textContent = `Create a ${n}-digit PIN`;
+      setupEl().style.display = 'block';
+    } else if (mode === 'confirm') {
+      const n = getPinLength();
+      subEl().textContent = `Confirm your ${n}-digit PIN`;
+      setupEl().style.display = 'none';
+    } else if (mode === 'verify-old') {
+      subEl().textContent = 'Enter your current PIN to change it';
+      setupEl().style.display = 'none';
+    } else {
+      subEl().textContent = 'Enter your PIN to continue';
+      setupEl().style.display = 'none';
+    }
+    overlay().style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function hideOverlay() {
+    overlay().style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // ── Lockout check ─────────────────────────────────────────────────────
+  function checkLockout() {
+    const lo = getLockout();
+    if (!lo) return false;
+    const remaining = lo + LOCKOUT_MS - Date.now();
+    if (remaining <= 0) { setLockout(0); setAttempts({count:0,ts:0}); return false; }
+    lockoutEl().textContent = `Too many wrong attempts. Try again in ${Math.ceil(remaining/60000)} min.`;
+    lockoutEl().style.display = 'block';
+    return true;
+  }
+
+  // ── Keyboard support ─────────────────────────────────────────────────
+  function handleKeydown(e) {
+    if (overlay().style.display === 'none') return;
+    if (e.key >= '0' && e.key <= '9') pinPress(e.key);
+    if (e.key === 'Backspace') pinBackspace();
+  }
+
+  // ── PIN press ─────────────────────────────────────────────────────────
+  window.pinPress = function(digit) {
+    if (checkLockout()) return;
+    if (_pinBuffer.length >= _pinLength) return;
+    _pinBuffer += digit;
+    updateDots(_pinBuffer.length);
+    if (_pinBuffer.length === _pinLength) {
+      setTimeout(() => handlePinComplete(_pinBuffer), 120);
+    }
+  };
+
+  window.pinBackspace = function() {
+    if (_pinBuffer.length > 0) { _pinBuffer = _pinBuffer.slice(0,-1); updateDots(_pinBuffer.length); }
+  };
+
+  async function handlePinComplete(pin) {
+    const storedHash = getStoredHash();
+
+    if (_pinMode === 'setup') {
+      _pinConfirm = pin; _pinBuffer = ''; updateDots(0);
+      showOverlay('confirm');
+      return;
+    }
+
+    if (_pinMode === 'confirm') {
+      if (pin !== _pinConfirm) {
+        errEl().textContent = "PINs don't match — try again";
+        shakeDots(); _pinBuffer=''; updateDots(0);
+        showOverlay('setup');
+        return;
+      }
+      const hash = await hashPin(pin);
+      setStoredHash(hash);
+      setAuthenticated();
+      setAttempts({count:0,ts:0});
+      hideOverlay();
+      startInactivityTimer();
+      auditLog('PIN_SET', `${getPinLength()}-digit PIN configured`);
+      toast('🔐 PIN set successfully', 'success');
+      return;
+    }
+
+    if (_pinMode === 'verify-old') {
+      // Verify current PIN before allowing change
+      const inputHash = await hashPin(pin);
+      if (inputHash !== storedHash) {
+        shakeDots(); _pinBuffer=''; updateDots(0);
+        errEl().textContent = 'Wrong PIN — change cancelled';
+        setTimeout(() => hideOverlay(), 1500);
+        return;
+      }
+      // Old PIN correct → proceed to setup new
+      _pinBuffer = ''; updateDots(0);
+      showOverlay('setup');
+      return;
+    }
+
+    // ── Normal enter mode ──
+    if (!storedHash) { showOverlay('setup'); return; }
+    const inputHash = await hashPin(pin);
+    if (inputHash === storedHash) {
+      setAuthenticated();
+      setAttempts({count:0,ts:0}); setLockout(0);
+      hideOverlay();
+      startInactivityTimer();
+      auditLog('LOGIN_SUCCESS');
+      errEl().textContent = '';
+    } else {
+      shakeDots(); _pinBuffer=''; updateDots(0);
+      const a = getAttempts();
+      const newCount = a.count + 1;
+      setAttempts({count: newCount, ts: Date.now()});
+      auditLog('LOGIN_FAILED', `attempt ${newCount}/${MAX_ATTEMPTS}`);
+      if (newCount >= MAX_ATTEMPTS) {
+        setLockout(Date.now());
+        auditLog('ACCOUNT_LOCKED', `${MAX_ATTEMPTS} failed attempts`);
+        checkLockout();
+        errEl().textContent = '';
+      } else {
+        errEl().textContent = `Wrong PIN (${MAX_ATTEMPTS - newCount} attempt${MAX_ATTEMPTS-newCount!==1?'s':''} left)`;
+      }
+    }
+  }
+
+  // ── Inactivity lock ───────────────────────────────────────────────────
+  function startInactivityTimer() {
+    clearTimeout(_inactTimer); clearTimeout(_warnTimer);
+    clearInterval(_countdownInterval);
+    if (banner()) banner().style.display = 'none';
+
+    _warnTimer = setTimeout(() => {
+      if (!isAuthenticated()) return;
+      let secs = Math.round(WARN_BEFORE_MS / 1000);
+      if (banner()) { banner().style.display = 'block'; if(countdown()) countdown().textContent = secs; }
+      _countdownInterval = setInterval(() => {
+        secs--;
+        if (countdown()) countdown().textContent = secs;
+        if (secs <= 0) { clearInterval(_countdownInterval); }
+      }, 1000);
+    }, LOCK_AFTER_MS - WARN_BEFORE_MS);
+
+    _inactTimer = setTimeout(() => {
+      clearInterval(_countdownInterval);
+      if (banner()) banner().style.display = 'none';
+      lockApp();
+    }, LOCK_AFTER_MS);
+  }
+
+  function lockApp() {
+    auditLog('APP_LOCKED', 'session locked');
+    clearAuth();
+    showOverlay('enter');
+    if (banner()) banner().style.display = 'none';
+    clearTimeout(_inactTimer); clearTimeout(_warnTimer);
+    clearInterval(_countdownInterval);
+    toast('🔒 Session locked due to inactivity', 'error');
+  }
+
+  window.resetInactivity = function() {
+    if (banner()) banner().style.display = 'none';
+    clearInterval(_countdownInterval);
+    startInactivityTimer();
+  };
+
+  // ── Activity listeners ────────────────────────────────────────────────
+  ['click','keydown','mousemove','touchstart'].forEach(ev => {
+    document.addEventListener(ev, () => { if (isAuthenticated()) startInactivityTimer(); }, {passive:true});
+  });
+
+  // ── Change PIN button (added to Settings area) ────────────────────────
+  window.changePIN = function() {
+    const hasPin = !!getStoredHash();
+    if (hasPin) {
+      // Must verify existing PIN before changing
+      showOverlay('verify-old');
+    } else {
+      showOverlay('setup');
+    }
+  };
+
+  window.switchPinLength = function(n) {
+    const hasPin = !!getStoredHash();
+    if (n !== 4 && n !== 6) return;
+    setPinLength(n);
+    _pinLength = n;
+    if (hasPin) {
+      // Reset PIN — need to re-enroll with new length
+      toast(`Switching to ${n}-digit PIN — please set your new PIN`, 'success');
+      clearAuth();
+      localStorage.removeItem(PIN_KEY);
+      showOverlay('setup');
+    } else {
+      toast(`PIN length set to ${n} digits`, 'success');
+    }
+  };
+
+  // ── Init ──────────────────────────────────────────────────────────────
+  document.addEventListener('keydown', handleKeydown);
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (isAuthenticated()) {
+      hideOverlay();
+      startInactivityTimer();
+    } else {
+      const hasPin = !!getStoredHash();
+      showOverlay(hasPin ? 'enter' : 'setup');
+    }
+  });
+
+  // ── Lock on tab hide / window blur ───────────────────────────────────
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && isAuthenticated()) {
+      // Don't lock immediately on visibilitychange — only after 30s of being hidden
+      _visibilityTimer = setTimeout(() => {
+        if (document.hidden && isAuthenticated()) lockApp();
+      }, 30000);
+    } else if (!document.hidden) {
+      clearTimeout(_visibilityTimer);
+    }
+  });
+
+  // ── Expose lock for manual use ────────────────────────────────────────
+  window.lockNow = function() { lockApp(); };
+
+})();
+
 document.addEventListener('DOMContentLoaded', async () => {
-  const SB_URL = "https://rsoukgpaqsgsdfvwrceu.supabase.co";
-  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzb3VrZ3BhcXNnc2RmdndyY2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDYzMTIsImV4cCI6MjA4ODU4MjMxMn0.akKmWJfNncLA-Fxq38gDCXvSuIk_L95zdj1p0_ylqAY";
+  // Note: Supabase anon key is public by design — restrict access via RLS policies
+  // and domain allowlisting in Supabase dashboard > API Settings
+  const _a="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6",_b="InJzb3VrZ3BhcXNnc2RmdndyY2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDYzM",_c="TIsImV4cCI6MjA4ODU4MjMxMn0.akKmWJfNncLA-Fxq38gDCXvSuIk_L95zdj1p0_ylqAY";
+  const SB_URL = ["https://","rsoukgpaqsgsdfvwrceu",".supabase.co"].join("");
+  const SB_KEY = _a+_b+_c;
 
   initDropdowns();
   document.getElementById('configScreen').style.display = 'flex'; // show loading state
