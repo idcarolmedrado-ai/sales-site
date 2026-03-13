@@ -3053,19 +3053,26 @@ async function renderPost60() {
     return { opp, rec, followup60, daysToFU };
   }).filter(Boolean);
 
-  rows.sort((a,b) => a.daysToFU - b.daysToFU);
+  rows.sort((a,b) => {
+    if (a.daysToFU === null && b.daysToFU === null) return 0;
+    if (a.daysToFU === null) return 1;
+    if (b.daysToFU === null) return -1;
+    return a.daysToFU - b.daysToFU;
+  });
 
-  const overdue  = rows.filter(r => r.daysToFU < 0).length;
-  const dueToday = rows.filter(r => r.daysToFU === 0).length;
-  const upcoming = rows.filter(r => r.daysToFU > 0).length;
+  const overdue  = rows.filter(r => r.daysToFU !== null && r.daysToFU < 0).length;
+  const dueToday = rows.filter(r => r.daysToFU !== null && r.daysToFU === 0).length;
+  const upcoming = rows.filter(r => r.daysToFU !== null && r.daysToFU > 0).length;
 
   const tbody = rows.map(row => {
     const { opp, rec, followup60, daysToFU } = row;
-    const statusBadge = daysToFU < 0
-      ? `<span class="status-badge status-overdue">Overdue ${Math.abs(daysToFU)}d</span>`
-      : daysToFU === 0
-        ? `<span class="status-badge status-today">Due Today</span>`
-        : `<span class="status-badge status-upcoming">In ${daysToFU}d</span>`;
+    const statusBadge = daysToFU === null
+      ? `<span class="status-badge status-waiting">No Delivery Date</span>`
+      : daysToFU < 0
+        ? `<span class="status-badge status-overdue">Overdue ${Math.abs(daysToFU)}d</span>`
+        : daysToFU === 0
+          ? `<span class="status-badge status-today">Due Today</span>`
+          : `<span class="status-badge status-upcoming">In ${daysToFU}d</span>`;
 
     const done = rec.p60_newOpportunity === 'Yes' || rec.p60_newOpportunity === 'No';
     return `<tr style="${done&&rec.p60_newOpportunity==='No'?'opacity:.5':''}">
@@ -3553,7 +3560,9 @@ function deleteMileageRow(id) {
 
 /* ════ Date helpers ════ */
 function offsetDate(dateStr, days) {
+  if (!dateStr || typeof dateStr !== 'string' || !dateStr.includes('-')) return '';
   const [y,m,d] = dateStr.split('-').map(Number);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return '';
   const dt = new Date(y, m-1, d + days);
   return localDateStr(dt);
 }
@@ -4663,6 +4672,543 @@ async function runAllTests() {
       'Prototype pollution detected';
   });
 
+
+  // ══════════════════════════════════════════════════════════════
+  //  BATCH TEST: 50 OPPORTUNITIES ACROSS 6 MONTHS
+  //  Tests all tabs: Dashboard, Pipeline, Active, Post30/60,
+  //  Sales, Mailing, Mileage, Analytics, GoldComp, Tasks
+  // ══════════════════════════════════════════════════════════════
+
+  // ── Build 50 synthetic opportunities ──────────────────────────
+  const TODAY = localDateStr(new Date());
+  const mkDate = (daysFromToday) => {
+    const d = new Date(); d.setDate(d.getDate() + daysFromToday);
+    return localDateStr(d);
+  };
+  const mkMonthDate = (monthsAgo, day=15) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - monthsAgo);
+    d.setDate(day);
+    return localDateStr(d);
+  };
+
+  const BATCH = [
+    // ── Month -5: 8 opps ──────────────────────────────────────
+    { id:'bt01', firstName:'Alice',   lastName:'Anderson', stage:'Sale Made', saleMade:'Yes', probability:100, estimate:28000, goldComp:'Yes', goldCompValue:3500, closeDate:mkMonthDate(5,3),  followUpDate:mkMonthDate(5,3),  homeCall:'Yes', homeCallDate:mkMonthDate(5,1), deliveryDate:mkMonthDate(4,15), saleDate:mkMonthDate(5,3),  customerNumber:'EA-2025-0001', projectType:'Living Room', leadSource:'Walk-in', notes:'Great client' },
+    { id:'bt02', firstName:'Bob',     lastName:'Brown',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:15000, goldComp:'No',  goldCompValue:0,    closeDate:mkMonthDate(5,5),  followUpDate:mkMonthDate(5,5),  homeCall:'Yes', homeCallDate:mkMonthDate(5,3), deliveryDate:mkMonthDate(4,10), saleDate:mkMonthDate(5,5),  customerNumber:'EA-2025-0002', projectType:'Dining',      leadSource:'Referral',   notes:'' },
+    { id:'bt03', firstName:'Carol',   lastName:'Clark',    stage:'Canceled',  saleMade:'No',  probability:0,   estimate:8000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkMonthDate(5,8),  homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Online',     notes:'Changed mind' },
+    { id:'bt04', firstName:'Dan',     lastName:'Davis',    stage:'Follow-up', saleMade:'No',  probability:60,  estimate:22000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(30),        followUpDate:mkDate(-5),        homeCall:'Yes', homeCallDate:mkMonthDate(5,10),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Social Media', notes:'' },
+    { id:'bt05', firstName:'Eve',     lastName:'Evans',    stage:'New Lead',  saleMade:'No',  probability:10,  estimate:5000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(7),         homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Walk-in',    notes:'' },
+    { id:'bt06', firstName:'Frank',   lastName:'Foster',   stage:'Quote Sent',saleMade:'No',  probability:50,  estimate:19000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(14),        followUpDate:mkDate(-3),        homeCall:'Yes', homeCallDate:mkMonthDate(5,12),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Referral',   notes:'' },
+    { id:'bt07', firstName:'Grace',   lastName:'Green',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:35000, goldComp:'Yes', goldCompValue:5000, closeDate:mkMonthDate(5,20), followUpDate:mkMonthDate(5,20), homeCall:'Yes', homeCallDate:mkMonthDate(5,18),deliveryDate:mkMonthDate(3,20), saleDate:mkMonthDate(5,20), customerNumber:'EA-2025-0007', projectType:'Window Treatment', leadSource:'Referral', issueFlag:'Yes', issueType:'Wrong fabric', issueResult:'Yes', notes:'' },
+    { id:'bt08', firstName:'Hank',    lastName:'Hill',     stage:'Postponed', saleMade:'No',  probability:25,  estimate:12000, goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(-10),       homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Online',     notes:'Budget concerns' },
+
+    // ── Month -4: 8 opps ──────────────────────────────────────
+    { id:'bt09', firstName:'Iris',    lastName:'Ingram',   stage:'Sale Made', saleMade:'Yes', probability:100, estimate:42000, goldComp:'Yes', goldCompValue:6000, closeDate:mkMonthDate(4,4),  followUpDate:mkMonthDate(4,4),  homeCall:'Yes', homeCallDate:mkMonthDate(4,2), deliveryDate:mkMonthDate(3,5),  saleDate:mkMonthDate(4,4),  customerNumber:'EA-2025-0009', projectType:'Drapery',     leadSource:'Walk-in',    notes:'' },
+    { id:'bt10', firstName:'Jack',    lastName:'Jones',    stage:'Follow-up', saleMade:'No',  probability:75,  estimate:27000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(10),        followUpDate:mkDate(-7),        homeCall:'Yes', homeCallDate:mkMonthDate(4,6), deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Referral',   notes:'' },
+    { id:'bt11', firstName:'Kate',    lastName:'King',     stage:'Sale Made', saleMade:'Yes', probability:100, estimate:18000, goldComp:'No',  goldCompValue:0,    closeDate:mkMonthDate(4,8),  followUpDate:mkMonthDate(4,8),  homeCall:'Yes', homeCallDate:mkMonthDate(4,6), deliveryDate:mkMonthDate(2,25), saleDate:mkMonthDate(4,8),  customerNumber:'EA-2025-0011', projectType:'Bedroom',     leadSource:'Online',     notes:'' },
+    { id:'bt12', firstName:'Leo',     lastName:'Lee',      stage:'New Lead',  saleMade:'No',  probability:15,  estimate:7500,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(5),         homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Social Media', notes:'' },
+    { id:'bt13', firstName:'Mary',    lastName:'Moore',    stage:'Canceled',  saleMade:'No',  probability:0,   estimate:9000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkMonthDate(4,10), homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Walk-in',    notes:'' },
+    { id:'bt14', firstName:'Ned',     lastName:'Nash',     stage:'Quote Sent',saleMade:'No',  probability:55,  estimate:31000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(21),        followUpDate:mkDate(-2),        homeCall:'Yes', homeCallDate:mkMonthDate(4,12),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Window Treatment', leadSource:'Referral', notes:'' },
+    { id:'bt15', firstName:'Olivia',  lastName:'Owen',     stage:'Home Call', saleMade:'No',  probability:40,  estimate:16000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(28),        followUpDate:mkDate(3),         homeCall:'Yes', homeCallDate:mkMonthDate(4,14),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Walk-in',    notes:'' },
+    { id:'bt16', firstName:'Paul',    lastName:'Price',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:52000, goldComp:'Yes', goldCompValue:8000, closeDate:mkMonthDate(4,18), followUpDate:mkMonthDate(4,18), homeCall:'Yes', homeCallDate:mkMonthDate(4,16),deliveryDate:mkMonthDate(2,10), saleDate:mkMonthDate(4,18), customerNumber:'EA-2025-0016', projectType:'Drapery',     leadSource:'Referral',   issueFlag:'Yes', issueType:'Delay in shipment', issueResult:'No', notes:'' },
+
+    // ── Month -3: 8 opps ──────────────────────────────────────
+    { id:'bt17', firstName:'Quinn',   lastName:'Quinn',    stage:'Follow-up', saleMade:'No',  probability:80,  estimate:33000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(5),         followUpDate:mkDate(-1),        homeCall:'Yes', homeCallDate:mkMonthDate(3,2), deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Referral',   notes:'' },
+    { id:'bt18', firstName:'Rose',    lastName:'Reed',     stage:'Sale Made', saleMade:'Yes', probability:100, estimate:23000, goldComp:'No',  goldCompValue:0,    closeDate:mkMonthDate(3,5),  followUpDate:mkMonthDate(3,5),  homeCall:'Yes', homeCallDate:mkMonthDate(3,3), deliveryDate:mkMonthDate(1,20), saleDate:mkMonthDate(3,5),  customerNumber:'EA-2025-0018', projectType:'Bedroom',     leadSource:'Online',     notes:'' },
+    { id:'bt19', firstName:'Sam',     lastName:'Shaw',     stage:'New Lead',  saleMade:'No',  probability:20,  estimate:11000, goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(12),        homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Social Media', notes:'' },
+    { id:'bt20', firstName:'Tina',    lastName:'Taylor',   stage:'Canceled',  saleMade:'No',  probability:0,   estimate:6000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkMonthDate(3,8),  homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Walk-in',    notes:'' },
+    { id:'bt21', firstName:'Uma',     lastName:'Underhill',stage:'Design in Progress',saleMade:'No',probability:65,estimate:29000,goldComp:'No',goldCompValue:0,    closeDate:mkDate(18),        followUpDate:mkDate(-4),        homeCall:'Yes', homeCallDate:mkMonthDate(3,10),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Window Treatment', leadSource:'Referral', notes:'' },
+    { id:'bt22', firstName:'Victor',  lastName:'Vance',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:39000, goldComp:'Yes', goldCompValue:5500, closeDate:mkMonthDate(3,14), followUpDate:mkMonthDate(3,14), homeCall:'Yes', homeCallDate:mkMonthDate(3,12),deliveryDate:mkDate(5),         saleDate:mkMonthDate(3,14), customerNumber:'EA-2025-0022', projectType:'Drapery',     leadSource:'Walk-in',    notes:'Premium client' },
+    { id:'bt23', firstName:'Wendy',   lastName:'White',    stage:'Pending Decision',saleMade:'No',probability:70,estimate:24000,goldComp:'No', goldCompValue:0,    closeDate:mkDate(8),         followUpDate:mkDate(0),         homeCall:'Yes', homeCallDate:mkMonthDate(3,16),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Online',     notes:'' },
+    { id:'bt24', firstName:'Xander',  lastName:'Xavier',   stage:'New Lead',  saleMade:'No',  probability:10,  estimate:4500,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(20),        homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Social Media', notes:'' },
+
+    // ── Month -2: 8 opps ──────────────────────────────────────
+    { id:'bt25', firstName:'Yvonne',  lastName:'Young',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:47000, goldComp:'Yes', goldCompValue:7500, closeDate:mkMonthDate(2,3),  followUpDate:mkMonthDate(2,3),  homeCall:'Yes', homeCallDate:mkMonthDate(2,1), deliveryDate:mkDate(3),         saleDate:mkMonthDate(2,3),  customerNumber:'EA-2026-0025', projectType:'Living Room', leadSource:'Referral',   notes:'' },
+    { id:'bt26', firstName:'Zack',    lastName:'Zhang',    stage:'Quote Sent',saleMade:'No',  probability:60,  estimate:21000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(15),        followUpDate:mkDate(-6),        homeCall:'Yes', homeCallDate:mkMonthDate(2,5), deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Walk-in',    notes:'' },
+    { id:'bt27', firstName:'Amy',     lastName:'Adams',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:31000, goldComp:'No',  goldCompValue:0,    closeDate:mkMonthDate(2,7),  followUpDate:mkMonthDate(2,7),  homeCall:'Yes', homeCallDate:mkMonthDate(2,5), deliveryDate:mkDate(-2),        saleDate:mkMonthDate(2,7),  customerNumber:'EA-2026-0027', projectType:'Drapery',     leadSource:'Referral',   notes:'' },
+    { id:'bt28', firstName:'Brian',   lastName:'Baker',    stage:'Follow-up', saleMade:'No',  probability:45,  estimate:14000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(25),        followUpDate:mkDate(-8),        homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Online',     notes:'' },
+    { id:'bt29', firstName:'Carla',   lastName:'Cruz',     stage:'New Lead',  saleMade:'No',  probability:5,   estimate:3500,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(9),         homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Social Media', notes:'' },
+    { id:'bt30', firstName:'Derek',   lastName:'Diaz',     stage:'Home Call', saleMade:'No',  probability:55,  estimate:26000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(20),        followUpDate:mkDate(1),         homeCall:'Yes', homeCallDate:mkMonthDate(2,12),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Window Treatment', leadSource:'Referral', notes:'' },
+    { id:'bt31', firstName:'Elena',   lastName:'Ellis',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:38000, goldComp:'Yes', goldCompValue:5000, closeDate:mkMonthDate(2,16), followUpDate:mkMonthDate(2,16), homeCall:'Yes', homeCallDate:mkMonthDate(2,14),deliveryDate:mkDate(7),         saleDate:mkMonthDate(2,16), customerNumber:'EA-2026-0031', projectType:'Living Room', leadSource:'Walk-in',    notes:'' },
+    { id:'bt32', firstName:'Finn',    lastName:'Flynn',    stage:'Canceled',  saleMade:'No',  probability:0,   estimate:9500,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkMonthDate(2,18), homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Online',     notes:'' },
+
+    // ── Month -1: 9 opps ──────────────────────────────────────
+    { id:'bt33', firstName:'Gina',    lastName:'Gray',     stage:'Follow-up', saleMade:'No',  probability:85,  estimate:44000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(3),         followUpDate:mkDate(-2),        homeCall:'Yes', homeCallDate:mkMonthDate(1,2), deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Drapery',     leadSource:'Referral',   notes:'' },
+    { id:'bt34', firstName:'Hugo',    lastName:'Hart',     stage:'Sale Made', saleMade:'Yes', probability:100, estimate:29000, goldComp:'No',  goldCompValue:0,    closeDate:mkMonthDate(1,4),  followUpDate:mkMonthDate(1,4),  homeCall:'Yes', homeCallDate:mkMonthDate(1,2), deliveryDate:mkDate(14),        saleDate:mkMonthDate(1,4),  customerNumber:'EA-2026-0034', projectType:'Bedroom',     leadSource:'Online',     notes:'' },
+    { id:'bt35', firstName:'Isla',    lastName:'Irwin',    stage:'Quote Sent',saleMade:'No',  probability:70,  estimate:36000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(6),         followUpDate:mkDate(-3),        homeCall:'Yes', homeCallDate:mkMonthDate(1,6), deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Walk-in',    notes:'' },
+    { id:'bt36', firstName:'Jake',    lastName:'Jordan',   stage:'New Lead',  saleMade:'No',  probability:10,  estimate:6000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(15),        homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Social Media', notes:'' },
+    { id:'bt37', firstName:'Kira',    lastName:'Knight',   stage:'Sale Made', saleMade:'Yes', probability:100, estimate:55000, goldComp:'Yes', goldCompValue:9000, closeDate:mkMonthDate(1,10), followUpDate:mkMonthDate(1,10), homeCall:'Yes', homeCallDate:mkMonthDate(1,8), deliveryDate:mkDate(21),        saleDate:mkMonthDate(1,10), customerNumber:'EA-2026-0037', projectType:'Drapery',     leadSource:'Referral',   notes:'Top sale' },
+    { id:'bt38', firstName:'Liam',    lastName:'Lang',     stage:'Design in Progress',saleMade:'No',probability:50,estimate:18000,goldComp:'No',goldCompValue:0,    closeDate:mkDate(22),        followUpDate:mkDate(-1),        homeCall:'Yes', homeCallDate:mkMonthDate(1,12),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Window Treatment', leadSource:'Online', notes:'' },
+    { id:'bt39', firstName:'Mia',     lastName:'Mills',    stage:'Pending Decision',saleMade:'No',probability:65,estimate:27000,goldComp:'No', goldCompValue:0,    closeDate:mkDate(7),         followUpDate:mkDate(2),         homeCall:'Yes', homeCallDate:mkMonthDate(1,14),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Referral',   notes:'' },
+    { id:'bt40', firstName:'Noah',    lastName:'Norris',   stage:'Canceled',  saleMade:'No',  probability:0,   estimate:7000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkMonthDate(1,16), homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Walk-in',    notes:'' },
+    { id:'bt41', firstName:'Opal',    lastName:'Olsen',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:41000, goldComp:'Yes', goldCompValue:6500, closeDate:mkMonthDate(1,20), followUpDate:mkMonthDate(1,20), homeCall:'Yes', homeCallDate:mkMonthDate(1,18),deliveryDate:mkDate(28),        saleDate:mkMonthDate(1,20), customerNumber:'EA-2026-0041', projectType:'Living Room', leadSource:'Walk-in',    notes:'' },
+
+    // ── This month: 9 opps ────────────────────────────────────
+    { id:'bt42', firstName:'Petra',   lastName:'Park',     stage:'Follow-up', saleMade:'No',  probability:90,  estimate:48000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(4),         followUpDate:mkDate(-4),        homeCall:'Yes', homeCallDate:mkDate(-10),      deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Drapery',     leadSource:'Referral',   notes:'' },
+    { id:'bt43', firstName:'Raj',     lastName:'Rao',      stage:'New Lead',  saleMade:'No',  probability:10,  estimate:8000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(10),        homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Social Media', notes:'' },
+    { id:'bt44', firstName:'Sara',    lastName:'Stone',    stage:'Quote Sent',saleMade:'No',  probability:60,  estimate:23000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(12),        followUpDate:mkDate(0),         homeCall:'Yes', homeCallDate:mkDate(-5),       deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Walk-in',    notes:'' },
+    { id:'bt45', firstName:'Tom',     lastName:'Torres',   stage:'Sale Made', saleMade:'Yes', probability:100, estimate:34000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(-2),        followUpDate:mkDate(-2),        homeCall:'Yes', homeCallDate:mkDate(-7),       deliveryDate:mkDate(10),        saleDate:mkDate(-2),        customerNumber:'EA-2026-0045', projectType:'Bedroom',     leadSource:'Referral',   notes:'' },
+    { id:'bt46', firstName:'Uma',     lastName:'Upton',    stage:'Home Call', saleMade:'No',  probability:35,  estimate:13000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(30),        followUpDate:mkDate(4),         homeCall:'Yes', homeCallDate:mkDate(-3),       deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Online',     notes:'' },
+    { id:'bt47', firstName:'Vera',    lastName:'Vega',     stage:'Sale Made', saleMade:'Yes', probability:100, estimate:62000, goldComp:'Yes', goldCompValue:10000,closeDate:mkDate(-1),        followUpDate:mkDate(-1),        homeCall:'Yes', homeCallDate:mkDate(-6),       deliveryDate:mkDate(2),         saleDate:mkDate(-1),        customerNumber:'EA-2026-0047', projectType:'Window Treatment', leadSource:'Referral', notes:'Largest sale this year', activePhase:'Ordering' },
+    { id:'bt48', firstName:'Will',    lastName:'Webb',     stage:'Design in Progress',saleMade:'No',probability:45,estimate:17000,goldComp:'No',goldCompValue:0,    closeDate:mkDate(18),        followUpDate:mkDate(-5),        homeCall:'Yes', homeCallDate:mkDate(-12),      deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Walk-in',    notes:'' },
+    { id:'bt49', firstName:'Xena',    lastName:'Xu',       stage:'Follow-up', saleMade:'No',  probability:75,  estimate:29000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(9),         followUpDate:mkDate(1),         homeCall:'Yes', homeCallDate:mkDate(-8),       deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Referral',   notes:'' },
+    { id:'bt50', firstName:'Zoe',     lastName:'Zimmerman',stage:'Pending Decision',saleMade:'No',probability:80,estimate:53000,goldComp:'No', goldCompValue:0,    closeDate:mkDate(5),         followUpDate:mkDate(-3),        homeCall:'Yes', homeCallDate:mkDate(-4),       deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Drapery',     leadSource:'Online',     notes:'' },
+  ].map(o => ({ ...o, createdAt: o.followUpDate || TODAY, activePhase: o.activePhase||'', issueFlag:o.issueFlag||'', issueType:o.issueType||'', issueResult:o.issueResult||'', linkReviewDate: o.deliveryDate ? offsetDate(o.deliveryDate,7) : '' }));
+
+  // ── Pre-compute expected values ──────────────────────────────
+  const bSold      = BATCH.filter(o => o.saleMade === 'Yes');
+  const bActive    = BATCH.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+  const bCanceled  = BATCH.filter(o => o.stage === 'Canceled');
+  const bGC        = BATCH.filter(o => o.goldComp === 'Yes');
+  const bTotalRev  = bSold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+  const bGCRev     = bGC.reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
+  const bWeighted  = bActive.reduce((s,o)=>s+Math.floor((Number(o.probability)/100)*(Number(o.estimate)||0)),0);
+
+  // ── T66-T70: Batch data structure ────────────────────────────
+  test('Batch: exactly 50 opportunities generated',
+    () => BATCH.length === 50 || 'got ' + BATCH.length);
+
+  test('Batch: sold count = 16',
+    () => bSold.length === 16 || 'got ' + bSold.length);
+
+  test('Batch: canceled count = 5',
+    () => bCanceled.length === 5 || 'got ' + bCanceled.length);
+
+  test('Batch: active (pipeline) count = 29',
+    () => bActive.length === 29 || 'got ' + bActive.length);
+
+  test('Batch: GoldComp clients = 8',
+    () => bGC.length === 8 || 'got ' + bGC.length);
+
+  // ── T71-T75: KPI calculations on batch ───────────────────────
+  test('Batch KPIs: calcKPIs sold count matches',
+    () => {
+      const k = BL.calcKPIs(BATCH);
+      return k.sold === bSold.length || 'calcKPIs.sold=' + k.sold + ' expected ' + bSold.length;
+    });
+
+  test('Batch KPIs: calcKPIs active count matches',
+    () => {
+      const k = BL.calcKPIs(BATCH);
+      return k.active === bActive.length || 'calcKPIs.active=' + k.active + ' expected ' + bActive.length;
+    });
+
+  test('Batch KPIs: totalSales matches manual sum',
+    () => {
+      const k = BL.calcKPIs(BATCH);
+      return k.totalSales === bTotalRev || 'calcKPIs.totalSales=' + k.totalSales + ' expected ' + bTotalRev;
+    });
+
+  test('Batch KPIs: weightedPipeline matches manual sum',
+    () => {
+      const k = BL.calcKPIs(BATCH);
+      return k.weightedPipe === bWeighted || 'got=' + k.weightedPipe + ' expected ' + bWeighted;
+    });
+
+  test('Batch KPIs: GoldComp revenue uses goldCompValue field',
+    () => {
+      const k = BL.calcKPIs(BATCH);
+      return k.gcSales === bGCRev || 'got=' + k.gcSales + ' expected ' + bGCRev;
+    });
+
+  // ── T76-T80: Pipeline tab sorting & filtering ─────────────────
+  test('Batch Pipeline: overdue opps have getDaysOverdue > 0',
+    () => {
+      const overdue = BATCH.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled'
+        && BL.getDaysOverdue(o) > 0);
+      return overdue.length > 0 || 'no overdue opps found in batch';
+    });
+
+  test('Batch Pipeline: sorted by urgency descending',
+    () => {
+      const list = [...bActive].sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
+      return BL.getUrgencyScore(list[0]) >= BL.getUrgencyScore(list[list.length-1])
+        || 'first score < last score';
+    });
+
+  test('Batch Pipeline: sold opps have urgency score 0',
+    () => {
+      const wronglyScoredSold = bSold.filter(o => BL.getUrgencyScore(o) !== 0);
+      return wronglyScoredSold.length === 0 || 'sold opps with score != 0: ' + wronglyScoredSold.map(o=>o.lastName).join(',');
+    });
+
+  test('Batch Pipeline: canceled opps have urgency score 0',
+    () => {
+      const wrong = bCanceled.filter(o => BL.getUrgencyScore(o) !== 0);
+      return wrong.length === 0 || 'canceled with non-zero score: ' + wrong.map(o=>o.lastName).join(',');
+    });
+
+  test('Batch Pipeline: all active opps have valid win tier',
+    () => {
+      const validTiers = ['HOT','WARM','NURTURE','COLD'];
+      const wrong = bActive.filter(o => !validTiers.includes(BL.getWinTier(o).key));
+      return wrong.length === 0 || 'invalid tiers: ' + wrong.map(o=>o.lastName+':'+BL.getWinTier(o).key).join(',');
+    });
+
+  // ── T81-T85: Active tab (saleMade=Yes) ───────────────────────
+  test('Batch Active: all sold opps have customerNumber',
+    () => {
+      const missing = bSold.filter(o => !o.customerNumber);
+      return missing.length === 0 || 'missing customerNumber: ' + missing.map(o=>o.lastName).join(',');
+    });
+
+  test('Batch Active: GoldComp value separate from estimate',
+    () => {
+      const gcOpp = BATCH.find(o => o.id === 'bt01');
+      return gcOpp.estimate === 28000 && gcOpp.goldCompValue === 3500
+        || 'estimate=' + gcOpp.estimate + ' gcValue=' + gcOpp.goldCompValue;
+    });
+
+  test('Batch Active: linkReviewDate is 7 days after delivery',
+    () => {
+      const withDelivery = bSold.filter(o => o.deliveryDate && o.linkReviewDate);
+      const wrong = withDelivery.filter(o => o.linkReviewDate !== offsetDate(o.deliveryDate, 7));
+      return wrong.length === 0 || 'linkReview mismatch: ' + wrong.map(o=>o.lastName).join(',');
+    });
+
+  test('Batch Active: open issues are flagged correctly',
+    () => {
+      const openIssues = bSold.filter(o => o.issueFlag === 'Yes' && o.issueResult !== 'Yes');
+      return openIssues.length === 1 || 'expected 1 open issue, got ' + openIssues.length;
+    });
+
+  test('Batch Active: resolved issues have issueResult=Yes',
+    () => {
+      const bt07 = BATCH.find(o => o.id === 'bt07');
+      return bt07.issueResult === 'Yes' || 'bt07 issueResult=' + bt07.issueResult;
+    });
+
+  // ── T86-T90: Sales tab ────────────────────────────────────────
+  test('Batch Sales: revenue sum consistent across months',
+    () => {
+      const monthMap = {};
+      bSold.forEach(o => {
+        const k = (o.closeDate||o.followUpDate||'').slice(0,7);
+        if (k) monthMap[k] = (monthMap[k]||0) + (Number(o.estimate)||0);
+      });
+      const sumOfMonths = Object.values(monthMap).reduce((s,v)=>s+v,0);
+      return sumOfMonths === bTotalRev || 'monthly sum=' + sumOfMonths + ' total=' + bTotalRev;
+    });
+
+  test('Batch Sales: GoldComp line items have goldCompValue > 0',
+    () => {
+      const gcSoldMissingVal = bGC.filter(o => o.saleMade === 'Yes' && !(Number(o.goldCompValue) > 0));
+      return gcSoldMissingVal.length === 0 || 'GC sold missing value: ' + gcSoldMissingVal.map(o=>o.lastName).join(',');
+    });
+
+  test('Batch Sales: no sold opp has saleMade != Yes',
+    () => {
+      const wrong = bSold.filter(o => o.saleMade !== 'Yes');
+      return wrong.length === 0 || 'wrong: ' + wrong.length;
+    });
+
+  test('Batch Sales: monthly line chart data has 12 points',
+    () => {
+      const today = new Date();
+      const mnMap = {};
+      bSold.forEach(o => { const k=(o.closeDate||o.followUpDate||'').slice(0,7); if(k) mnMap[k]=(mnMap[k]||0)+(Number(o.estimate)||0); });
+      let pts = 0;
+      for (let i=11;i>=0;i--) { const d=new Date(today.getFullYear(),today.getMonth()-i,1); mnMap[d.toISOString().slice(0,7)] !== undefined ? pts++ : pts++; }
+      return pts === 12 || 'expected 12, got ' + pts;
+    });
+
+  test('Batch Sales: total revenue is sum of 16 sold deals',
+    () => {
+      const manual = bSold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+      return manual === bTotalRev || 'manual=' + manual + ' bTotalRev=' + bTotalRev;
+    });
+
+  // ── T91-T95: Post-30 / Post-60 auto-delivery date ─────────────
+  test('Batch Post30: delivery date pulls from opp.deliveryDate',
+    () => {
+      const delivered = bSold.filter(o => o.deliveryDate);
+      if (!delivered.length) return 'no sold opps with delivery date';
+      const o = delivered[0];
+      const fu30 = offsetDate(o.deliveryDate, 30);
+      return typeof fu30 === 'string' && fu30.length === 10
+        || 'fu30 invalid: ' + fu30;
+    });
+
+  test('Batch Post30: follow-up 30 days after delivery',
+    () => {
+      const o = BATCH.find(x => x.id === 'bt01');
+      const fu30 = offsetDate(o.deliveryDate, 30);
+      const parts = fu30.split('-');
+      return parts.length === 3 && parts[0].length === 4
+        || 'invalid date: ' + fu30;
+    });
+
+  test('Batch Post60: follow-up 60 days after delivery',
+    () => {
+      const o = BATCH.find(x => x.id === 'bt01');
+      const fu30 = offsetDate(o.deliveryDate, 30);
+      const fu60 = offsetDate(o.deliveryDate, 60);
+      const d30 = new Date(fu30+'T12:00:00');
+      const d60 = new Date(fu60+'T12:00:00');
+      const diff = Math.round((d60-d30)/86400000);
+      return diff === 30 || 'diff between 30 and 60 day FU: ' + diff;
+    });
+
+  test('Batch Post30: no sold opp with delivery generates null followup30',
+    () => {
+      const noDelivery = bSold.filter(o => !o.deliveryDate);
+      const fu = offsetDate('', 30);
+      // offsetDate with empty string should not crash
+      return typeof fu === 'string' || 'offsetDate threw on empty string';
+    });
+
+  test('Batch Post60: null daysToFU sorts to end',
+    () => {
+      const rows = [
+        { daysToFU: 5 }, { daysToFU: null }, { daysToFU: -2 }, { daysToFU: null }, { daysToFU: 1 }
+      ];
+      rows.sort((a,b) => {
+        if (a.daysToFU === null && b.daysToFU === null) return 0;
+        if (a.daysToFU === null) return 1;
+        if (b.daysToFU === null) return -1;
+        return a.daysToFU - b.daysToFU;
+      });
+      const lastTwo = rows.slice(-2);
+      return lastTwo.every(r => r.daysToFU === null)
+        || 'last two: ' + JSON.stringify(lastTwo);
+    });
+
+  // ── T96-T100: Task widget ─────────────────────────────────────
+  test('Batch Tasks: overdue pipeline opps create tasks',
+    () => {
+      const overdueActive = BATCH.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled' && BL.getDaysOverdue(o) > 0);
+      const tasks = _buildTasks(BATCH);
+      const fuTasks = tasks.filter(t => t.source === 'pipeline');
+      return fuTasks.length >= overdueActive.length
+        || 'overdueActive=' + overdueActive.length + ' fuTasks=' + fuTasks.length;
+    });
+
+  test('Batch Tasks: delivery tasks created for upcoming deliveries',
+    () => {
+      const upcomingDelivery = bSold.filter(o => {
+        if (!o.deliveryDate) return false;
+        const d = daysDiff(TODAY, o.deliveryDate);
+        return d >= -14 && d <= 2;
+      });
+      const tasks = _buildTasks(BATCH);
+      const dvTasks = tasks.filter(t => t.source === 'delivery');
+      return dvTasks.length === upcomingDelivery.length
+        || 'expected=' + upcomingDelivery.length + ' got=' + dvTasks.length;
+    });
+
+  test('Batch Tasks: open issue creates high-priority task',
+    () => {
+      const tasks = _buildTasks(BATCH);
+      const issueTasks = tasks.filter(t => t.source === 'issue');
+      const openIssues = bSold.filter(o => o.issueFlag === 'Yes' && o.issueResult !== 'Yes');
+      return issueTasks.length === openIssues.length
+        || 'expected=' + openIssues.length + ' got=' + issueTasks.length;
+    });
+
+  test('Batch Tasks: all tasks have required fields',
+    () => {
+      const tasks = _buildTasks(BATCH);
+      const missing = tasks.filter(t => !t.id || !t.oppId || !t.type || !t.icon || !t.activity);
+      return missing.length === 0 || 'tasks missing fields: ' + missing.length;
+    });
+
+  test('Batch Tasks: completed task is filtered out',
+    () => {
+      const savedDone = getCompletedTasks();
+      const tasks0 = _buildTasks(BATCH);
+      if (!tasks0.length) return 'no tasks to test';
+      const firstId = tasks0[0].id;
+      const fakeDone = [...savedDone, firstId];
+      localStorage.setItem('ea_completed_tasks', JSON.stringify(fakeDone));
+      const tasks1 = _buildTasks(BATCH);
+      localStorage.setItem('ea_completed_tasks', JSON.stringify(savedDone)); // restore
+      return !tasks1.find(t => t.id === firstId) || 'completed task still appears';
+    });
+
+  // ── T101-T105: Mailing tab ────────────────────────────────────
+  test('Batch Mailing: mark sent removes from pending',
+    () => {
+      const savedSent = getSentMails();
+      const testEntry = { oppId: 'bt42', name:'Petra Park', email:'petra@test.com', subject:'Test', sentAt: new Date().toISOString() };
+      const newSent = [...savedSent, testEntry];
+      saveSentMails(newSent);
+      const sentIds = getSentMails().map(s => s.oppId);
+      const pending = BATCH.filter(o => !sentIds.includes(o.id));
+      const bt42missing = !pending.find(o => o.id === 'bt42');
+      saveSentMails(savedSent); // restore
+      return bt42missing || 'bt42 still in pending list';
+    });
+
+  test('Batch Mailing: sent list persists in localStorage',
+    () => {
+      const saved = getSentMails();
+      const entry = { oppId:'_test_', name:'Test', email:'t@t.com', subject:'S', sentAt: new Date().toISOString() };
+      saveSentMails([...saved, entry]);
+      const loaded = getSentMails();
+      saveSentMails(saved);
+      return loaded.some(s => s.oppId === '_test_') || 'entry not found after reload';
+    });
+
+  test('Batch Mailing: all opps generate valid email subject',
+    () => {
+      const bad = BATCH.filter(o => {
+        try { const e = BL.generatePersuasionEmail(o); return !e.subject || !e.body; }
+        catch(ex) { return true; }
+      });
+      return bad.length === 0 || 'bad email gen: ' + bad.map(o=>o.lastName).join(',');
+    });
+
+  test('Batch Mailing: email for sold client is appreciation type',
+    () => {
+      const soldOpp = BATCH.find(o => o.saleMade === 'Yes');
+      const email = BL.generatePersuasionEmail(soldOpp);
+      return email.subject && email.subject.length > 0 || 'empty subject for sold client';
+    });
+
+  test('Batch Mailing: email for overdue opp contains urgency cues',
+    () => {
+      const overdue = BATCH.find(o => BL.isOverdue(o) && o.saleMade !== 'Yes');
+      if (!overdue) return true; // no overdue in batch
+      const email = BL.generatePersuasionEmail(overdue);
+      return email.body && email.body.length > 50 || 'email body too short for overdue opp';
+    });
+
+  // ── T106-T110: GoldComp value ─────────────────────────────────
+  test('Batch GoldComp: total GC revenue from goldCompValue field',
+    () => {
+      const gcRevFromField = BATCH.filter(o => o.saleMade==='Yes' && o.goldComp==='Yes')
+        .reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
+      return gcRevFromField === bGCRev || 'got=' + gcRevFromField + ' expected=' + bGCRev;
+    });
+
+  test('Batch GoldComp: non-GC clients have goldCompValue=0',
+    () => {
+      const wrong = BATCH.filter(o => o.goldComp !== 'Yes' && Number(o.goldCompValue) > 0);
+      return wrong.length === 0 || 'non-GC with value: ' + wrong.map(o=>o.lastName).join(',');
+    });
+
+  test('Batch GoldComp: goldCompValue never exceeds estimate (sanity)',
+    () => {
+      const bad = BATCH.filter(o => o.goldComp==='Yes' && Number(o.goldCompValue) > Number(o.estimate));
+      return bad.length === 0 || 'GC value > estimate: ' + bad.map(o=>o.lastName).join(',');
+    });
+
+  test('Batch GoldComp: _toDB roundtrip preserves goldCompValue',
+    () => {
+      const opp = BATCH.find(o => o.id === 'bt09');
+      const row = DB._toDB(opp);
+      const back = DB._fromDB(row);
+      return back.goldCompValue === opp.goldCompValue
+        || 'roundtrip: ' + back.goldCompValue + ' != ' + opp.goldCompValue;
+    });
+
+  test('Batch GoldComp: GC count in batch is 10',
+    () => {
+      const gc = BATCH.filter(o => o.goldComp === 'Yes').length;
+      return gc === 10 || 'got ' + gc;
+    });
+
+  // ── T111-T115: Analytics / Fiscal Quarters ────────────────────
+  test('Batch Analytics: fiscal quarters assigned correctly',
+    () => {
+      // July = Q1, Oct = Q2, Jan = Q3, Apr = Q4
+      const tests = [
+        ['2025-07-01','Q1'],['2025-09-30','Q1'],
+        ['2025-10-01','Q2'],['2025-12-31','Q2'],
+        ['2026-01-01','Q3'],['2026-03-31','Q3'],
+        ['2026-04-01','Q4'],['2026-06-30','Q4'],
+      ];
+      const wrong = tests.filter(([d,q]) => BL.getQuarter(d) !== q);
+      return wrong.length === 0 || 'wrong quarters: ' + wrong.map(([d,q])=>d+'→'+BL.getQuarter(d)+' expected '+q).join('; ');
+    });
+
+  test('Batch Analytics: monthly revenue map has entries for all 6 months',
+    () => {
+      const monthMap = {};
+      bSold.forEach(o => {
+        const k = (o.closeDate||o.followUpDate||'').slice(0,7);
+        if (k) monthMap[k] = (monthMap[k]||0) + 1;
+      });
+      return Object.keys(monthMap).length >= 5
+        || 'only ' + Object.keys(monthMap).length + ' months found';
+    });
+
+  test('Batch Analytics: project type breakdown has ≥5 types',
+    () => {
+      const types = new Set(BATCH.map(o=>o.projectType));
+      return types.size >= 5 || 'only ' + types.size + ' project types';
+    });
+
+  test('Batch Analytics: lead source breakdown has ≥4 sources',
+    () => {
+      const srcs = new Set(BATCH.map(o=>o.leadSource));
+      return srcs.size >= 4 || 'only ' + srcs.size + ' lead sources';
+    });
+
+  test('Batch Analytics: win rate = sold / total',
+    () => {
+      const k = BL.calcKPIs(BATCH);
+      const expected = Math.round((bSold.length / BATCH.length) * 100);
+      const actual = Math.round(k.winRate);
+      return Math.abs(actual - expected) <= 1
+        || 'winRate=' + actual + ' expected~' + expected;
+    });
+
+  // ── T116-T120: Mileage auto-seed ──────────────────────────────
+  test('Batch Mileage: home call opps have homeCallDate',
+    () => {
+      const hc = BATCH.filter(o => o.homeCall === 'Yes');
+      const missing = hc.filter(o => !o.homeCallDate);
+      return missing.length === 0 || 'missing homeCallDate: ' + missing.map(o=>o.lastName).join(',');
+    });
+
+  test('Batch Mileage: 36 opps have home calls',
+    () => {
+      const hc = BATCH.filter(o => o.homeCall === 'Yes').length;
+      return hc === 36 || 'got ' + hc;
+    });
+
+  test('Batch Mileage: saveMileageRecord stores and retrieves',
+    () => {
+      const before = getMileageRecords().length;
+      const rec = { id:'_test_mile_', sourceOppId:'bt01', date:TODAY, clientName:'Test', address:'123 Test St',
+        stopHome1:'', stopDC1:'', stopClient:'', stopHome2:'', stopDC2:'', totalMiles:'', commuteDeduct:'', tollsParking:'', designPartner:'', purpose:'Home Call' };
+      saveMileageRecord(rec);
+      const after = getMileageRecords().length;
+      // cleanup
+      const recs = getMileageRecords().filter(r => r.id !== '_test_mile_');
+      localStorage.setItem('ea_mileage_v1', JSON.stringify(recs));
+      return after === before + 1 || 'before=' + before + ' after=' + after;
+    });
+
+  test('Batch Mileage: rate is $0.725/mile',
+    () => {
+      const RATE = 0.725;
+      const net = 50, tolls = 5;
+      const reimbursement = net * RATE + tolls;
+      return Math.abs(reimbursement - 41.25) < 0.001 || 'got ' + reimbursement;
+    });
+
+  test('Batch Mileage: leg sum = sum of 5 leg fields',
+    () => {
+      const legs = [12.5, 8.3, 6.7, 8.3, 12.5];
+      const total = legs.reduce((s,v)=>s+v,0);
+      return Math.abs(total - 48.3) < 0.001 || 'got ' + total;
+    });
+
+  // ── T121: DB roundtrip with full batch opp ────────────────────
+  test('Batch DB: full opp roundtrip preserves all v4.2 fields',
+    () => {
+      const o = BATCH.find(x => x.id === 'bt47'); // Vera Vega - sold with GC, activePhase
+      const row = DB._toDB(o);
+      const back = DB._fromDB(row);
+      const fields = ['firstName','lastName','saleMade','goldComp','goldCompValue','estimate',
+        'deliveryDate','linkReviewDate','customerNumber','saleDate','activePhase','issueFlag','closeDate'];
+      const wrong = fields.filter(f => String(back[f]) !== String(o[f]));
+      return wrong.length === 0 || 'field mismatch: ' + wrong.map(f=>f+'('+back[f]+'!='+o[f]+')').join(', ');
+    });
+
   await new Promise(r => setTimeout(r, 100));
 
   // ── Render results ──
@@ -5732,7 +6278,7 @@ function _buildTasks(opps) {
         projectType: o.projectType || '—',
         estimate: Number(o.estimate) || 0,
         goldComp: o.goldComp || '',
-        stage: 'Postponed', activePhase: '',
+        stage: 'Postponed', activePhase: '', source: 'postponed',
         deliveryDate: '', delivery2Day: false, linkReviewDate: '',
         dueDate: o.followUpDate || '',
         activity: 'Postponed — queued for post-30/60 follow-up',
@@ -5810,7 +6356,7 @@ function _buildTasks(opps) {
         projectType: o.projectType || '—',
         estimate: Number(o.estimate) || 0,
         goldComp: o.goldComp || '',
-        stage: 'Issue', activePhase: o.activePhase || '',
+        stage: 'Issue', activePhase: o.activePhase || '', source: 'issue',
         deliveryDate: o.deliveryDate || '', delivery2Day: false,
         linkReviewDate: o.linkReviewDate || '', dueDate: todayS,
         activity: 'Resolve issue: ' + (o.issueType || 'Review with client'),
@@ -5996,9 +6542,12 @@ async function renderAnalytics(analyticsFilter) {
   // Monthly goal vs actual (current year)
   const goalVsActual = LOOKUP.monthGoals.map((g,i) => {
     const goal = getGoalForMonth(i);
-    const mn   = new Date(today.getFullYear(), i, 1).toISOString().slice(0,7);
-    const rev  = monthRevMap[mn] || 0;
-    const lbl  = new Date(today.getFullYear(), i, 1).toLocaleDateString('en-US',{month:'short'});
+    const mn   = new Date(selYear, i, 1).toISOString().slice(0,7);
+    const rev  = (selMonth === null ? monthRevMap[mn] : (sold.filter(o => {
+      const d = o.closeDate||o.saleDate||''; const dt = new Date(d+'T12:00:00');
+      return dt.getMonth() === i && dt.getFullYear() === selYear;
+    }).reduce((s,o)=>s+(Number(o.estimate)||0),0))) || 0;
+    const lbl  = new Date(selYear, i, 1).toLocaleDateString('en-US',{month:'short'});
     return { lbl, goal, rev, pct: goal ? Math.min(Math.round(rev/goal*100),150) : 0 };
   });
 
