@@ -14,6 +14,11 @@
 --                   saleDate, activePhase, deliveryDate, linkReviewDate,
 --                   issueFlag, issueType, issueResult)
 --    v4.1 (2026-03) — App: Tasks tab renamed to Active (post-sale tracker),
+--    v4.2 (2026-03) — goldCompValue: separate GoldComp credit field;
+--                     task/active/mail completion tracking (localStorage);
+--                     mileage auto-seed from home calls; Post-30/60 auto-sync
+--                     delivery date from opportunity; sales/analytics line
+--                     charts with year/month filter toggles.
 --                     Mileage tab fully manual (auto-seed removed),
 --                     month_auto trigger uses FMMonth for clean labels,
 --                     getDaysOverdue guards SOLD/Canceled (always 0),
@@ -83,6 +88,11 @@ CREATE TABLE opportunities (
   "deliveryDate"    TEXT,         -- YYYY-MM-DD    scheduled delivery date
   "linkReviewDate"  TEXT,         -- YYYY-MM-DD    survey/review follow-up
                                   --               (auto-set: deliveryDate + 7 days)
+
+  -- ── GoldComp Value (v4.2) ──────────────────────────────────
+  --    Separate credit amount for the GoldComp program.
+  --    Displayed alongside estimate in Sales, Active, and Analytics tabs.
+  "goldCompValue"   NUMERIC(12,2) DEFAULT 0,  -- GoldComp credit USD
 
   -- ── Issue Tracking (v4) ────────────────────────────────────
   --    Used by the Active Clients tab to flag and resolve post-sale issues
@@ -220,5 +230,8 @@ ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "linkReviewDate" TEXT;
 ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "issueFlag"      TEXT;
 ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "issueType"      TEXT;
 ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "issueResult"    TEXT;
+
+-- v4.2: GoldComp credit value (separate from product estimate)
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "goldCompValue"  NUMERIC(12,2) DEFAULT 0;
 
     ← Remove this line to activate  */
