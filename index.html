@@ -562,7 +562,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <!-- ══════════════════════════════════════════════════
      PIN LOCK SCREEN
 ════════════════════════════════════════════════════ -->
-<div id="pinOverlay" style="display:none;position:fixed;inset:0;z-index:99999;
+<div id="pinOverlay" style="display:none !important;position:fixed;inset:0;z-index:99999;
   background:linear-gradient(160deg,#0a0a0a 0%,#111 60%,#0d0d0d 100%);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">
   <div style="text-align:center;margin-bottom:32px">
@@ -601,7 +601,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 </div>
 
 <!-- Auto-lock banner -->
-<div id="lockBanner" style="display:none;position:fixed;bottom:16px;right:16px;z-index:9000;
+<div id="lockBanner" style="display:none !important;position:fixed;bottom:16px;right:16px;z-index:9000;
   background:rgba(10,10,10,.95);border:1px solid rgba(196,147,63,.35);border-radius:10px;
   padding:10px 16px;font-size:12px;color:#c4933f;backdrop-filter:blur(8px)">
   🔒 Auto-locking in <span id="lockCountdown">60</span>s
@@ -8438,9 +8438,7 @@ async function launchDemoMode() {
   };
 
   // ── Activity listeners ────────────────────────────────────────────────
-  ['click','keydown','mousemove','touchstart'].forEach(ev => {
-    document.addEventListener(ev, () => { if (isAuthenticated()) startInactivityTimer(); }, {passive:true});
-  });
+  // PIN auth disabled — inactivity lock removed
 
   // ── Change PIN button (added to Settings area) ────────────────────────
   window.changePIN = function() {
@@ -8473,26 +8471,12 @@ async function launchDemoMode() {
   document.addEventListener('keydown', handleKeydown);
 
   document.addEventListener('DOMContentLoaded', () => {
-    if (isAuthenticated()) {
-      hideOverlay();
-      startInactivityTimer();
-    } else {
-      const hasPin = !!getStoredHash();
-      showOverlay(hasPin ? 'enter' : 'setup');
-    }
+    // PIN auth disabled — auto-authenticate on load
+    setAuthenticated();
+    hideOverlay();
   });
 
-  // ── Lock on tab hide / window blur ───────────────────────────────────
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && isAuthenticated()) {
-      // Don't lock immediately on visibilitychange — only after 30s of being hidden
-      _visibilityTimer = setTimeout(() => {
-        if (document.hidden && isAuthenticated()) lockApp();
-      }, 30000);
-    } else if (!document.hidden) {
-      clearTimeout(_visibilityTimer);
-    }
-  });
+  // PIN auth disabled — visibility lock removed
 
   // ── Expose lock for manual use ────────────────────────────────────────
   window.lockNow = function() { lockApp(); };
