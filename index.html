@@ -550,92 +550,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   tfoot { display:table-footer-group; }
 }
 </style>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://rsoukgpaqsgsdfvwrceu.supabase.co; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://rsoukgpaqsgsdfvwrceu.supabase.co wss://rsoukgpaqsgsdfvwrceu.supabase.co; frame-ancestors 'none'; form-action 'self'; base-uri 'self';">
-  <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-<meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-Frame-Options" content="DENY">
-<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 </head>
 <body>
-<!-- ══════════════════════════════════════════════════
-     PIN LOCK SCREEN
-════════════════════════════════════════════════════ -->
-<div id="pinOverlay" style="position:fixed;inset:0;z-index:99999;
-  background:linear-gradient(160deg,#0a0a0a 0%,#111 60%,#0d0d0d 100%);
-  flex-direction:column;align-items:center;justify-content:center;gap:0">
-  <div style="text-align:center;margin-bottom:32px">
-    <div style="font-size:38px;margin-bottom:10px">🔐</div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#c4933f;letter-spacing:.08em;font-weight:600">EA Sales Intelligence</div>
-    <div id="pinSubtitle" style="font-size:13px;color:#666;margin-top:6px;letter-spacing:.05em">Enter your PIN to continue</div>
-  </div>
-
-  <!-- PIN dots -->
-  <div id="pinDots" style="display:flex;gap:16px;margin-bottom:32px">
-    <div class="pin-dot"></div><div class="pin-dot"></div>
-    <div class="pin-dot"></div><div class="pin-dot"></div>
-  </div>
-
-  <!-- Numpad -->
-  <div style="display:grid;grid-template-columns:repeat(3,72px);gap:12px;margin-bottom:12px">
-    <button class="pin-btn" onclick="pinPress('1')">1</button>
-    <button class="pin-btn" onclick="pinPress('2')">2</button>
-    <button class="pin-btn" onclick="pinPress('3')">3</button>
-    <button class="pin-btn" onclick="pinPress('4')">4</button>
-    <button class="pin-btn" onclick="pinPress('5')">5</button>
-    <button class="pin-btn" onclick="pinPress('6')">6</button>
-    <button class="pin-btn" onclick="pinPress('7')">7</button>
-    <button class="pin-btn" onclick="pinPress('8')">8</button>
-    <button class="pin-btn" onclick="pinPress('9')">9</button>
-    <div></div>
-    <button class="pin-btn" onclick="pinPress('0')">0</button>
-    <button class="pin-btn pin-del" onclick="pinBackspace()">⌫</button>
-  </div>
-
-  <div id="pinError" style="color:#e05c5c;font-size:12px;height:18px;margin-top:4px;letter-spacing:.04em"></div>
-  <div id="pinSetupMsg" style="display:none;color:#888;font-size:11px;margin-top:12px;text-align:center;max-width:220px;line-height:1.6">
-    No PIN set yet.<br>Enter a 4-digit PIN to set it.
-  </div>
-  <div id="pinLockout" style="display:none;color:#e05c5c;font-size:12px;margin-top:8px;text-align:center"></div>
-</div>
-
-<!-- Auto-lock banner -->
-<div id="lockBanner" style="position:fixed;bottom:16px;right:16px;z-index:9000;
-  background:rgba(10,10,10,.95);border:1px solid rgba(196,147,63,.35);border-radius:10px;
-  padding:10px 16px;font-size:12px;color:#c4933f;backdrop-filter:blur(8px)">
-  🔒 Auto-locking in <span id="lockCountdown">60</span>s
-  <button onclick="resetInactivity()" style="margin-left:10px;padding:3px 10px;background:rgba(196,147,63,.15);
-    border:1px solid rgba(196,147,63,.4);border-radius:5px;color:#c4933f;font-size:11px;cursor:pointer">Stay active</button>
-</div>
-
-<style>
-#pinOverlay { display: none !important; }
-#pinOverlay.visible { display: flex !important; }
-#lockBanner { display: none !important; }
-#lockBanner.visible { display: block !important; }
-.pin-dot {
-  width:14px;height:14px;border-radius:50%;
-  border:2px solid #444;background:transparent;transition:all .15s;
-}
-.pin-dot.filled { background:#c4933f;border-color:#c4933f; }
-.pin-dot.shake { animation:pinShake .4s ease; }
-.pin-btn {
-  width:72px;height:72px;border-radius:50%;
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
-  color:#eee;font-size:22px;font-family:'Cormorant Garamond',serif;
-  cursor:pointer;transition:all .12s;user-select:none;
-}
-.pin-btn:hover { background:rgba(196,147,63,.15);border-color:rgba(196,147,63,.4);color:#c4933f; }
-.pin-btn:active { transform:scale(.92);background:rgba(196,147,63,.25); }
-.pin-del { font-size:18px;color:#888; }
-@keyframes pinShake {
-  0%,100% { transform:translateX(0); }
-  20%,60% { transform:translateX(-8px); }
-  40%,80% { transform:translateX(8px); }
-}
-</style>
-
 
 <!-- Config Screen (hidden — auto-connect on load) -->
 <div id="configScreen">
@@ -748,8 +664,6 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       onmouseout="this.style.borderColor='var(--ink-60)';this.style.color='var(--ink-20)'">🇧🇷 PT</button>
     <span id="connBadge" class="conn-badge demo"><span class="dot"></span>Demo</span>
     <span class="nav-badge" id="overdueCount" title="Overdue follow-ups">0</span>
-    <button onclick="lockNow()" title="Lock app now" style="background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;color:var(--ink-40);font-size:15px;line-height:1;transition:color .15s" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--ink-40)'">🔒</button>
-    <button onclick="navigate('security')" title="Security &amp; Settings" style="background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;color:var(--ink-40);font-size:14px;line-height:1;transition:color .15s" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--ink-40)'">🛡️</button>
     <div class="nav-avatar" title="Carolina Medrado">CM</div>
   </div>
 </nav>
@@ -852,7 +766,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <h2 class="display" data-i18n="pipe_header">ALL OPPORTUNITIES</h2></div>
     <div class="search-box">
       <span style="color:var(--ink-40)">🔍</span>
-      <input id="searchInput" type="text" placeholder="Search name, project, stage…" maxlength="100" oninput="renderPipeline()">
+      <input id="searchInput" type="text" placeholder="Search name, project, stage…" oninput="renderPipeline()">
     </div>
     <div style="display:flex;gap:8px">
     <button onclick="printPage('page-pipeline')" class="print-btn" title="Print or Save as PDF">
@@ -939,9 +853,6 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   </div>
   <div class="mailing-grid" id="mailingGrid"></div>
 </div><!-- /mailing -->
-
-<!-- ══════ SECURITY ══════ -->
-<div class="page" id="page-security"></div>
 
 <!-- ══════ TESTS ══════ -->
 <div class="page" id="page-active"></div>
@@ -1033,11 +944,11 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <div class="form-section">
         <div class="form-section-title" data-i18n="sec_contact">👤 Contact Information</div>
         <div class="form-grid">
-          <div class="field"><label data-i18n="lbl_first">First Name *</label><input id="f-firstName" maxlength="80" type="text" required placeholder="Maria"></div>
-          <div class="field"><label data-i18n="lbl_last">Last Name *</label><input id="f-lastName" maxlength="80" type="text" required placeholder="Alvarez"></div>
-          <div class="field"><label data-i18n="lbl_email">Email</label><input id="f-email" maxlength="120" type="email" placeholder="maria@email.com"></div>
-          <div class="field"><label data-i18n="lbl_phone">Phone</label><input id="f-phone" maxlength="30" type="tel" placeholder="305-555-0000"></div>
-          <div class="field span-2"><label data-i18n="lbl_address">Address</label><input id="f-address" maxlength="200" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
+          <div class="field"><label data-i18n="lbl_first">First Name *</label><input id="f-firstName" type="text" required placeholder="Maria"></div>
+          <div class="field"><label data-i18n="lbl_last">Last Name *</label><input id="f-lastName" type="text" required placeholder="Alvarez"></div>
+          <div class="field"><label data-i18n="lbl_email">Email</label><input id="f-email" type="email" placeholder="maria@email.com"></div>
+          <div class="field"><label data-i18n="lbl_phone">Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000"></div>
+          <div class="field span-2"><label data-i18n="lbl_address">Address</label><input id="f-address" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
         </div>
       </div>
 
@@ -1052,14 +963,14 @@ tbody td { padding: 11px 12px; font-size: 13px; }
             <select id="f-stage" onchange="onFieldChange()"><option value="">Select…</option></select></div>
           <div class="field"><label data-i18n="lbl_prob">Probability (%)</label>
             <select id="f-probability" onchange="onFieldChange()"><option value="">Select…</option></select></div>
-          <div class="field"><label>Product Value ($)</label>
+          <div class="field"><label data-i18n="lbl_est">Estimate ($)</label>
             <input id="f-estimate" type="number" min="0" step="100" placeholder="15000" oninput="onFieldChange()"></div>
           <div class="field"><label data-i18n="lbl_followup">Follow-Up Date</label>
             <input id="f-followUpDate" type="date" onchange="onFieldChange()"></div>
           <div class="field"><label data-i18n="lbl_closedate">Expected Close Date</label>
             <input id="f-closeDate" type="date" onchange="onFieldChange()"></div>
           <div class="field"><label data-i18n="lbl_next">Next Step</label>
-            <select id="f-nextStep" maxlength="500"><option value="">Select…</option></select></div>
+            <select id="f-nextStep"><option value="">Select…</option></select></div>
           <div class="field"><label data-i18n="lbl_hc">Home Call?</label>
             <select id="f-homeCall" onchange="onFieldChange()">
               <option value="">—</option><option>Yes</option><option>No</option>
@@ -1071,18 +982,9 @@ tbody td { padding: 11px 12px; font-size: 13px; }
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
           <div class="field"><label data-i18n="lbl_gc">GoldComp?</label>
-            <select id="f-goldComp" onchange="onFieldChange()">
+            <select id="f-goldComp">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
-          <div class="field" id="goldCompValueField" style="display:none">
-            <label>GoldComp Value ($) <span style="font-size:10px;color:var(--gold)">(GoldComp program credit)</span></label>
-            <input id="f-goldCompValue" type="number" min="0" step="100" placeholder="0" oninput="onFieldChange()">
-          </div>
-        </div>
-        <div id="totalSaleDisplay" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(196,147,63,.1);border:1px solid var(--gold-dk);border-radius:8px">
-          <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dk)">Total Sale Value: </span>
-          <span id="totalSaleVal" style="font-family:var(--font-display);font-size:20px;color:var(--gold)">$0</span>
-          <span style="font-size:11px;color:var(--ink-40);margin-left:8px">(Product + GoldComp)</span>
         </div>
       </div>
 
@@ -1117,12 +1019,12 @@ tbody td { padding: 11px 12px; font-size: 13px; }
         <div class="form-grid">
           <div class="field">
             <label>Customer #</label>
-            <input id="f-customerNumber" type="text" placeholder="e.g. EA-2026-0001" maxlength="20"
-              style="background:var(--ink-70);color:var(--gold);font-family:var(--font-display);font-weight:700" maxlength="20">
+            <input id="f-customerNumber" type="text" readonly placeholder="Auto-assigned on sale"
+              style="background:var(--ink-70);color:var(--gold);font-family:var(--font-display);font-weight:700">
           </div>
           <div class="field">
             <label>Active Phase</label>
-            <input id="f-activePhase" type="text" placeholder="e.g. Design Review, Ordering…" maxlength="60">
+            <input id="f-activePhase" type="text" placeholder="e.g. Design Review, Ordering…">
           </div>
           <div class="field">
             <label>Sale Date</label>
@@ -1134,7 +1036,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
           </div>
           <div class="field">
             <label>Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: +7d)</span></label>
-            <input id="f-linkReviewDate" type="date" maxlength="10">
+            <input id="f-linkReviewDate" type="date">
           </div>
           <div class="field">
             <label>Issue Flag</label>
@@ -1144,11 +1046,11 @@ tbody td { padding: 11px 12px; font-size: 13px; }
           </div>
           <div class="field">
             <label>Issue Type <span style="font-size:10px;color:var(--ink-40)">(manual notes)</span></label>
-            <input id="f-issueType" maxlength="200" type="text" placeholder="Describe issue…">
+            <input id="f-issueType" type="text" placeholder="Describe issue…">
           </div>
           <div class="field">
             <label>Issue Resolved?</label>
-            <select id="f-issueResult" maxlength="200">
+            <select id="f-issueResult">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select>
           </div>
@@ -1157,7 +1059,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 
       <div class="form-section">
         <div class="form-section-title">📝 Notes</div>
-        <div class="field"><textarea id="f-notes" maxlength="1000" placeholder="Context about this opportunity…"></textarea></div>
+        <div class="field"><textarea id="f-notes" placeholder="Context about this opportunity…"></textarea></div>
       </div>
 
       <div class="form-actions">
@@ -2394,7 +2296,6 @@ const DB = {
 
   /* ── DELETE ── */
   async delete(id) {
-    auditLog('LEAD_DELETED', `id=${id}`);
     if (this.mode === 'supabase') {
       try {
         const { error } = await this.client.from('opportunities').delete().eq('id', id);
@@ -2533,8 +2434,6 @@ let state = {
   stageFilter: null,
   mailFilter: null,
   editingId: null,
-  analyticsYear: new Date().getFullYear(),
-  analyticsMonth: null,
 };
 
 /* ══════════════════════════════════════════════════
@@ -2562,7 +2461,6 @@ async function renderPage(page) {
     case 'sales': window._currentPage='sales'; await renderSales(); break;
     case 'mileage':    await renderMileage();    break;
     case 'analytics': await renderAnalytics(); break;
-    case 'security':  await renderSecurity();  break;
     case 'tests': break;
   }
 }
@@ -3024,7 +2922,7 @@ async function renderPost30() {
   // For each sold opp, get or create a post30 record
   const rows = sold.map(o => {
     const rec = records.find(r => r.oppId === o.id) || { oppId: o.id, deliveryDate: '', contactReason: '', newOpportunity: '', notes: '' };
-    const delivDate   = o.deliveryDate || rec.deliveryDate || '';
+    const delivDate   = rec.deliveryDate || '';
     const followup30  = delivDate ? offsetDate(delivDate, 30) : '';
     const daysToFU    = followup30 ? daysDiff(today, followup30) : null;
     return { opp: o, rec, delivDate, followup30, daysToFU };
@@ -3057,15 +2955,11 @@ async function renderPost30() {
     return `<tr style="${noNew ? 'opacity:.55' : ''}">
       <td><strong style="color:white">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:var(--ink-40);font-size:11px">${opp.projectType||'—'}</span></td>
       <td><span style="color:var(--gold)">$${(opp.estimate||0).toLocaleString()}</span></td>
-      <td>
-        ${opp.deliveryDate
-          ? '<span style="color:var(--gold);font-size:12px">📦 ' + fmtDate(opp.deliveryDate) + '<br><span style="font-size:10px;color:var(--ink-40)">from Active record</span></span>'
-          : '<input type="date" value="' + delivDate + '" style="width:140px" onchange="updatePost30(\'' + opp.id + '\',\'deliveryDate\',this.value)" />'
-        }
-      </td>
+      <td><input type="date" value="${delivDate}" style="width:140px"
+        onchange="updatePost30('${opp.id}','deliveryDate',this.value)" /></td>
       <td style="color:var(--ink-20)">${followup30 ? formatDateShort(followup30) : '—'}</td>
       <td>${statusBadge}</td>
-      <td><input type="text" value="${esc(rec.contactReason||'')}" maxlength="100" placeholder="e.g. 3-week check-in"
+      <td><input type="text" value="${esc(rec.contactReason||'')}" placeholder="e.g. 3-week check-in"
         onchange="updatePost30('${opp.id}','contactReason',this.value)" style="min-width:160px" /></td>
       <td>
         <select onchange="updatePost30('${opp.id}','newOpportunity',this.value)" style="width:80px">
@@ -3074,7 +2968,7 @@ async function renderPost30() {
           <option value="No"  ${rec.newOpportunity==='No'?'selected':''}>No</option>
         </select>
       </td>
-      <td><input type="text" value="${esc(rec.notes||'')}" maxlength="300" placeholder="Notes"
+      <td><input type="text" value="${esc(rec.notes||'')}" placeholder="Notes"
         onchange="updatePost30('${opp.id}','notes',this.value)" style="min-width:120px" /></td>
     </tr>`;
   }).join('');
@@ -3138,42 +3032,34 @@ async function renderPost60() {
   const rows = eligible.map(rec => {
     const opp = opps.find(o => o.id === rec.oppId);
     if (!opp) return null;
-    const dvSrc = opp.deliveryDate || rec.deliveryDate || '';
-    const followup60 = dvSrc ? offsetDate(dvSrc, 60) : '';
-    const daysToFU   = followup60 ? daysDiff(today, followup60) : null;
+    const followup60 = offsetDate(rec.deliveryDate, 60);
+    const daysToFU   = daysDiff(today, followup60);
     // Post60 has its own contact/notes — stored as rec.p60_*
     return { opp, rec, followup60, daysToFU };
   }).filter(Boolean);
 
-  rows.sort((a,b) => {
-    if (a.daysToFU === null && b.daysToFU === null) return 0;
-    if (a.daysToFU === null) return 1;
-    if (b.daysToFU === null) return -1;
-    return a.daysToFU - b.daysToFU;
-  });
+  rows.sort((a,b) => a.daysToFU - b.daysToFU);
 
-  const overdue  = rows.filter(r => r.daysToFU !== null && r.daysToFU < 0).length;
-  const dueToday = rows.filter(r => r.daysToFU !== null && r.daysToFU === 0).length;
-  const upcoming = rows.filter(r => r.daysToFU !== null && r.daysToFU > 0).length;
+  const overdue  = rows.filter(r => r.daysToFU < 0).length;
+  const dueToday = rows.filter(r => r.daysToFU === 0).length;
+  const upcoming = rows.filter(r => r.daysToFU > 0).length;
 
   const tbody = rows.map(row => {
     const { opp, rec, followup60, daysToFU } = row;
-    const statusBadge = daysToFU === null
-      ? `<span class="status-badge status-waiting">No Delivery Date</span>`
-      : daysToFU < 0
-        ? `<span class="status-badge status-overdue">Overdue ${Math.abs(daysToFU)}d</span>`
-        : daysToFU === 0
-          ? `<span class="status-badge status-today">Due Today</span>`
-          : `<span class="status-badge status-upcoming">In ${daysToFU}d</span>`;
+    const statusBadge = daysToFU < 0
+      ? `<span class="status-badge status-overdue">Overdue ${Math.abs(daysToFU)}d</span>`
+      : daysToFU === 0
+        ? `<span class="status-badge status-today">Due Today</span>`
+        : `<span class="status-badge status-upcoming">In ${daysToFU}d</span>`;
 
     const done = rec.p60_newOpportunity === 'Yes' || rec.p60_newOpportunity === 'No';
     return `<tr style="${done&&rec.p60_newOpportunity==='No'?'opacity:.5':''}">
       <td><strong style="color:white">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:var(--ink-40);font-size:11px">${opp.projectType||'—'}</span></td>
       <td><span style="color:var(--gold)">$${(opp.estimate||0).toLocaleString()}</span></td>
-      <td style="color:var(--ink-20)">${formatDateShort(dvSrc)}</td>
-      <td style="color:var(--ink-20)">${followup60 ? formatDateShort(followup60) : '—'}</td>
+      <td style="color:var(--ink-20)">${formatDateShort(rec.deliveryDate)}</td>
+      <td style="color:var(--ink-20)">${formatDateShort(followup60)}</td>
       <td>${statusBadge}</td>
-      <td><input type="text" value="${esc(rec.p60_contactReason||'')}" maxlength="100" placeholder="Final nurture touchpoint"
+      <td><input type="text" value="${esc(rec.p60_contactReason||'')}" placeholder="Final nurture touchpoint"
         onchange="updatePost60('${rec.oppId}','p60_contactReason',this.value)" style="min-width:160px" /></td>
       <td>
         <select onchange="updatePost60('${rec.oppId}','p60_newOpportunity',this.value)" style="width:80px">
@@ -3182,7 +3068,7 @@ async function renderPost60() {
           <option value="No"  ${rec.p60_newOpportunity==='No'?'selected':''}>No</option>
         </select>
       </td>
-      <td><input type="text" value="${esc(rec.p60_notes||'')}" maxlength="300" placeholder="Notes"
+      <td><input type="text" value="${esc(rec.p60_notes||'')}" placeholder="Notes"
         onchange="updatePost60('${rec.oppId}','p60_notes',this.value)" style="min-width:120px" /></td>
     </tr>`;
   }).join('');
@@ -3247,23 +3133,6 @@ async function renderMileage() {
   const MS = window._mileState;
 
   let allRecs = getMileageRecords();
-
-  /* ── Sync auto-seed records from home call opps ── */
-  try {
-    const opps = await DB.getAll();
-    opps.filter(o => o.homeCall === 'Yes' && o.homeCallDate).forEach(o => {
-      const rec = allRecs.find(r => r.sourceOppId === o.id);
-      if (rec) {
-        let changed = false;
-        if (rec.date !== o.homeCallDate) { rec.date = o.homeCallDate; changed=true; }
-        const name = (o.firstName+' '+o.lastName).trim();
-        if (rec.clientName !== name) { rec.clientName = name; changed=true; }
-        if (rec.address !== (o.address||'')) { rec.address = o.address||''; changed=true; }
-        if (changed) saveMileageRecord(rec);
-      }
-    });
-    allRecs = getMileageRecords(); // reload after potential updates
-  } catch(e) {}
 
   /* ── Build month groups ── */
   const grouped = {};  // key: "YYYY-MM"
@@ -3652,9 +3521,7 @@ function deleteMileageRow(id) {
 
 /* ════ Date helpers ════ */
 function offsetDate(dateStr, days) {
-  if (!dateStr || typeof dateStr !== 'string' || !dateStr.includes('-')) return '';
   const [y,m,d] = dateStr.split('-').map(Number);
-  if (isNaN(y) || isNaN(m) || isNaN(d)) return '';
   const dt = new Date(y, m-1, d + days);
   return localDateStr(dt);
 }
@@ -3713,37 +3580,9 @@ async function renderMailing() {
   if (state.mailFilter==='sold')    list = list.filter(o=>o.saleMade==='Yes');
   if (state.mailFilter==='nurture') list = list.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)<50);
 
-  const sentMails   = getSentMails();
-  const sentOppIds  = sentMails.map(s => s.oppId);
-  const pendingList = list.filter(o => !sentOppIds.includes(o.id));
   const grid = document.getElementById('mailingGrid');
-  if (!pendingList.length && !sentMails.length) { grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon">📧</div><p>No contacts in this segment</p></div>'; return; }
+  if (!list.length) { grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon"></div><p>No contacts in this segment</p></div>'; return; }
 
-  const _renderSentBox = () => {
-    if (!sentMails.length) return '';
-    return '<div id="sentMailsBox" style="grid-column:1/-1;margin-top:8px;background:var(--ink-85);border:1px solid rgba(76,175,125,.2);border-radius:12px;overflow:hidden">'
-      + '<div style="padding:10px 16px;background:rgba(76,175,125,.07);border-bottom:1px solid rgba(76,175,125,.2);display:flex;align-items:center;gap:10px">'
-      + '<span style="font-size:16px">📤</span>'
-      + '<span style="font-family:var(--font-display);font-size:14px;color:var(--green)">Emails Sent (' + sentMails.length + ')</span>'
-      + '<button onclick="clearSentMails()" style="margin-left:auto;background:transparent;border:1px solid var(--ink-50);color:var(--ink-40);border-radius:5px;font-size:10px;padding:3px 10px;cursor:pointer">Clear List</button>'
-      + '</div>'
-      + '<div style="padding:12px 16px;display:flex;flex-direction:column;gap:6px">'
-      + [...sentMails].reverse().map(s => {
-          const dt = new Date(s.sentAt);
-          const dtStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' + dt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-          return '<div style="display:flex;align-items:center;gap:12px;padding:7px 10px;background:var(--ink-80);border-radius:6px">'
-            + '<span style="color:var(--green);font-size:13px;flex-shrink:0">✓</span>'
-            + '<div style="flex:1;min-width:0">'
-            + '<div style="font-weight:600;color:var(--ink-20);font-size:13px">' + (s.name||'') + '</div>'
-            + '<div style="font-size:11px;color:var(--ink-40);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (s.subject||'') + '</div>'
-            + '</div>'
-            + '<span style="font-size:10px;color:var(--ink-40);white-space:nowrap">' + dtStr + '</span>'
-            + '</div>';
-        }).join('')
-      + '</div></div>';
-  };
-
-  list = pendingList;
   grid.innerHTML = list.map(o=>{
     const email  = BL.generatePersuasionEmail(o);
     const prio   = BL.getCampaignPriority(o);
@@ -3783,10 +3622,6 @@ async function renderMailing() {
         ${o.notes?`<span style="font-size:10px;color:var(--ink-40);font-style:italic;width:100%;display:block;margin-top:4px">${esc(o.notes.slice(0,55))}${o.notes.length>55?'…':''}</span>`:''}
       </div>
       <div class="mail-actions" onclick="event.stopPropagation()">
-        <button class="mail-action-btn" onclick="markMailSent('${o.id}')"
-          style="background:rgba(76,175,125,.2);border-color:rgba(76,175,125,.5);color:var(--green);font-weight:700">
-          ✓ Mark Sent
-        </button>
         <button class="mail-action-btn gmail" onclick="openInGmail('${o.id}')">
           <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="18" height="14" rx="2"/><path d="M1 4l9 7 9-7"/></svg>
           Gmail
@@ -3800,295 +3635,151 @@ async function renderMailing() {
         </button>
       </div>
     </div>`;
-  }).join('') + _renderSentBox();
+  }).join('');
 
-
-  // ── Contact List + Export Panel ──────────────────────────────────────
-  const allOpps   = await DB.getAll();
-  const sentIds   = new Set(getSentMails().map(s => s.oppId));
-  const contacts  = allOpps
-    .filter(o => o.firstName || o.lastName)
+  // ── Contact List + Export ─────────────────────────────────────────────
+  const _allOpps   = await DB.getAll();
+  const _sentIds   = new Set((JSON.parse(localStorage.getItem('ea_mail_sent')||'[]')).map(s => s.oppId));
+  const _contacts  = _allOpps.filter(o => o.firstName || o.lastName)
     .sort((a,b) => (a.lastName||'').localeCompare(b.lastName||''));
 
-  const total     = contacts.length;
-  const emailed   = contacts.filter(o => sentIds.has(o.id)).length;
-  const withEmail = contacts.filter(o => o.email).length;
-  const withPhone = contacts.filter(o => o.phone).length;
-
-  // Build table rows
-  const contactRows = contacts.map((o, i) => {
-    const isSent   = sentIds.has(o.id);
-    const isActive = o.saleMade !== 'Yes' && o.stage !== 'Canceled';
-    const isSold   = o.saleMade === 'Yes';
-    const rowBg    = isSent ? 'rgba(76,175,125,.06)' : '';
-    const stageColor = isSold ? 'var(--green)' : o.stage === 'Canceled' ? 'var(--ink-50)' : 'var(--gold)';
-    return `<tr style="border-bottom:1px solid var(--ink-75);background:${rowBg}">
-      <td style="padding:8px 10px;font-size:11px;color:var(--ink-50);text-align:center">${i+1}</td>
-      <td style="padding:8px 12px">
-        <div style="font-weight:700;font-size:12px;color:var(--ink-10)">${esc(o.lastName)}, ${esc(o.firstName)}</div>
-        ${o.customerNumber ? `<div style="font-size:10px;color:var(--ink-50)">${esc(o.customerNumber)}</div>` : ''}
-      </td>
-      <td style="padding:8px 12px;font-size:11px;color:${o.email?'var(--ink-20)':'var(--ink-60)'}">
-        ${o.email ? `<a href="mailto:${esc(o.email)}" style="color:var(--gold);text-decoration:none">${esc(o.email)}</a>` : '—'}
-      </td>
-      <td style="padding:8px 12px;font-size:11px;color:${o.phone?'var(--ink-20)':'var(--ink-60)'}">
-        ${o.phone ? esc(o.phone) : '—'}
-      </td>
-      <td style="padding:8px 12px;font-size:11px;color:var(--ink-40);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-        ${esc(o.address)||'—'}
-      </td>
-      <td style="padding:8px 12px">
-        <span style="font-size:10px;font-weight:700;color:${stageColor}">${isSold?'SOLD':esc(o.stage||'—').toUpperCase()}</span>
-      </td>
-      <td style="padding:8px 12px;font-size:11px;color:var(--ink-40)">${esc(o.projectType)||'—'}</td>
-      <td style="padding:8px 10px;text-align:center">
-        ${isSent
-          ? '<span style="font-size:11px;background:rgba(76,175,125,.18);color:var(--green);border-radius:4px;padding:2px 7px;font-weight:700">✓ Sent</span>'
-          : '<span style="font-size:11px;color:var(--ink-60)">—</span>'}
-      </td>
+  const _cRows = _contacts.map((o,i) => {
+    const isSent = _sentIds.has(o.id);
+    const isSold = o.saleMade === 'Yes';
+    const stageCol = isSold ? 'var(--green)' : o.stage === 'Canceled' ? 'var(--ink-50)' : 'var(--gold)';
+    return `<tr style="border-bottom:1px solid var(--ink-75);${isSent?'background:rgba(76,175,125,.06)':''}">
+      <td style="padding:7px 8px;font-size:11px;color:var(--ink-50);text-align:center">${i+1}</td>
+      <td style="padding:7px 10px"><div style="font-weight:700;font-size:12px;color:var(--ink-10)">${esc(o.lastName)}, ${esc(o.firstName)}</div></td>
+      <td style="padding:7px 10px;font-size:11px">${o.email?`<a href="mailto:${esc(o.email)}" style="color:var(--gold)">${esc(o.email)}</a>`:'—'}</td>
+      <td style="padding:7px 10px;font-size:11px;color:var(--ink-30)">${esc(o.phone)||'—'}</td>
+      <td style="padding:7px 10px;font-size:11px;color:var(--ink-40);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.address)||'—'}</td>
+      <td style="padding:7px 10px"><span style="font-size:10px;font-weight:700;color:${stageCol}">${isSold?'SOLD':esc(o.stage||'—').toUpperCase()}</span></td>
+      <td style="padding:7px 10px;font-size:11px;color:var(--ink-40)">${esc(o.projectType)||'—'}</td>
+      <td style="padding:7px 8px;text-align:center">${isSent?'<span style="font-size:10px;background:rgba(76,175,125,.18);color:var(--green);border-radius:4px;padding:2px 6px;font-weight:700">✓</span>':'—'}</td>
     </tr>`;
   }).join('');
 
-  const contactListHTML = `
-  <div style="margin-top:28px;background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;overflow:hidden">
-
-    <!-- Header + export buttons -->
-    <div style="padding:16px 20px;border-bottom:1px solid var(--ink-75);display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-      <div style="flex:1;min-width:0">
-        <div style="font-family:var(--font-display);font-size:15px;color:var(--gold);font-weight:600;letter-spacing:.04em">📇 FULL CONTACT LIST</div>
-        <div style="font-size:11px;color:var(--ink-50);margin-top:3px">
-          ${total} contacts &nbsp;·&nbsp;
-          <span style="color:var(--green)">${emailed} emailed</span> &nbsp;·&nbsp;
-          ${withEmail} have email &nbsp;·&nbsp;
-          ${withPhone} have phone
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;flex-shrink:0">
-        <button onclick="exportContactsCSV()"
-          style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(196,147,63,.1);border:1px solid rgba(196,147,63,.3);border-radius:8px;color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;transition:background .15s"
-          onmouseover="this.style.background='rgba(196,147,63,.22)'" onmouseout="this.style.background='rgba(196,147,63,.1)'">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12l4-4 3 3 5-7"/><rect x="1" y="1" width="14" height="14" rx="2"/></svg>
-          Export CSV
-        </button>
-        <button onclick="exportContactsExcel()"
-          style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.3);border-radius:8px;color:var(--green);font-size:12px;font-weight:600;cursor:pointer;transition:background .15s"
-          onmouseover="this.style.background='rgba(76,175,125,.24)'" onmouseout="this.style.background='rgba(76,175,125,.12)'">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="1" width="14" height="14" rx="2"/><path d="M5 5l6 6M11 5l-6 6"/></svg>
-          Export Excel
-        </button>
-      </div>
+  let _lw = document.getElementById('contactListWrapper');
+  if (!_lw) { _lw = document.createElement('div'); _lw.id = 'contactListWrapper';
+    document.getElementById('mailingGrid')?.parentNode.appendChild(_lw); }
+  _lw.innerHTML = `<div style="margin-top:28px;background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;overflow:hidden">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--ink-75);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="flex:1"><div style="font-family:var(--font-display);font-size:14px;color:var(--gold);font-weight:600">📇 CONTACT LIST</div>
+        <div style="font-size:11px;color:var(--ink-50);margin-top:2px">${_contacts.length} contacts &nbsp;·&nbsp; <span style="color:var(--green)">${_sentIds.size} emailed</span></div></div>
+      <button onclick="exportContactsCSV()" style="padding:7px 14px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:7px;color:var(--gold);font-size:11px;font-weight:600;cursor:pointer">⬇ CSV</button>
+      <button onclick="exportContactsExcel()" style="padding:7px 14px;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.3);border-radius:7px;color:var(--green);font-size:11px;font-weight:600;cursor:pointer">⬇ Excel</button>
     </div>
-
-    <!-- Search box -->
-    <div style="padding:10px 16px;border-bottom:1px solid var(--ink-75)">
-      <input id="contactListSearch" type="text" maxlength="100" placeholder="Search name, email, phone, address…"
-        style="width:100%;background:var(--ink-80);border:1px solid var(--ink-65);border-radius:7px;padding:7px 12px;color:var(--ink-10);font-size:12px;box-sizing:border-box"
+    <div style="padding:8px 14px;border-bottom:1px solid var(--ink-75)">
+      <input id="contactListSearch" type="text" maxlength="100" placeholder="Search name, email, phone…"
+        style="width:100%;background:var(--ink-80);border:1px solid var(--ink-65);border-radius:6px;padding:6px 10px;color:var(--ink-10);font-size:12px;box-sizing:border-box"
         oninput="filterContactList(this.value)">
     </div>
-
-    <!-- Table -->
-    <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
-      <table id="contactListTable" style="width:100%;border-collapse:collapse">
-        <thead>
-          <tr style="background:var(--ink-80);position:sticky;top:0;z-index:1">
-            <th style="padding:9px 10px;font-size:10px;color:var(--ink-50);text-align:center;font-weight:600">#</th>
-            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">NAME</th>
-            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">EMAIL</th>
-            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">PHONE</th>
-            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">ADDRESS</th>
-            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">STAGE</th>
-            <th style="padding:9px 12px;font-size:10px;color:var(--ink-50);text-align:left;font-weight:600">PROJECT</th>
-            <th style="padding:9px 10px;font-size:10px;color:var(--ink-50);text-align:center;font-weight:600">EMAILED</th>
-          </tr>
-        </thead>
-        <tbody id="contactListBody">${contactRows}</tbody>
+    <div style="overflow-x:auto;max-height:440px;overflow-y:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:var(--ink-80);position:sticky;top:0">
+          <th style="padding:8px;font-size:10px;color:var(--ink-50);text-align:center">#</th>
+          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">NAME</th>
+          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">EMAIL</th>
+          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">PHONE</th>
+          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">ADDRESS</th>
+          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">STAGE</th>
+          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">PROJECT</th>
+          <th style="padding:8px;font-size:10px;color:var(--ink-50);text-align:center">EMAILED</th>
+        </tr></thead>
+        <tbody id="contactListBody">${_cRows}</tbody>
       </table>
     </div>
-
-    <!-- Footer count -->
-    <div id="contactListCount" style="padding:10px 16px;font-size:11px;color:var(--ink-50);border-top:1px solid var(--ink-75);text-align:right">
-      Showing ${total} contacts
-    </div>
+    <div id="contactListCount" style="padding:8px 14px;font-size:11px;color:var(--ink-50);border-top:1px solid var(--ink-75);text-align:right">Showing ${_contacts.length} contacts</div>
   </div>`;
 
-  // Inject after the existing grid
-  const existingGrid = document.getElementById('mailingGrid');
-  if (existingGrid) {
-    let listWrapper = document.getElementById('contactListWrapper');
-    if (!listWrapper) {
-      listWrapper = document.createElement('div');
-      listWrapper.id = 'contactListWrapper';
-      existingGrid.parentNode.insertBefore(listWrapper, existingGrid.nextSibling);
-    }
-    listWrapper.innerHTML = contactListHTML;
-  }
 }
 
-
-
 /* ══════════════════════════════════════════════════
-   CONTACT LIST — EXPORT HELPERS
-   Compiles all opps into exportable contact list.
-   Exports: Excel (.xlsx) or CSV
+   CONTACT LIST — EXPORT (CSV + Excel)
 ══════════════════════════════════════════════════ */
 
 function _buildContactRows(opps, sentMailIds) {
-  // Build one row per opp, sorted: sent first, then active pipeline, then sold, then canceled
   const sort = o => {
     if (sentMailIds.has(o.id)) return 0;
-    if (o.saleMade === 'Yes')  return 2;
+    if (o.saleMade === 'Yes') return 2;
     if (o.stage === 'Canceled') return 3;
     return 1;
   };
   return [...opps]
     .filter(o => o.firstName || o.lastName)
-    .sort((a,b) => sort(a) - sort(b) || (a.lastName||'').localeCompare(b.lastName||''))
+    .sort((a,b) => sort(a)-sort(b) || (a.lastName||'').localeCompare(b.lastName||''))
     .map(o => ({
-      'First Name':     o.firstName   || '',
-      'Last Name':      o.lastName    || '',
-      'Email':          o.email       || '',
-      'Phone':          o.phone       || '',
-      'Address':        o.address     || '',
-      'Project Type':   o.projectType || '',
-      'Lead Source':    o.leadSource  || '',
-      'Stage':          o.saleMade === 'Yes' ? 'Sold' : (o.stage || ''),
-      'Estimate ($)':   Number(o.estimate) || 0,
-      'Probability (%)':Number(o.probability) || 0,
-      'Follow-Up Date': o.followUpDate   || '',
-      'Sale Date':      o.saleDate        || '',
-      'Customer #':     o.customerNumber  || '',
-      'Email Sent':     sentMailIds.has(o.id) ? 'Yes' : 'No',
-      'GoldComp':       o.goldComp        || 'No',
+      'First Name':      o.firstName || '',
+      'Last Name':       o.lastName || '',
+      'Email':           o.email || '',
+      'Phone':           o.phone || '',
+      'Address':         o.address || '',
+      'Project Type':    o.projectType || '',
+      'Lead Source':     o.leadSource || '',
+      'Stage':           o.saleMade === 'Yes' ? 'Sold' : (o.stage || ''),
+      'Estimate ($)':    Number(o.estimate) || 0,
+      'Probability (%)': Number(o.probability) || 0,
+      'Follow-Up Date':  o.followUpDate || '',
+      'Sale Date':       o.saleDate || '',
+      'Customer #':      o.customerNumber || '',
+      'Email Sent':      sentMailIds.has(o.id) ? 'Yes' : 'No',
+      'GoldComp':        o.goldComp || 'No',
     }));
+}
+
+async function exportContactsCSV() {
+  const opps = await DB.getAll();
+  const sentMailIds = new Set((JSON.parse(localStorage.getItem('ea_mail_sent')||'[]')).map(s => s.oppId));
+  const rows = _buildContactRows(opps, sentMailIds);
+  if (!rows.length) { toast('No contacts to export', 'error'); return; }
+  const headers = Object.keys(rows[0]);
+  const esc = v => { const s = String(v==null?'':v); return (s.includes(',')||s.includes('"')||s.includes('\n')) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const csv = [headers.map(esc).join(','), ...rows.map(r => headers.map(k=>esc(r[k])).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = 'EA_Contacts_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('CSV exported — ' + rows.length + ' contacts', 'success');
 }
 
 async function exportContactsExcel() {
   if (typeof XLSX === 'undefined') { toast('Excel library not loaded', 'error'); return; }
   const opps = await DB.getAll();
-  const sentMailIds = new Set(getSentMails().map(s => s.oppId));
+  const sentMailIds = new Set((JSON.parse(localStorage.getItem('ea_mail_sent')||'[]')).map(s => s.oppId));
   const rows = _buildContactRows(opps, sentMailIds);
   if (!rows.length) { toast('No contacts to export', 'error'); return; }
-
-  const wb  = XLSX.utils.book_new();
-
-  // ── Sheet 1: All Contacts ──────────────────────────────────────────
+  const wb = XLSX.utils.book_new();
   const ws1 = XLSX.utils.json_to_sheet(rows);
-  // Column widths
-  ws1['!cols'] = [
-    {wch:14},{wch:16},{wch:28},{wch:16},{wch:32},{wch:18},{wch:16},
-    {wch:18},{wch:13},{wch:16},{wch:14},{wch:12},{wch:14},{wch:10},{wch:10}
-  ];
+  ws1['!cols'] = [{wch:14},{wch:16},{wch:28},{wch:16},{wch:32},{wch:18},{wch:14},{wch:16},{wch:13},{wch:16},{wch:14},{wch:12},{wch:14},{wch:10},{wch:10}];
   XLSX.utils.book_append_sheet(wb, ws1, 'All Contacts');
-
-  // ── Sheet 2: Emailed Contacts ──────────────────────────────────────
-  const emailedOpps = opps.filter(o => sentMailIds.has(o.id));
-  if (emailedOpps.length) {
-    const sentMails = getSentMails();
-    const emailedRows = emailedOpps.map(o => {
-      const sent = sentMails.find(s => s.oppId === o.id);
-      return {
-        'First Name':   o.firstName   || '',
-        'Last Name':    o.lastName    || '',
-        'Email':        o.email       || '',
-        'Phone':        o.phone       || '',
-        'Address':      o.address     || '',
-        'Stage':        o.saleMade === 'Yes' ? 'Sold' : (o.stage || ''),
-        'Subject Sent': sent ? (sent.subject || '') : '',
-        'Date Sent':    sent ? new Date(sent.sentAt).toLocaleDateString('en-US') : '',
-      };
-    });
-    const ws2 = XLSX.utils.json_to_sheet(emailedRows);
-    ws2['!cols'] = [{wch:14},{wch:16},{wch:28},{wch:16},{wch:32},{wch:14},{wch:36},{wch:14}];
+  const emailed = opps.filter(o => sentMailIds.has(o.id));
+  if (emailed.length) {
+    const sent = JSON.parse(localStorage.getItem('ea_mail_sent')||'[]');
+    const ws2 = XLSX.utils.json_to_sheet(emailed.map(o => {
+      const s = sent.find(x=>x.oppId===o.id)||{};
+      return {'First Name':o.firstName||'','Last Name':o.lastName||'','Email':o.email||'',
+        'Phone':o.phone||'','Stage':o.saleMade==='Yes'?'Sold':(o.stage||''),
+        'Subject Sent':s.subject||'','Date Sent':s.sentAt?new Date(s.sentAt).toLocaleDateString('en-US'):''};
+    }));
     XLSX.utils.book_append_sheet(wb, ws2, 'Emailed Contacts');
   }
-
-  // ── Sheet 3: Active Pipeline ───────────────────────────────────────
-  const pipeline = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
-  if (pipeline.length) {
-    const pipRows = _buildContactRows(pipeline, sentMailIds);
-    const ws3 = XLSX.utils.json_to_sheet(pipRows);
-    ws3['!cols'] = [{wch:14},{wch:16},{wch:28},{wch:16},{wch:32},{wch:18},{wch:14},{wch:18},{wch:13},{wch:16}];
-    XLSX.utils.book_append_sheet(wb, ws3, 'Pipeline');
-  }
-
-  const date = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, 'EA_Contacts_' + date + '.xlsx');
-  auditLog('EXPORT_EXCEL', rows.length + ' contacts exported');
-  toast('✅ Excel exported — ' + rows.length + ' contacts', 'success');
+  XLSX.writeFile(wb, 'EA_Contacts_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  toast('Excel exported — ' + rows.length + ' contacts', 'success');
 }
 
-async function exportContactsCSV() {
-  const opps = await DB.getAll();
-  const sentMailIds = new Set(getSentMails().map(s => s.oppId));
-  const rows = _buildContactRows(opps, sentMailIds);
-  if (!rows.length) { toast('No contacts to export', 'error'); return; }
-
-  const headers = Object.keys(rows[0]);
-  const csvEsc  = v => {
-    const s = String(v ?? '');
-    return (s.includes(',') || s.includes('"') || s.includes('\n'))
-      ? '"' + s.replace(/"/g, '""') + '"'
-      : s;
-  };
-  const lines = [
-    headers.map(csvEsc).join(','),
-    ...rows.map(r => headers.map(h => csvEsc(r[h])).join(','))
-  ];
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = 'EA_Contacts_' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-  auditLog('EXPORT_CSV', rows.length + ' contacts exported');
-  toast('✅ CSV exported — ' + rows.length + ' contacts', 'success');
-}
-
-/* ══════════════════════════════════════════════════
-   MAILING — SENT TRACKING
-══════════════════════════════════════════════════ */
-
-function filterContactList(query) {
+function filterContactList(q) {
   const tbody = document.getElementById('contactListBody');
   const countEl = document.getElementById('contactListCount');
   if (!tbody) return;
-  const q = (query || '').toLowerCase().trim();
+  const query = (q||'').toLowerCase().trim();
   const rows = Array.from(tbody.querySelectorAll('tr'));
   let visible = 0;
-  rows.forEach(tr => {
-    const text = tr.textContent.toLowerCase();
-    const show = !q || text.includes(q);
-    tr.style.display = show ? '' : 'none';
-    if (show) visible++;
-  });
+  rows.forEach(tr => { const show = !query || tr.textContent.toLowerCase().includes(query); tr.style.display = show?'':'none'; if(show) visible++; });
   if (countEl) countEl.textContent = 'Showing ' + visible + ' of ' + rows.length + ' contacts';
 }
 
-function getSentMails()   { return JSON.parse(localStorage.getItem('ea_mail_sent') || '[]'); }
-function saveSentMails(a) { localStorage.setItem('ea_mail_sent', JSON.stringify(a)); }
 
-async function markMailSent(oppId) {
-  const opps = await DB.getAll();
-  const o = opps.find(x => x.id === oppId);
-  if (!o) return;
-  const sent = getSentMails();
-  const existing = sent.find(s => s.oppId === oppId);
-  if (!existing) {
-    sent.push({ oppId, name: (o.firstName + ' ' + o.lastName).trim(),
-      email: o.email || '', subject: BL.generatePersuasionEmail(o).subject,
-      sentAt: new Date().toISOString() });
-    saveSentMails(sent);
-  }
-  toast('📧 Marked as sent: ' + (o.firstName || '') + ' ' + (o.lastName || ''), 'success');
-  renderMailing();
-}
-
-function clearSentMails() {
-  saveSentMails([]);
-  toast('Sent list cleared', 'success');
-  renderMailing();
-}
 
 function setMailFilter(f) { state.mailFilter = f; renderMailing(); }
 
@@ -4239,14 +3930,6 @@ async function editLead(id) {
   _sf('f-issueFlag',      o.issueFlag);
   _sf('f-issueType',      o.issueType);
   _sf('f-issueResult',    o.issueResult);
-  _sf('f-goldCompValue',  o.goldCompValue);
-  // Show/hide goldCompValue field based on goldComp value
-  const _gcf = document.getElementById('goldCompValueField');
-  const _tsd = document.getElementById('totalSaleDisplay');
-  const _tsv = document.getElementById('totalSaleVal');
-  if (_gcf)  _gcf.style.display  = o.goldComp === 'Yes' ? '' : 'none';
-  if (_tsd)  _tsd.style.display  = o.goldComp === 'Yes' ? '' : 'none';
-  if (_tsv)  { const p=Number(o.estimate)||0; const gv=Number(o.goldCompValue)||0; _tsv.textContent=fmt$(p+gv); }
   const _acs = document.getElementById('activeClientSection');
   if (_acs) _acs.style.display = (o.saleMade === 'Yes' || o.stage === 'Sale Made') ? '' : 'none';
   document.getElementById('deleteBtn').style.display = 'inline-flex';
@@ -4265,18 +3948,6 @@ function onFieldChange() {
   const st  = document.getElementById('f-stage')?.value   || '';
   const acs = document.getElementById('activeClientSection');
   if (acs) acs.style.display = (sm === 'Yes' || st === 'Sale Made') ? '' : 'none';
-  // GoldComp value field visibility
-  const gc     = document.getElementById('f-goldComp')?.value || '';
-  const gcFld  = document.getElementById('goldCompValueField');
-  const totDisp = document.getElementById('totalSaleDisplay');
-  const totVal  = document.getElementById('totalSaleVal');
-  if (gcFld)  gcFld.style.display  = gc === 'Yes' ? '' : 'none';
-  if (totDisp) totDisp.style.display = gc === 'Yes' ? '' : 'none';
-  if (totVal) {
-    const prod = Number(document.getElementById('f-estimate')?.value) || 0;
-    const gcv  = gc === 'Yes' ? (Number(document.getElementById('f-goldCompValue')?.value) || 0) : 0;
-    totVal.textContent = fmt$(prod + gcv);
-  }
 }
 
 function onDeliveryDateChange() {
@@ -4334,34 +4005,9 @@ function updateAutoFields() {
 }
 
 async function saveLead() {
-  // ── Rate limit: max 20 saves per 5 minutes ──────────────────────────────
-  const _rlKey = 'ea_rl_save'; const _rlWin = 300000; const _rlMax = 20;
-  const _rl = JSON.parse(localStorage.getItem(_rlKey)||'[]').filter(t=>Date.now()-t<_rlWin);
-  if (_rl.length >= _rlMax) { toast('Too many saves — please wait a moment', 'error'); return; }
-  _rl.push(Date.now()); localStorage.setItem(_rlKey, JSON.stringify(_rl));
-
-  const firstName = document.getElementById('f-firstName').value.trim().slice(0,80);
-  const lastName  = document.getElementById('f-lastName').value.trim().slice(0,80);
+  const firstName = document.getElementById('f-firstName').value.trim();
+  const lastName  = document.getElementById('f-lastName').value.trim();
   if (!firstName || !lastName) { toast('First and last name are required', 'error'); return; }
-  if (/[<>{}"'`]/.test(firstName) || /[<>{}"'`]/.test(lastName)) { toast('Name contains invalid characters', 'error'); return; }
-
-  // ── Field-level validation ──────────────────────────────────────────
-  const emailVal = (document.getElementById('f-email')?.value || '').trim();
-  const phoneVal = (document.getElementById('f-phone')?.value || '').trim();
-  const probVal  = Number(document.getElementById('f-probability')?.value || 0);
-  const estVal   = Number((document.getElementById('f-estimate')?.value || '0').replace(/[^0-9.]/g,''));
-  if (emailVal && !/^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/.test(emailVal)) {
-    toast('Invalid email format', 'error'); return;
-  }
-  if (phoneVal && !/^[\d\s\-\+\(\)\.]{0,20}$/.test(phoneVal)) {
-    toast('Phone can only contain digits, spaces, +, -, (, )', 'error'); return;
-  }
-  if (isNaN(probVal) || probVal < 0 || probVal > 100) {
-    toast('Probability must be a number between 0 and 100', 'error'); return;
-  }
-  if (isNaN(estVal) || estVal < 0) {
-    toast('Product value must be a positive number', 'error'); return;
-  }
 
   const existingId  = document.getElementById('leadId').value;
   const stage       = document.getElementById('f-stage').value;
@@ -4432,7 +4078,6 @@ async function saveLead() {
     stage,
     probability:    Number(document.getElementById('f-probability').value) || 0,
     estimate:       Number(document.getElementById('f-estimate').value)    || 0,
-    goldCompValue:  Number(document.getElementById('f-goldCompValue')?.value) || 0,
     nextStep:       document.getElementById('f-nextStep').value,
     followUpDate:   document.getElementById('f-followUpDate').value,
     homeCall:       document.getElementById('f-homeCall').value,
@@ -4457,27 +4102,11 @@ async function saveLead() {
 
   try {
     await DB.save(opp);
-    // Auto-seed mileage record when home call is added/updated
-    if (opp.homeCall === 'Yes' && opp.homeCallDate) {
-      const existingMile = getMileageRecords().find(r => r.sourceOppId === opp.id);
-      if (!existingMile || existingMile.date !== opp.homeCallDate) {
-        const mileRec = existingMile || {
-          id: uid(), sourceOppId: opp.id, isManual: false,
-          stopHome1:'', stopDC1:'', stopClient:'', stopHome2:'', stopDC2:'',
-          totalMiles:'', commuteDeduct:'', tollsParking:'', designPartner:'', purpose:'Home Call',
-        };
-        mileRec.date        = opp.homeCallDate;
-        mileRec.clientName  = (opp.firstName + ' ' + opp.lastName).trim();
-        mileRec.address     = opp.address || '';
-        saveMileageRecord(mileRec);
-      }
-    }
     // Auto-create link review mailing task if new delivery date set
     if (linkReviewDate && linkReviewDate !== (existingRec?.linkReviewDate || '')) {
       _scheduleReviewTask(opp, linkReviewDate);
     }
     closeModal();
-    auditLog(existingId ? 'LEAD_UPDATED' : 'LEAD_CREATED', firstName + ' ' + lastName + ' — ' + (document.getElementById('f-stage')?.value || ''));
     const msg = existingId ? 'Updated ' + firstName + ' ' + lastName : 'Added ' + firstName + ' ' + lastName;
     toast('✅ ' + msg, 'success');
     // ── Route to correct tab ──
@@ -4522,216 +4151,6 @@ async function deleteLead() {
 /* ══════════════════════════════════════════════════
    TEST SUITE (20 tests — all must pass before publish)
 ══════════════════════════════════════════════════ */
-
-/* ══════════════════════════════════════════════════
-   SECURITY & SETTINGS PAGE
-══════════════════════════════════════════════════ */
-async function renderSecurity() {
-  const el = document.getElementById('page-security');
-  if (!el) return;
-
-  const pinLen      = getPinLength();
-  const hasPin      = !!getStoredHash();
-  const lockEnabled = localStorage.getItem('ea_pin_lock_enabled') === 'true';
-  const auditData = getAuditLog().slice().reverse();
-  const attempts  = getAttempts();
-  const lockout   = getLockout();
-  const isLocked  = lockout && (lockout + 5*60*1000 > Date.now());
-
-  let score = 0, scoreItems = [];
-  if (hasPin && lockEnabled) { score += 30; scoreItems.push({ok:true,  label:'PIN lock enabled on startup'}); }
-  else if (hasPin)           { score += 15; scoreItems.push({ok:false, label:'PIN set but startup lock is OFF — enable it in Security'}); }
-  else                       { scoreItems.push({ok:false, label:'No PIN set — use Security page to configure'}); }
-  if (pinLen===6){ score += 20; scoreItems.push({ok:true,  label:'6-digit PIN (stronger)'}); }
-  else           { scoreItems.push({ok:false, label:'4-digit PIN — consider upgrading to 6'}); }
-  score += 20; scoreItems.push({ok:true,  label:'Auto-lock after 15 min inactivity'});
-  score += 15; scoreItems.push({ok:true,  label:'Tab-hide auto-lock (30s)'});
-  score += 10; scoreItems.push({ok:true,  label:'SHA-256 hashed PIN + device salt'});
-  score += 5;  scoreItems.push({ok:true,  label:'Rate limiting on save operations'});
-
-  const scoreColor = score >= 90 ? 'var(--green)' : score >= 60 ? 'var(--gold)' : 'var(--red)';
-  const scoreLabel = score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Fair' : 'Needs Attention';
-
-  const actionIcon = { LOGIN_SUCCESS:'checkmark-circle', LOGIN_FAILED:'warning', ACCOUNT_LOCKED:'ban',
-    PIN_SET:'lock-closed', APP_LOCKED:'lock-closed', LEAD_CREATED:'person-add',
-    LEAD_UPDATED:'pencil', LEAD_DELETED:'trash', AUDIT_CLEARED:'trash' };
-  const actionEmoji = { LOGIN_SUCCESS:'OK', LOGIN_FAILED:'WARN', ACCOUNT_LOCKED:'LOCK',
-    PIN_SET:'PIN', APP_LOCKED:'LOCK', LEAD_CREATED:'ADD', LEAD_UPDATED:'EDIT',
-    LEAD_DELETED:'DEL', AUDIT_CLEARED:'CLR' };
-
-  const auditRows = auditData.slice(0,60).map(e => {
-    const dt = new Date(e.ts);
-    const timeStr = dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' ' +
-      dt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    const isAlert = ['LOGIN_FAILED','ACCOUNT_LOCKED','LEAD_DELETED'].includes(e.action);
-    const badge = actionEmoji[e.action] || 'LOG';
-    const badgeColor = isAlert ? 'var(--red)' : e.action === 'LOGIN_SUCCESS' ? 'var(--green)' : 'var(--gold)';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--ink-75);' + (isAlert ? 'background:rgba(224,92,92,.06)' : '') + '">' +
-      '<span style="font-size:9px;font-weight:800;background:' + badgeColor + ';color:#000;border-radius:4px;padding:2px 5px;flex-shrink:0">' + badge + '</span>' +
-      '<div style="flex:1;min-width:0">' +
-        '<span style="font-size:11px;font-weight:700;color:' + (isAlert ? 'var(--red)' : 'var(--ink-20)') + '">' + esc(e.action.replace(/_/g,' ')) + '</span>' +
-        (e.detail ? '<span style="font-size:10px;color:var(--ink-40);margin-left:6px">' + esc(e.detail) + '</span>' : '') +
-      '</div>' +
-      '<span style="font-size:10px;color:var(--ink-50);flex-shrink:0">' + timeStr + '</span>' +
-    '</div>';
-  }).join('') || '<div style="padding:20px;text-align:center;color:var(--ink-50);font-size:12px">No activity recorded yet</div>';
-
-  const checklistHTML = scoreItems.map(item =>
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
-      '<span style="font-size:12px">' + (item.ok ? '\u2705' : '\u274c') + '</span>' +
-      '<span style="font-size:12px;color:' + (item.ok ? 'var(--ink-20)' : 'var(--red)') + '">' + item.label + '</span>' +
-    '</div>'
-  ).join('');
-
-  const sessionRows = [
-    {label:'Auto-lock timeout', val:'15 minutes'},
-    {label:'Warning shown before lock', val:'60 seconds'},
-    {label:'Tab-hide lock delay', val:'30 seconds'},
-    {label:'Max failed attempts', val:'5 attempts'},
-    {label:'Lockout duration', val:'5 minutes'},
-    {label:'Current status', val: isLocked ? 'LOCKED OUT' : attempts.count > 0 ? attempts.count + ' failed' : 'Normal',
-     color: isLocked ? 'var(--red)' : attempts.count > 0 ? 'var(--gold)' : 'var(--green)'},
-  ].map(r =>
-    '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:8px">' +
-      '<span style="color:var(--ink-40)">' + r.label + '</span>' +
-      '<span style="color:' + (r.color || 'var(--ink-20)') + ';font-weight:600">' + r.val + '</span>' +
-    '</div>'
-  ).join('');
-
-  const dataCards = [
-    {icon:'\ud83d\udd12', label:'Supabase TLS', desc:'All DB traffic encrypted in transit'},
-    {icon:'\ud83d\udd10', label:'Row-Level Security', desc:'RLS enabled on opportunities table'},
-    {icon:'\ud83e\uddc2', label:'Hashed PIN', desc:'SHA-256 + device-unique random salt'},
-    {icon:'\ud83d\ude80', label:'CSP Hardened', desc:'cdn.jsdelivr.net removed, frame-ancestors: none'},
-    {icon:'\ud83e\udd16', label:'Search blocked', desc:'noindex + noarchive + nosnippet'},
-    {icon:'\ud83d\udcca', label:'Rate limited', desc:'Max 20 saves per 5 min per session'},
-  ].map(c =>
-    '<div style="background:var(--ink-80);border-radius:10px;padding:14px">' +
-      '<div style="font-size:20px;margin-bottom:6px">' + c.icon + '</div>' +
-      '<div style="font-size:11px;font-weight:700;color:var(--ink-10);margin-bottom:3px">' + c.label + '</div>' +
-      '<div style="font-size:10px;color:var(--ink-40);line-height:1.5">' + c.desc + '</div>' +
-    '</div>'
-  ).join('');
-
-  const checklistSteps = [
-    {done:true,  step:'Enable RLS on opportunities table', note:'Done in schema_final.sql'},
-    {done:false, step:'Restrict anon key to your GitHub Pages domain', note:'Supabase Dashboard → Project Settings → API → Allowed Origins'},
-    {done:false, step:'Replace anon_all policy with per-op policies', note:'Run the SQL at the bottom of this page'},
-    {done:false, step:'Enable weekly database backups', note:'Supabase → Project Settings → Backups'},
-    {done:false, step:'Review API logs monthly', note:'Supabase → Logs → API logs'},
-    {done:false, step:'Upgrade to 6-digit PIN', note:'Use the PIN Settings panel above'},
-  ].map(s =>
-    '<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:var(--ink-80);border-radius:8px;margin-bottom:8px">' +
-      '<span style="font-size:13px;flex-shrink:0;margin-top:1px">' + (s.done ? '\u2705' : '\u2b1c') + '</span>' +
-      '<div><div style="font-size:12px;font-weight:600;color:var(--ink-10)">' + s.step + '</div>' +
-      '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">' + s.note + '</div></div>' +
-    '</div>'
-  ).join('');
-
-  const circumference = 2 * Math.PI * 46;
-  const arcLen = (score / 100 * circumference).toFixed(1);
-
-  el.innerHTML =
-    '<div class="container" style="padding-top:24px;padding-bottom:48px">' +
-
-      // Header
-      '<div style="margin-bottom:28px">' +
-        '<span class="label" style="display:block;margin-bottom:6px">Security &amp; Settings</span>' +
-        '<h2 class="display" style="font-size:clamp(28px,5vw,42px);line-height:1.1;margin:0">APP SECURITY<br><span style="color:var(--gold)">CENTER</span></h2>' +
-      '</div>' +
-
-      // Score + checklist
-      '<div style="display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center;background:var(--ink-85);border:1px solid rgba(196,147,63,.18);border-radius:14px;padding:24px;margin-bottom:20px">' +
-        '<div style="text-align:center">' +
-          '<svg width="116" height="116" viewBox="0 0 116 116">' +
-            '<circle cx="58" cy="58" r="46" fill="none" stroke="var(--ink-70)" stroke-width="10"/>' +
-            '<circle cx="58" cy="58" r="46" fill="none" stroke="' + scoreColor + '" stroke-width="10" stroke-dasharray="' + arcLen + ' ' + circumference.toFixed(1) + '" stroke-dashoffset="72" stroke-linecap="round"/>' +
-            '<text x="58" y="54" text-anchor="middle" font-family="var(--font-display)" font-size="28" font-weight="700" fill="' + scoreColor + '">' + score + '</text>' +
-            '<text x="58" y="70" text-anchor="middle" font-size="10" fill="var(--ink-40)">/100</text>' +
-          '</svg>' +
-          '<div style="font-size:13px;font-weight:700;color:' + scoreColor + ';margin-top:4px">' + scoreLabel + '</div>' +
-        '</div>' +
-        '<div>' +
-          '<div style="font-size:13px;font-weight:700;color:var(--ink-10);margin-bottom:12px">Security Checklist</div>' +
-          checklistHTML +
-        '</div>' +
-      '</div>' +
-
-      // PIN + Session
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">' +
-        // PIN card
-        '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;padding:20px">' +
-          '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:4px;letter-spacing:.05em">\ud83d\udd10 PIN PROTECTION</div>' +
-          '<div style="font-size:11px;color:var(--ink-40);margin-bottom:16px">PIN: <strong style="color:var(--ink-20)">' + pinLen + '-digit</strong> &nbsp;·&nbsp; ' + (hasPin ? '<span style="color:var(--green)">Set</span>' : '<span style="color:var(--red)">Not set</span>') + ' &nbsp;·&nbsp; Lock: ' + (lockEnabled ? '<span style="color:var(--green)">Enabled</span>' : '<span style="color:var(--ink-50)">Disabled</span>') + '</div>' +
-          '<div style="display:flex;flex-direction:column;gap:9px">' +
-            '<button onclick="changePIN()" style="padding:9px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:8px;color:var(--gold);font-size:12px;font-weight:600;cursor:pointer">' + (hasPin ? '\ud83d\udd04 Change PIN' : '\ud83d\udd10 Set PIN') + '</button>' +
-            '<div style="display:flex;gap:8px">' +
-              '<button onclick="switchPinLength(4)" style="flex:1;padding:8px;background:' + (pinLen===4?'rgba(196,147,63,.2)':'var(--ink-75)') + ';border:1px solid ' + (pinLen===4?'var(--gold)':'var(--ink-60)') + ';border-radius:7px;color:' + (pinLen===4?'var(--gold)':'var(--ink-40)') + ';font-size:11px;font-weight:600;cursor:pointer">4-Digit</button>' +
-              '<button onclick="switchPinLength(6)" style="flex:1;padding:8px;background:' + (pinLen===6?'rgba(76,175,125,.2)':'var(--ink-75)') + ';border:1px solid ' + (pinLen===6?'var(--green)':'var(--ink-60)') + ';border-radius:7px;color:' + (pinLen===6?'var(--green)':'var(--ink-40)') + ';font-size:11px;font-weight:600;cursor:pointer">6-Digit \u2b50</button>' +
-            '</div>' +
-            (lockEnabled
-            ? '<button onclick="disablePinLock()" style="padding:9px;background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600;cursor:pointer">🔓 Disable Startup Lock</button>'
-            : '<button onclick="enablePinLock()" style="padding:9px;background:rgba(76,175,125,.1);border:1px solid rgba(76,175,125,.3);border-radius:8px;color:var(--green);font-size:12px;font-weight:600;cursor:pointer">🔐 Enable Startup Lock</button>') +
-          '</div>' +
-        '</div>' +
-        // Session card
-        '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;padding:20px">' +
-          '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:4px;letter-spacing:.05em">\u23f1\ufe0f SESSION SECURITY</div>' +
-          '<div style="font-size:11px;color:var(--ink-40);margin-bottom:14px">Protects data when you step away</div>' +
-          sessionRows +
-        '</div>' +
-      '</div>' +
-
-      // Data security cards
-      '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;padding:20px;margin-bottom:20px">' +
-        '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:14px;letter-spacing:.05em">\ud83d\uddc4\ufe0f DATA SECURITY</div>' +
-        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">' + dataCards + '</div>' +
-      '</div>' +
-
-      // Supabase checklist
-      '<div style="background:var(--ink-85);border:1px solid rgba(76,175,125,.2);border-radius:14px;padding:20px;margin-bottom:20px">' +
-        '<div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:12px;letter-spacing:.05em">\ud83d\udccb SUPABASE HARDENING CHECKLIST</div>' +
-        checklistSteps +
-      '</div>' +
-
-      // Audit log
-      '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;overflow:hidden;margin-bottom:20px">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--ink-75)">' +
-          '<div style="font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.05em">\ud83d\udccb ACTIVITY AUDIT LOG</div>' +
-          '<div style="display:flex;gap:8px;align-items:center">' +
-            '<span style="font-size:11px;color:var(--ink-50)">' + auditData.length + ' entries</span>' +
-            '<button onclick="clearAuditLog();renderSecurity()" style="padding:4px 10px;background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);border-radius:6px;color:var(--red);font-size:11px;cursor:pointer">Clear</button>' +
-          '</div>' +
-        '</div>' +
-        '<div style="max-height:300px;overflow-y:auto">' + auditRows + '</div>' +
-      '</div>' +
-
-      // SQL guide
-      '<div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;padding:20px">' +
-        '<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px;letter-spacing:.05em">\ud83d\udd27 SUPABASE RLS — RUN IN SQL EDITOR</div>' +
-        '<pre id="rlsSql" style="background:var(--ink-80);border-radius:8px;padding:14px;font-size:10.5px;color:var(--ink-20);overflow-x:auto;line-height:1.7;white-space:pre-wrap;margin:0">-- Drop the permissive catch-all policy
-DROP POLICY IF EXISTS &quot;anon_all&quot; ON opportunities;
-
--- Allow read
-CREATE POLICY &quot;anon_select&quot; ON opportunities FOR SELECT USING (true);
-
--- Allow new leads
-CREATE POLICY &quot;anon_insert&quot; ON opportunities FOR INSERT WITH CHECK (true);
-
--- Allow edits
-CREATE POLICY &quot;anon_update&quot; ON opportunities FOR UPDATE USING (true) WITH CHECK (true);
-
--- Allow delete
-CREATE POLICY &quot;anon_delete&quot; ON opportunities FOR DELETE USING (true);
-
--- Supabase Dashboard &rarr; Settings &rarr; API &rarr; Allowed Origins
--- Add: https://YOUR-GITHUB-USERNAME.github.io</pre>' +
-        '<button onclick="const raw=document.getElementById('rlsSql').innerText;navigator.clipboard?.writeText(raw).then(()=>toast('SQL copied to clipboard!','success'))" style="margin-top:10px;padding:8px 16px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:8px;color:var(--gold);font-size:12px;cursor:pointer">\ud83d\udccb Copy SQL</button>' +
-      '</div>' +
-
-    '</div>';
-}
-
 async function runAllTests() {
   const listEl    = document.getElementById('testList');
   const summaryEl = document.getElementById('testSummary');
@@ -5257,718 +4676,6 @@ async function runAllTests() {
     return !('injected' in opp) || opp.injected === true ? true :
       'Prototype pollution detected';
   });
-
-
-  // ══════════════════════════════════════════════════════════════
-  //  BATCH TEST: 50 OPPORTUNITIES ACROSS 6 MONTHS
-  //  Tests all tabs: Dashboard, Pipeline, Active, Post30/60,
-  //  Sales, Mailing, Mileage, Analytics, GoldComp, Tasks
-  // ══════════════════════════════════════════════════════════════
-
-  // ── Build 50 synthetic opportunities ──────────────────────────
-  const TODAY = localDateStr(new Date());
-  const mkDate = (daysFromToday) => {
-    const d = new Date(); d.setDate(d.getDate() + daysFromToday);
-    return localDateStr(d);
-  };
-  const mkMonthDate = (monthsAgo, day=15) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - monthsAgo);
-    d.setDate(day);
-    return localDateStr(d);
-  };
-
-  const BATCH = [
-    // ── Month -5: 8 opps ──────────────────────────────────────
-    { id:'bt01', firstName:'Alice',   lastName:'Anderson', stage:'Sale Made', saleMade:'Yes', probability:100, estimate:28000, goldComp:'Yes', goldCompValue:3500, closeDate:mkMonthDate(5,3),  followUpDate:mkMonthDate(5,3),  homeCall:'Yes', homeCallDate:mkMonthDate(5,1), deliveryDate:mkMonthDate(4,15), saleDate:mkMonthDate(5,3),  customerNumber:'EA-2025-0001', projectType:'Living Room', leadSource:'Walk-in', notes:'Great client' },
-    { id:'bt02', firstName:'Bob',     lastName:'Brown',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:15000, goldComp:'No',  goldCompValue:0,    closeDate:mkMonthDate(5,5),  followUpDate:mkMonthDate(5,5),  homeCall:'Yes', homeCallDate:mkMonthDate(5,3), deliveryDate:mkMonthDate(4,10), saleDate:mkMonthDate(5,5),  customerNumber:'EA-2025-0002', projectType:'Dining',      leadSource:'Referral',   notes:'' },
-    { id:'bt03', firstName:'Carol',   lastName:'Clark',    stage:'Canceled',  saleMade:'No',  probability:0,   estimate:8000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkMonthDate(5,8),  homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Online',     notes:'Changed mind' },
-    { id:'bt04', firstName:'Dan',     lastName:'Davis',    stage:'Follow-up', saleMade:'No',  probability:60,  estimate:22000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(30),        followUpDate:mkDate(-5),        homeCall:'Yes', homeCallDate:mkMonthDate(5,10),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Social Media', notes:'' },
-    { id:'bt05', firstName:'Eve',     lastName:'Evans',    stage:'New Lead',  saleMade:'No',  probability:10,  estimate:5000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(7),         homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Walk-in',    notes:'' },
-    { id:'bt06', firstName:'Frank',   lastName:'Foster',   stage:'Quote Sent',saleMade:'No',  probability:50,  estimate:19000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(14),        followUpDate:mkDate(-3),        homeCall:'Yes', homeCallDate:mkMonthDate(5,12),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Referral',   notes:'' },
-    { id:'bt07', firstName:'Grace',   lastName:'Green',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:35000, goldComp:'Yes', goldCompValue:5000, closeDate:mkMonthDate(5,20), followUpDate:mkMonthDate(5,20), homeCall:'Yes', homeCallDate:mkMonthDate(5,18),deliveryDate:mkMonthDate(3,20), saleDate:mkMonthDate(5,20), customerNumber:'EA-2025-0007', projectType:'Window Treatment', leadSource:'Referral', issueFlag:'Yes', issueType:'Wrong fabric', issueResult:'Yes', notes:'' },
-    { id:'bt08', firstName:'Hank',    lastName:'Hill',     stage:'Postponed', saleMade:'No',  probability:25,  estimate:12000, goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(-10),       homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Online',     notes:'Budget concerns' },
-
-    // ── Month -4: 8 opps ──────────────────────────────────────
-    { id:'bt09', firstName:'Iris',    lastName:'Ingram',   stage:'Sale Made', saleMade:'Yes', probability:100, estimate:42000, goldComp:'Yes', goldCompValue:6000, closeDate:mkMonthDate(4,4),  followUpDate:mkMonthDate(4,4),  homeCall:'Yes', homeCallDate:mkMonthDate(4,2), deliveryDate:mkMonthDate(3,5),  saleDate:mkMonthDate(4,4),  customerNumber:'EA-2025-0009', projectType:'Drapery',     leadSource:'Walk-in',    notes:'' },
-    { id:'bt10', firstName:'Jack',    lastName:'Jones',    stage:'Follow-up', saleMade:'No',  probability:75,  estimate:27000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(10),        followUpDate:mkDate(-7),        homeCall:'Yes', homeCallDate:mkMonthDate(4,6), deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Referral',   notes:'' },
-    { id:'bt11', firstName:'Kate',    lastName:'King',     stage:'Sale Made', saleMade:'Yes', probability:100, estimate:18000, goldComp:'No',  goldCompValue:0,    closeDate:mkMonthDate(4,8),  followUpDate:mkMonthDate(4,8),  homeCall:'Yes', homeCallDate:mkMonthDate(4,6), deliveryDate:mkMonthDate(2,25), saleDate:mkMonthDate(4,8),  customerNumber:'EA-2025-0011', projectType:'Bedroom',     leadSource:'Online',     notes:'' },
-    { id:'bt12', firstName:'Leo',     lastName:'Lee',      stage:'New Lead',  saleMade:'No',  probability:15,  estimate:7500,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(5),         homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Social Media', notes:'' },
-    { id:'bt13', firstName:'Mary',    lastName:'Moore',    stage:'Canceled',  saleMade:'No',  probability:0,   estimate:9000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkMonthDate(4,10), homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Walk-in',    notes:'' },
-    { id:'bt14', firstName:'Ned',     lastName:'Nash',     stage:'Quote Sent',saleMade:'No',  probability:55,  estimate:31000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(21),        followUpDate:mkDate(-2),        homeCall:'Yes', homeCallDate:mkMonthDate(4,12),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Window Treatment', leadSource:'Referral', notes:'' },
-    { id:'bt15', firstName:'Olivia',  lastName:'Owen',     stage:'Home Call', saleMade:'No',  probability:40,  estimate:16000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(28),        followUpDate:mkDate(3),         homeCall:'Yes', homeCallDate:mkMonthDate(4,14),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Walk-in',    notes:'' },
-    { id:'bt16', firstName:'Paul',    lastName:'Price',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:52000, goldComp:'Yes', goldCompValue:8000, closeDate:mkMonthDate(4,18), followUpDate:mkMonthDate(4,18), homeCall:'Yes', homeCallDate:mkMonthDate(4,16),deliveryDate:mkMonthDate(2,10), saleDate:mkMonthDate(4,18), customerNumber:'EA-2025-0016', projectType:'Drapery',     leadSource:'Referral',   issueFlag:'Yes', issueType:'Delay in shipment', issueResult:'No', notes:'' },
-
-    // ── Month -3: 8 opps ──────────────────────────────────────
-    { id:'bt17', firstName:'Quinn',   lastName:'Quinn',    stage:'Follow-up', saleMade:'No',  probability:80,  estimate:33000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(5),         followUpDate:mkDate(-1),        homeCall:'Yes', homeCallDate:mkMonthDate(3,2), deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Referral',   notes:'' },
-    { id:'bt18', firstName:'Rose',    lastName:'Reed',     stage:'Sale Made', saleMade:'Yes', probability:100, estimate:23000, goldComp:'No',  goldCompValue:0,    closeDate:mkMonthDate(3,5),  followUpDate:mkMonthDate(3,5),  homeCall:'Yes', homeCallDate:mkMonthDate(3,3), deliveryDate:mkMonthDate(1,20), saleDate:mkMonthDate(3,5),  customerNumber:'EA-2025-0018', projectType:'Bedroom',     leadSource:'Online',     notes:'' },
-    { id:'bt19', firstName:'Sam',     lastName:'Shaw',     stage:'New Lead',  saleMade:'No',  probability:20,  estimate:11000, goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(12),        homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Social Media', notes:'' },
-    { id:'bt20', firstName:'Tina',    lastName:'Taylor',   stage:'Canceled',  saleMade:'No',  probability:0,   estimate:6000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkMonthDate(3,8),  homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Walk-in',    notes:'' },
-    { id:'bt21', firstName:'Uma',     lastName:'Underhill',stage:'Design in Progress',saleMade:'No',probability:65,estimate:29000,goldComp:'No',goldCompValue:0,    closeDate:mkDate(18),        followUpDate:mkDate(-4),        homeCall:'Yes', homeCallDate:mkMonthDate(3,10),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Window Treatment', leadSource:'Referral', notes:'' },
-    { id:'bt22', firstName:'Victor',  lastName:'Vance',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:39000, goldComp:'Yes', goldCompValue:5500, closeDate:mkMonthDate(3,14), followUpDate:mkMonthDate(3,14), homeCall:'Yes', homeCallDate:mkMonthDate(3,12),deliveryDate:mkDate(5),         saleDate:mkMonthDate(3,14), customerNumber:'EA-2025-0022', projectType:'Drapery',     leadSource:'Walk-in',    notes:'Premium client' },
-    { id:'bt23', firstName:'Wendy',   lastName:'White',    stage:'Pending Decision',saleMade:'No',probability:70,estimate:24000,goldComp:'No', goldCompValue:0,    closeDate:mkDate(8),         followUpDate:mkDate(0),         homeCall:'Yes', homeCallDate:mkMonthDate(3,16),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Online',     notes:'' },
-    { id:'bt24', firstName:'Xander',  lastName:'Xavier',   stage:'New Lead',  saleMade:'No',  probability:10,  estimate:4500,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(20),        homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Social Media', notes:'' },
-
-    // ── Month -2: 8 opps ──────────────────────────────────────
-    { id:'bt25', firstName:'Yvonne',  lastName:'Young',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:47000, goldComp:'Yes', goldCompValue:7500, closeDate:mkMonthDate(2,3),  followUpDate:mkMonthDate(2,3),  homeCall:'Yes', homeCallDate:mkMonthDate(2,1), deliveryDate:mkDate(3),         saleDate:mkMonthDate(2,3),  customerNumber:'EA-2026-0025', projectType:'Living Room', leadSource:'Referral',   notes:'' },
-    { id:'bt26', firstName:'Zack',    lastName:'Zhang',    stage:'Quote Sent',saleMade:'No',  probability:60,  estimate:21000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(15),        followUpDate:mkDate(-6),        homeCall:'Yes', homeCallDate:mkMonthDate(2,5), deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Walk-in',    notes:'' },
-    { id:'bt27', firstName:'Amy',     lastName:'Adams',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:31000, goldComp:'No',  goldCompValue:0,    closeDate:mkMonthDate(2,7),  followUpDate:mkMonthDate(2,7),  homeCall:'Yes', homeCallDate:mkMonthDate(2,5), deliveryDate:mkDate(-2),        saleDate:mkMonthDate(2,7),  customerNumber:'EA-2026-0027', projectType:'Drapery',     leadSource:'Referral',   notes:'' },
-    { id:'bt28', firstName:'Brian',   lastName:'Baker',    stage:'Follow-up', saleMade:'No',  probability:45,  estimate:14000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(25),        followUpDate:mkDate(-8),        homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Online',     notes:'' },
-    { id:'bt29', firstName:'Carla',   lastName:'Cruz',     stage:'New Lead',  saleMade:'No',  probability:5,   estimate:3500,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(9),         homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Social Media', notes:'' },
-    { id:'bt30', firstName:'Derek',   lastName:'Diaz',     stage:'Home Call', saleMade:'No',  probability:55,  estimate:26000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(20),        followUpDate:mkDate(1),         homeCall:'Yes', homeCallDate:mkMonthDate(2,12),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Window Treatment', leadSource:'Referral', notes:'' },
-    { id:'bt31', firstName:'Elena',   lastName:'Ellis',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:38000, goldComp:'Yes', goldCompValue:5000, closeDate:mkMonthDate(2,16), followUpDate:mkMonthDate(2,16), homeCall:'Yes', homeCallDate:mkMonthDate(2,14),deliveryDate:mkDate(7),         saleDate:mkMonthDate(2,16), customerNumber:'EA-2026-0031', projectType:'Living Room', leadSource:'Walk-in',    notes:'' },
-    { id:'bt32', firstName:'Finn',    lastName:'Flynn',    stage:'Canceled',  saleMade:'No',  probability:0,   estimate:9500,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkMonthDate(2,18), homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Online',     notes:'' },
-
-    // ── Month -1: 9 opps ──────────────────────────────────────
-    { id:'bt33', firstName:'Gina',    lastName:'Gray',     stage:'Follow-up', saleMade:'No',  probability:85,  estimate:44000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(3),         followUpDate:mkDate(-2),        homeCall:'Yes', homeCallDate:mkMonthDate(1,2), deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Drapery',     leadSource:'Referral',   notes:'' },
-    { id:'bt34', firstName:'Hugo',    lastName:'Hart',     stage:'Sale Made', saleMade:'Yes', probability:100, estimate:29000, goldComp:'No',  goldCompValue:0,    closeDate:mkMonthDate(1,4),  followUpDate:mkMonthDate(1,4),  homeCall:'Yes', homeCallDate:mkMonthDate(1,2), deliveryDate:mkDate(14),        saleDate:mkMonthDate(1,4),  customerNumber:'EA-2026-0034', projectType:'Bedroom',     leadSource:'Online',     notes:'' },
-    { id:'bt35', firstName:'Isla',    lastName:'Irwin',    stage:'Quote Sent',saleMade:'No',  probability:70,  estimate:36000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(6),         followUpDate:mkDate(-3),        homeCall:'Yes', homeCallDate:mkMonthDate(1,6), deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Walk-in',    notes:'' },
-    { id:'bt36', firstName:'Jake',    lastName:'Jordan',   stage:'New Lead',  saleMade:'No',  probability:10,  estimate:6000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(15),        homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Social Media', notes:'' },
-    { id:'bt37', firstName:'Kira',    lastName:'Knight',   stage:'Sale Made', saleMade:'Yes', probability:100, estimate:55000, goldComp:'Yes', goldCompValue:9000, closeDate:mkMonthDate(1,10), followUpDate:mkMonthDate(1,10), homeCall:'Yes', homeCallDate:mkMonthDate(1,8), deliveryDate:mkDate(21),        saleDate:mkMonthDate(1,10), customerNumber:'EA-2026-0037', projectType:'Drapery',     leadSource:'Referral',   notes:'Top sale' },
-    { id:'bt38', firstName:'Liam',    lastName:'Lang',     stage:'Design in Progress',saleMade:'No',probability:50,estimate:18000,goldComp:'No',goldCompValue:0,    closeDate:mkDate(22),        followUpDate:mkDate(-1),        homeCall:'Yes', homeCallDate:mkMonthDate(1,12),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Window Treatment', leadSource:'Online', notes:'' },
-    { id:'bt39', firstName:'Mia',     lastName:'Mills',    stage:'Pending Decision',saleMade:'No',probability:65,estimate:27000,goldComp:'No', goldCompValue:0,    closeDate:mkDate(7),         followUpDate:mkDate(2),         homeCall:'Yes', homeCallDate:mkMonthDate(1,14),deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Referral',   notes:'' },
-    { id:'bt40', firstName:'Noah',    lastName:'Norris',   stage:'Canceled',  saleMade:'No',  probability:0,   estimate:7000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkMonthDate(1,16), homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Walk-in',    notes:'' },
-    { id:'bt41', firstName:'Opal',    lastName:'Olsen',    stage:'Sale Made', saleMade:'Yes', probability:100, estimate:41000, goldComp:'Yes', goldCompValue:6500, closeDate:mkMonthDate(1,20), followUpDate:mkMonthDate(1,20), homeCall:'Yes', homeCallDate:mkMonthDate(1,18),deliveryDate:mkDate(28),        saleDate:mkMonthDate(1,20), customerNumber:'EA-2026-0041', projectType:'Living Room', leadSource:'Walk-in',    notes:'' },
-
-    // ── This month: 9 opps ────────────────────────────────────
-    { id:'bt42', firstName:'Petra',   lastName:'Park',     stage:'Follow-up', saleMade:'No',  probability:90,  estimate:48000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(4),         followUpDate:mkDate(-4),        homeCall:'Yes', homeCallDate:mkDate(-10),      deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Drapery',     leadSource:'Referral',   notes:'' },
-    { id:'bt43', firstName:'Raj',     lastName:'Rao',      stage:'New Lead',  saleMade:'No',  probability:10,  estimate:8000,  goldComp:'No',  goldCompValue:0,    closeDate:'',               followUpDate:mkDate(10),        homeCall:'No',  homeCallDate:'',               deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Social Media', notes:'' },
-    { id:'bt44', firstName:'Sara',    lastName:'Stone',    stage:'Quote Sent',saleMade:'No',  probability:60,  estimate:23000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(12),        followUpDate:mkDate(0),         homeCall:'Yes', homeCallDate:mkDate(-5),       deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Living Room', leadSource:'Walk-in',    notes:'' },
-    { id:'bt45', firstName:'Tom',     lastName:'Torres',   stage:'Sale Made', saleMade:'Yes', probability:100, estimate:34000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(-2),        followUpDate:mkDate(-2),        homeCall:'Yes', homeCallDate:mkDate(-7),       deliveryDate:mkDate(10),        saleDate:mkDate(-2),        customerNumber:'EA-2026-0045', projectType:'Bedroom',     leadSource:'Referral',   notes:'' },
-    { id:'bt46', firstName:'Uma',     lastName:'Upton',    stage:'Home Call', saleMade:'No',  probability:35,  estimate:13000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(30),        followUpDate:mkDate(4),         homeCall:'Yes', homeCallDate:mkDate(-3),       deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Dining',      leadSource:'Online',     notes:'' },
-    { id:'bt47', firstName:'Vera',    lastName:'Vega',     stage:'Sale Made', saleMade:'Yes', probability:100, estimate:62000, goldComp:'Yes', goldCompValue:10000,closeDate:mkDate(-1),        followUpDate:mkDate(-1),        homeCall:'Yes', homeCallDate:mkDate(-6),       deliveryDate:mkDate(2),         saleDate:mkDate(-1),        customerNumber:'EA-2026-0047', projectType:'Window Treatment', leadSource:'Referral', notes:'Largest sale this year', activePhase:'Ordering' },
-    { id:'bt48', firstName:'Will',    lastName:'Webb',     stage:'Design in Progress',saleMade:'No',probability:45,estimate:17000,goldComp:'No',goldCompValue:0,    closeDate:mkDate(18),        followUpDate:mkDate(-5),        homeCall:'Yes', homeCallDate:mkDate(-12),      deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Office',      leadSource:'Walk-in',    notes:'' },
-    { id:'bt49', firstName:'Xena',    lastName:'Xu',       stage:'Follow-up', saleMade:'No',  probability:75,  estimate:29000, goldComp:'No',  goldCompValue:0,    closeDate:mkDate(9),         followUpDate:mkDate(1),         homeCall:'Yes', homeCallDate:mkDate(-8),       deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Bedroom',     leadSource:'Referral',   notes:'' },
-    { id:'bt50', firstName:'Zoe',     lastName:'Zimmerman',stage:'Pending Decision',saleMade:'No',probability:80,estimate:53000,goldComp:'No', goldCompValue:0,    closeDate:mkDate(5),         followUpDate:mkDate(-3),        homeCall:'Yes', homeCallDate:mkDate(-4),       deliveryDate:'',                saleDate:'',                customerNumber:'',             projectType:'Drapery',     leadSource:'Online',     notes:'' },
-  ].map(o => ({ ...o, createdAt: o.followUpDate || TODAY, activePhase: o.activePhase||'', issueFlag:o.issueFlag||'', issueType:o.issueType||'', issueResult:o.issueResult||'', linkReviewDate: o.deliveryDate ? offsetDate(o.deliveryDate,7) : '' }));
-
-  // ── Pre-compute expected values ──────────────────────────────
-  const bSold      = BATCH.filter(o => o.saleMade === 'Yes');
-  const bActive    = BATCH.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
-  const bCanceled  = BATCH.filter(o => o.stage === 'Canceled');
-  const bGC        = BATCH.filter(o => o.goldComp === 'Yes');
-  const bTotalRev  = bSold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
-  const bGCRev     = bGC.reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
-  const bWeighted  = bActive.reduce((s,o)=>s+Math.floor((Number(o.probability)/100)*(Number(o.estimate)||0)),0);
-
-  // ── T66-T70: Batch data structure ────────────────────────────
-  test('Batch: exactly 50 opportunities generated',
-    () => BATCH.length === 50 || 'got ' + BATCH.length);
-
-  test('Batch: sold count = 16',
-    () => bSold.length === 16 || 'got ' + bSold.length);
-
-  test('Batch: canceled count = 5',
-    () => bCanceled.length === 5 || 'got ' + bCanceled.length);
-
-  test('Batch: active (pipeline) count = 29',
-    () => bActive.length === 29 || 'got ' + bActive.length);
-
-  test('Batch: GoldComp clients = 10',
-    () => bGC.length === 10 || 'got ' + bGC.length);
-
-  // ── T71-T75: KPI calculations on batch ───────────────────────
-  test('Batch KPIs: calcKPIs sold count matches',
-    () => {
-      const k = BL.calcKPIs(BATCH);
-      return k.sold === bSold.length || 'calcKPIs.sold=' + k.sold + ' expected ' + bSold.length;
-    });
-
-  test('Batch KPIs: calcKPIs active count matches',
-    () => {
-      const k = BL.calcKPIs(BATCH);
-      return k.active === bActive.length || 'calcKPIs.active=' + k.active + ' expected ' + bActive.length;
-    });
-
-  test('Batch KPIs: totalSales matches manual sum',
-    () => {
-      const k = BL.calcKPIs(BATCH);
-      return k.totalSales === bTotalRev || 'calcKPIs.totalSales=' + k.totalSales + ' expected ' + bTotalRev;
-    });
-
-  test('Batch KPIs: weightedPipeline matches manual sum',
-    () => {
-      const k = BL.calcKPIs(BATCH);
-      return k.weightedPipe === bWeighted || 'got=' + k.weightedPipe + ' expected ' + bWeighted;
-    });
-
-  test('Batch KPIs: GoldComp revenue uses goldCompValue field',
-    () => {
-      const k = BL.calcKPIs(BATCH);
-      return k.gcSales === bGCRev || 'got=' + k.gcSales + ' expected ' + bGCRev;
-    });
-
-  // ── T76-T80: Pipeline tab sorting & filtering ─────────────────
-  test('Batch Pipeline: overdue opps have getDaysOverdue > 0',
-    () => {
-      const overdue = BATCH.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled'
-        && BL.getDaysOverdue(o) > 0);
-      return overdue.length > 0 || 'no overdue opps found in batch';
-    });
-
-  test('Batch Pipeline: sorted by urgency descending',
-    () => {
-      const list = [...bActive].sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
-      return BL.getUrgencyScore(list[0]) >= BL.getUrgencyScore(list[list.length-1])
-        || 'first score < last score';
-    });
-
-  test('Batch Pipeline: sold opps have urgency score 0',
-    () => {
-      const wronglyScoredSold = bSold.filter(o => BL.getUrgencyScore(o) !== 0);
-      return wronglyScoredSold.length === 0 || 'sold opps with score != 0: ' + wronglyScoredSold.map(o=>o.lastName).join(',');
-    });
-
-  test('Batch Pipeline: canceled opps have urgency score 0',
-    () => {
-      const wrong = bCanceled.filter(o => BL.getUrgencyScore(o) !== 0);
-      return wrong.length === 0 || 'canceled with non-zero score: ' + wrong.map(o=>o.lastName).join(',');
-    });
-
-  test('Batch Pipeline: all active opps have valid win tier',
-    () => {
-      const validTiers = ['HOT','WARM','NURTURE','COLD'];
-      const wrong = bActive.filter(o => !validTiers.includes(BL.getWinTier(o).key));
-      return wrong.length === 0 || 'invalid tiers: ' + wrong.map(o=>o.lastName+':'+BL.getWinTier(o).key).join(',');
-    });
-
-  // ── T81-T85: Active tab (saleMade=Yes) ───────────────────────
-  test('Batch Active: all sold opps have customerNumber',
-    () => {
-      const missing = bSold.filter(o => !o.customerNumber);
-      return missing.length === 0 || 'missing customerNumber: ' + missing.map(o=>o.lastName).join(',');
-    });
-
-  test('Batch Active: GoldComp value separate from estimate',
-    () => {
-      const gcOpp = BATCH.find(o => o.id === 'bt01');
-      return gcOpp.estimate === 28000 && gcOpp.goldCompValue === 3500
-        || 'estimate=' + gcOpp.estimate + ' gcValue=' + gcOpp.goldCompValue;
-    });
-
-  test('Batch Active: linkReviewDate is 7 days after delivery',
-    () => {
-      const withDelivery = bSold.filter(o => o.deliveryDate && o.linkReviewDate);
-      const wrong = withDelivery.filter(o => o.linkReviewDate !== offsetDate(o.deliveryDate, 7));
-      return wrong.length === 0 || 'linkReview mismatch: ' + wrong.map(o=>o.lastName).join(',');
-    });
-
-  test('Batch Active: open issues are flagged correctly',
-    () => {
-      const openIssues = bSold.filter(o => o.issueFlag === 'Yes' && o.issueResult !== 'Yes');
-      return openIssues.length === 1 || 'expected 1 open issue, got ' + openIssues.length;
-    });
-
-  test('Batch Active: resolved issues have issueResult=Yes',
-    () => {
-      const bt07 = BATCH.find(o => o.id === 'bt07');
-      return bt07.issueResult === 'Yes' || 'bt07 issueResult=' + bt07.issueResult;
-    });
-
-  // ── T86-T90: Sales tab ────────────────────────────────────────
-  test('Batch Sales: revenue sum consistent across months',
-    () => {
-      const monthMap = {};
-      bSold.forEach(o => {
-        const k = (o.closeDate||o.followUpDate||'').slice(0,7);
-        if (k) monthMap[k] = (monthMap[k]||0) + (Number(o.estimate)||0);
-      });
-      const sumOfMonths = Object.values(monthMap).reduce((s,v)=>s+v,0);
-      return sumOfMonths === bTotalRev || 'monthly sum=' + sumOfMonths + ' total=' + bTotalRev;
-    });
-
-  test('Batch Sales: GoldComp line items have goldCompValue > 0',
-    () => {
-      const gcSoldMissingVal = bGC.filter(o => o.saleMade === 'Yes' && !(Number(o.goldCompValue) > 0));
-      return gcSoldMissingVal.length === 0 || 'GC sold missing value: ' + gcSoldMissingVal.map(o=>o.lastName).join(',');
-    });
-
-  test('Batch Sales: no sold opp has saleMade != Yes',
-    () => {
-      const wrong = bSold.filter(o => o.saleMade !== 'Yes');
-      return wrong.length === 0 || 'wrong: ' + wrong.length;
-    });
-
-  test('Batch Sales: monthly line chart data has 12 points',
-    () => {
-      const today = new Date();
-      const mnMap = {};
-      bSold.forEach(o => { const k=(o.closeDate||o.followUpDate||'').slice(0,7); if(k) mnMap[k]=(mnMap[k]||0)+(Number(o.estimate)||0); });
-      let pts = 0;
-      for (let i=11;i>=0;i--) { const d=new Date(today.getFullYear(),today.getMonth()-i,1); mnMap[d.toISOString().slice(0,7)] !== undefined ? pts++ : pts++; }
-      return pts === 12 || 'expected 12, got ' + pts;
-    });
-
-  test('Batch Sales: total revenue is sum of 16 sold deals',
-    () => {
-      const manual = bSold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
-      return manual === bTotalRev || 'manual=' + manual + ' bTotalRev=' + bTotalRev;
-    });
-
-  // ── T91-T95: Post-30 / Post-60 auto-delivery date ─────────────
-  test('Batch Post30: delivery date pulls from opp.deliveryDate',
-    () => {
-      const delivered = bSold.filter(o => o.deliveryDate);
-      if (!delivered.length) return 'no sold opps with delivery date';
-      const o = delivered[0];
-      const fu30 = offsetDate(o.deliveryDate, 30);
-      return typeof fu30 === 'string' && fu30.length === 10
-        || 'fu30 invalid: ' + fu30;
-    });
-
-  test('Batch Post30: follow-up 30 days after delivery',
-    () => {
-      const o = BATCH.find(x => x.id === 'bt01');
-      const fu30 = offsetDate(o.deliveryDate, 30);
-      const parts = fu30.split('-');
-      return parts.length === 3 && parts[0].length === 4
-        || 'invalid date: ' + fu30;
-    });
-
-  test('Batch Post60: follow-up 60 days after delivery',
-    () => {
-      const o = BATCH.find(x => x.id === 'bt01');
-      const fu30 = offsetDate(o.deliveryDate, 30);
-      const fu60 = offsetDate(o.deliveryDate, 60);
-      const d30 = new Date(fu30+'T12:00:00');
-      const d60 = new Date(fu60+'T12:00:00');
-      const diff = Math.round((d60-d30)/86400000);
-      return diff === 30 || 'diff between 30 and 60 day FU: ' + diff;
-    });
-
-  test('Batch Post30: no sold opp with delivery generates null followup30',
-    () => {
-      const noDelivery = bSold.filter(o => !o.deliveryDate);
-      const fu = offsetDate('', 30);
-      // offsetDate with empty string should not crash
-      return typeof fu === 'string' || 'offsetDate threw on empty string';
-    });
-
-  test('Batch Post60: null daysToFU sorts to end',
-    () => {
-      const rows = [
-        { daysToFU: 5 }, { daysToFU: null }, { daysToFU: -2 }, { daysToFU: null }, { daysToFU: 1 }
-      ];
-      rows.sort((a,b) => {
-        if (a.daysToFU === null && b.daysToFU === null) return 0;
-        if (a.daysToFU === null) return 1;
-        if (b.daysToFU === null) return -1;
-        return a.daysToFU - b.daysToFU;
-      });
-      const lastTwo = rows.slice(-2);
-      return lastTwo.every(r => r.daysToFU === null)
-        || 'last two: ' + JSON.stringify(lastTwo);
-    });
-
-  // ── T96-T100: Task widget ─────────────────────────────────────
-  test('Batch Tasks: overdue pipeline opps create tasks',
-    () => {
-      const overdueActive = BATCH.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled' && BL.getDaysOverdue(o) > 0);
-      const tasks = _buildTasks(BATCH);
-      const fuTasks = tasks.filter(t => t.source === 'pipeline');
-      return fuTasks.length >= overdueActive.length
-        || 'overdueActive=' + overdueActive.length + ' fuTasks=' + fuTasks.length;
-    });
-
-  test('Batch Tasks: delivery tasks created for upcoming deliveries',
-    () => {
-      const upcomingDelivery = bSold.filter(o => {
-        if (!o.deliveryDate) return false;
-        const d = daysDiff(TODAY, o.deliveryDate);
-        return d >= -14 && d <= 2;
-      });
-      const tasks = _buildTasks(BATCH);
-      const dvTasks = tasks.filter(t => t.source === 'delivery');
-      return dvTasks.length === upcomingDelivery.length
-        || 'expected=' + upcomingDelivery.length + ' got=' + dvTasks.length;
-    });
-
-  test('Batch Tasks: open issue creates high-priority task',
-    () => {
-      const tasks = _buildTasks(BATCH);
-      const issueTasks = tasks.filter(t => t.source === 'issue');
-      const openIssues = bSold.filter(o => o.issueFlag === 'Yes' && o.issueResult !== 'Yes');
-      return issueTasks.length === openIssues.length
-        || 'expected=' + openIssues.length + ' got=' + issueTasks.length;
-    });
-
-  test('Batch Tasks: all tasks have required fields',
-    () => {
-      const tasks = _buildTasks(BATCH);
-      const missing = tasks.filter(t => !t.id || !t.oppId || !t.type || !t.icon || !t.activity);
-      return missing.length === 0 || 'tasks missing fields: ' + missing.length;
-    });
-
-  test('Batch Tasks: completed task is filtered out',
-    () => {
-      const savedDone = getCompletedTasks();
-      const tasks0 = _buildTasks(BATCH);
-      if (!tasks0.length) return 'no tasks to test';
-      const firstId = tasks0[0].id;
-      const fakeDone = [...savedDone, firstId];
-      localStorage.setItem('ea_completed_tasks', JSON.stringify(fakeDone));
-      const tasks1 = _buildTasks(BATCH);
-      localStorage.setItem('ea_completed_tasks', JSON.stringify(savedDone)); // restore
-      return !tasks1.find(t => t.id === firstId) || 'completed task still appears';
-    });
-
-  // ── T101-T105: Mailing tab ────────────────────────────────────
-  test('Batch Mailing: mark sent removes from pending',
-    () => {
-      const savedSent = getSentMails();
-      const testEntry = { oppId: 'bt42', name:'Petra Park', email:'petra@test.com', subject:'Test', sentAt: new Date().toISOString() };
-      const newSent = [...savedSent, testEntry];
-      saveSentMails(newSent);
-      const sentIds = getSentMails().map(s => s.oppId);
-      const pending = BATCH.filter(o => !sentIds.includes(o.id));
-      const bt42missing = !pending.find(o => o.id === 'bt42');
-      saveSentMails(savedSent); // restore
-      return bt42missing || 'bt42 still in pending list';
-    });
-
-  test('Batch Mailing: sent list persists in localStorage',
-    () => {
-      const saved = getSentMails();
-      const entry = { oppId:'_test_', name:'Test', email:'t@t.com', subject:'S', sentAt: new Date().toISOString() };
-      saveSentMails([...saved, entry]);
-      const loaded = getSentMails();
-      saveSentMails(saved);
-      return loaded.some(s => s.oppId === '_test_') || 'entry not found after reload';
-    });
-
-  test('Batch Mailing: all opps generate valid email subject',
-    () => {
-      const bad = BATCH.filter(o => {
-        try { const e = BL.generatePersuasionEmail(o); return !e.subject || !e.body; }
-        catch(ex) { return true; }
-      });
-      return bad.length === 0 || 'bad email gen: ' + bad.map(o=>o.lastName).join(',');
-    });
-
-  test('Batch Mailing: email for sold client is appreciation type',
-    () => {
-      const soldOpp = BATCH.find(o => o.saleMade === 'Yes');
-      const email = BL.generatePersuasionEmail(soldOpp);
-      return email.subject && email.subject.length > 0 || 'empty subject for sold client';
-    });
-
-  test('Batch Mailing: email for overdue opp contains urgency cues',
-    () => {
-      const overdue = BATCH.find(o => BL.isOverdue(o) && o.saleMade !== 'Yes');
-      if (!overdue) return true; // no overdue in batch
-      const email = BL.generatePersuasionEmail(overdue);
-      return email.body && email.body.length > 50 || 'email body too short for overdue opp';
-    });
-
-  // ── T106-T110: GoldComp value ─────────────────────────────────
-  test('Batch GoldComp: total GC revenue from goldCompValue field',
-    () => {
-      const gcRevFromField = BATCH.filter(o => o.saleMade==='Yes' && o.goldComp==='Yes')
-        .reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
-      return gcRevFromField === bGCRev || 'got=' + gcRevFromField + ' expected=' + bGCRev;
-    });
-
-  test('Batch GoldComp: non-GC clients have goldCompValue=0',
-    () => {
-      const wrong = BATCH.filter(o => o.goldComp !== 'Yes' && Number(o.goldCompValue) > 0);
-      return wrong.length === 0 || 'non-GC with value: ' + wrong.map(o=>o.lastName).join(',');
-    });
-
-  test('Batch GoldComp: goldCompValue never exceeds estimate (sanity)',
-    () => {
-      const bad = BATCH.filter(o => o.goldComp==='Yes' && Number(o.goldCompValue) > Number(o.estimate));
-      return bad.length === 0 || 'GC value > estimate: ' + bad.map(o=>o.lastName).join(',');
-    });
-
-  test('Batch GoldComp: _toDB roundtrip preserves goldCompValue',
-    () => {
-      const opp = BATCH.find(o => o.id === 'bt09');
-      const row = DB._toDB(opp);
-      const back = DB._fromDB(row);
-      return back.goldCompValue === opp.goldCompValue
-        || 'roundtrip: ' + back.goldCompValue + ' != ' + opp.goldCompValue;
-    });
-
-  test('Batch GoldComp: GC count in batch is 10',
-    () => {
-      const gc = BATCH.filter(o => o.goldComp === 'Yes').length;
-      return gc === 10 || 'got ' + gc;
-    });
-
-  // ── T111-T115: Analytics / Fiscal Quarters ────────────────────
-  test('Batch Analytics: fiscal quarters assigned correctly',
-    () => {
-      // July = Q1, Oct = Q2, Jan = Q3, Apr = Q4
-      const tests = [
-        ['2025-07-01','Q1'],['2025-09-30','Q1'],
-        ['2025-10-01','Q2'],['2025-12-31','Q2'],
-        ['2026-01-01','Q3'],['2026-03-31','Q3'],
-        ['2026-04-01','Q4'],['2026-06-30','Q4'],
-      ];
-      const wrong = tests.filter(([d,q]) => BL.getQuarter(d) !== q);
-      return wrong.length === 0 || 'wrong quarters: ' + wrong.map(([d,q])=>d+'→'+BL.getQuarter(d)+' expected '+q).join('; ');
-    });
-
-  test('Batch Analytics: monthly revenue map has entries for all 6 months',
-    () => {
-      const monthMap = {};
-      bSold.forEach(o => {
-        const k = (o.closeDate||o.followUpDate||'').slice(0,7);
-        if (k) monthMap[k] = (monthMap[k]||0) + 1;
-      });
-      return Object.keys(monthMap).length >= 5
-        || 'only ' + Object.keys(monthMap).length + ' months found';
-    });
-
-  test('Batch Analytics: project type breakdown has ≥5 types',
-    () => {
-      const types = new Set(BATCH.map(o=>o.projectType));
-      return types.size >= 5 || 'only ' + types.size + ' project types';
-    });
-
-  test('Batch Analytics: lead source breakdown has ≥4 sources',
-    () => {
-      const srcs = new Set(BATCH.map(o=>o.leadSource));
-      return srcs.size >= 4 || 'only ' + srcs.size + ' lead sources';
-    });
-
-  test('Batch Analytics: win rate = sold / total',
-    () => {
-      const k = BL.calcKPIs(BATCH);
-      const expected = Math.round((bSold.length / BATCH.length) * 100);
-      const actual = Math.round(k.winRate);
-      return Math.abs(actual - expected) <= 1
-        || 'winRate=' + actual + ' expected~' + expected;
-    });
-
-  // ── T116-T120: Mileage auto-seed ──────────────────────────────
-  test('Batch Mileage: home call opps have homeCallDate',
-    () => {
-      const hc = BATCH.filter(o => o.homeCall === 'Yes');
-      const missing = hc.filter(o => !o.homeCallDate);
-      return missing.length === 0 || 'missing homeCallDate: ' + missing.map(o=>o.lastName).join(',');
-    });
-
-  test('Batch Mileage: 36 opps have home calls',
-    () => {
-      const hc = BATCH.filter(o => o.homeCall === 'Yes').length;
-      return hc === 36 || 'got ' + hc;
-    });
-
-  test('Batch Mileage: saveMileageRecord stores and retrieves',
-    () => {
-      const before = getMileageRecords().length;
-      const rec = { id:'_test_mile_', sourceOppId:'bt01', date:TODAY, clientName:'Test', address:'123 Test St',
-        stopHome1:'', stopDC1:'', stopClient:'', stopHome2:'', stopDC2:'', totalMiles:'', commuteDeduct:'', tollsParking:'', designPartner:'', purpose:'Home Call' };
-      saveMileageRecord(rec);
-      const after = getMileageRecords().length;
-      // cleanup
-      const recs = getMileageRecords().filter(r => r.id !== '_test_mile_');
-      localStorage.setItem('ea_mileage_v1', JSON.stringify(recs));
-      return after === before + 1 || 'before=' + before + ' after=' + after;
-    });
-
-  test('Batch Mileage: rate is $0.725/mile',
-    () => {
-      const RATE = 0.725;
-      const net = 50, tolls = 5;
-      const reimbursement = net * RATE + tolls;
-      return Math.abs(reimbursement - 41.25) < 0.001 || 'got ' + reimbursement;
-    });
-
-  test('Batch Mileage: leg sum = sum of 5 leg fields',
-    () => {
-      const legs = [12.5, 8.3, 6.7, 8.3, 12.5];
-      const total = legs.reduce((s,v)=>s+v,0);
-      return Math.abs(total - 48.3) < 0.001 || 'got ' + total;
-    });
-
-  // ── T121: DB roundtrip with full batch opp ────────────────────
-  test('Batch DB: full opp roundtrip preserves all v4.2 fields',
-    () => {
-      const o = BATCH.find(x => x.id === 'bt47'); // Vera Vega - sold with GC, activePhase
-      const row = DB._toDB(o);
-      const back = DB._fromDB(row);
-      const fields = ['firstName','lastName','saleMade','goldComp','goldCompValue','estimate',
-        'deliveryDate','linkReviewDate','customerNumber','saleDate','activePhase','issueFlag','closeDate'];
-      const wrong = fields.filter(f => String(back[f]) !== String(o[f]));
-      return wrong.length === 0 || 'field mismatch: ' + wrong.map(f=>f+'('+back[f]+'!='+o[f]+')').join(', ');
-    });
-
-
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  //  FINAL BATCH: MAILING EXPORT + CONTACT LIST TESTS (T122-T135)
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-  // ═
-
-  test('Export: _buildContactRows returns correct row count',
-    () => {
-      const rows = _buildContactRows(BATCH, new Set());
-      const named = BATCH.filter(o => o.firstName || o.lastName).length;
-      return rows.length === named || 'expected ' + named + ' got ' + rows.length;
-    });
-
-  test('Export: each row has all required contact fields',
-    () => {
-      const rows = _buildContactRows(BATCH, new Set());
-      const required = ['First Name','Last Name','Email','Phone','Address','Stage','Estimate ($)','Email Sent','GoldComp'];
-      const missing = required.filter(f => !(f in rows[0]));
-      return missing.length === 0 || 'missing: ' + missing.join(', ');
-    });
-
-  test('Export: Email Sent = Yes for sent contacts',
-    () => {
-      const sentId = BATCH[0].id;
-      const rows = _buildContactRows(BATCH, new Set([sentId]));
-      const row = rows.find(r => r['First Name'] === BATCH[0].firstName && r['Last Name'] === BATCH[0].lastName);
-      return row && row['Email Sent'] === 'Yes' || 'Email Sent not Yes for sent contact';
-    });
-
-  test('Export: Email Sent = No for unsent contacts',
-    () => {
-      const rows = _buildContactRows(BATCH, new Set());
-      const wrong = rows.filter(r => r['Email Sent'] !== 'No');
-      return wrong.length === 0 || wrong.length + ' rows have wrong Email Sent value';
-    });
-
-  test('Export: Sold opps show Stage = Sold',
-    () => {
-      const soldOnly = BATCH.filter(o => o.saleMade === 'Yes');
-      const rows = _buildContactRows(soldOnly, new Set());
-      const wrong = rows.filter(r => r['Stage'] !== 'Sold');
-      return wrong.length === 0 || wrong.length + ' sold rows have wrong stage';
-    });
-
-  test('Export CSV: comma in value gets wrapped in quotes',
-    () => {
-      const csvEsc = v => {
-        const s = String(v == null ? '' : v);
-        return (s.includes(',') || s.includes('"') || s.includes('\n'))
-          ? '"' + s.replace(/"/g, '""') + '"' : s;
-      };
-      const result = csvEsc('123 Main St, Miami FL');
-      return result === '"123 Main St, Miami FL"' || 'got: ' + result;
-    });
-
-  test('Export CSV: double-quotes in values are escaped',
-    () => {
-      const csvEsc = v => {
-        const s = String(v == null ? '' : v);
-        return (s.includes(',') || s.includes('"') || s.includes('\n'))
-          ? '"' + s.replace(/"/g, '""') + '"' : s;
-      };
-      const input = 'Suite A';
-      // No special chars - should be unchanged
-      return csvEsc(input) === 'Suite A' || 'plain string mangled';
-    });
-
-  test('Export CSV: null and undefined become empty string',
-    () => {
-      const csvEsc = v => {
-        const s = String(v == null ? '' : v);
-        return (s.includes(',') || s.includes('"') || s.includes('\n'))
-          ? '"' + s.replace(/"/g, '""') + '"' : s;
-      };
-      return csvEsc(null) === '' && csvEsc(undefined) === '' && csvEsc(0) === '0'
-        || 'null/undefined/0 not handled correctly';
-    });
-
-  test('Contact List: sorted alphabetically by last name',
-    () => {
-      const rows = _buildContactRows(BATCH, new Set());
-      for (let i = 1; i < rows.length; i++) {
-        const a = rows[i-1]['Last Name'] || '';
-        const b = rows[i]['Last Name'] || '';
-        if (b < a) return 'not sorted at index ' + i + ': ' + a + ' before ' + b;
-      }
-      return true;
-    });
-
-  test('Contact List: GoldComp count = 10 in export',
-    () => {
-      const rows = _buildContactRows(BATCH, new Set());
-      const gc = rows.filter(r => r['GoldComp'] === 'Yes').length;
-      return gc === 10 || 'expected 10, got ' + gc;
-    });
-
-  test('Contact List: Estimate field is numeric not string',
-    () => {
-      const rows = _buildContactRows(BATCH.slice(0, 5), new Set());
-      const wrong = rows.filter(r => typeof r['Estimate ($)'] !== 'number');
-      return wrong.length === 0 || wrong.length + ' rows have non-numeric estimate';
-    });
-
-  test('Export: filterContactList function is callable',
-    () => typeof filterContactList === 'function' || 'filterContactList not a function');
-
-  test('Export: exportContactsCSV function exists',
-    () => typeof exportContactsCSV === 'function' || 'exportContactsCSV not found');
-
-  test('Export: exportContactsExcel function exists',
-    () => typeof exportContactsExcel === 'function' || 'exportContactsExcel not found');
 
   await new Promise(r => setTimeout(r, 100));
 
@@ -6941,78 +5648,11 @@ function deleteMileEditRow() {
    TASK ENGINE
 ══════════════════════════════════════════════════ */
 
-
-/* ══════════════════════════════════════════════════
-   TASK COMPLETION & ACTIVE CLIENT ACTIONS
-══════════════════════════════════════════════════ */
-function getCompletedTasks()   { return JSON.parse(localStorage.getItem('ea_completed_tasks') || '[]'); }
-
-// ── Audit Log ─────────────────────────────────────────────────────────────
-// Ring-buffer, max 200 entries — tracks key security & data actions
-const AUDIT_KEY = 'ea_audit_log';
-const AUDIT_MAX = 200;
-
-function auditLog(action, detail='') {
-  try {
-    const log = JSON.parse(localStorage.getItem(AUDIT_KEY)||'[]');
-    log.push({ ts: new Date().toISOString(), action, detail: String(detail).slice(0,200) });
-    if (log.length > AUDIT_MAX) log.splice(0, log.length - AUDIT_MAX);
-    localStorage.setItem(AUDIT_KEY, JSON.stringify(log));
-  } catch(e) { /* silent — never crash the app */ }
-}
-function getAuditLog()  { try { return JSON.parse(localStorage.getItem(AUDIT_KEY)||'[]'); } catch(e) { return []; } }
-function clearAuditLog() { localStorage.removeItem(AUDIT_KEY); auditLog('AUDIT_CLEARED', 'Log cleared by user'); }
-function saveCompletedTasks(a) { localStorage.setItem('ea_completed_tasks', JSON.stringify(a)); }
-
-function markTaskComplete(taskId, oppId, label) {
-  const done = getCompletedTasks();
-  if (!done.includes(taskId)) {
-    done.push(taskId);
-    saveCompletedTasks(done);
-  }
-  toast('✅ Task marked complete: ' + label, 'success');
-  // Refresh dashboard tasks widget
-  DB.getAll().then(opps => _updateTasksWidget(opps));
-}
-
-function clearCompletedTasks() {
-  saveCompletedTasks([]);
-  toast('Completed tasks cleared', 'success');
-  DB.getAll().then(opps => _updateTasksWidget(opps));
-}
-
-function getCompletedActives()   { return JSON.parse(localStorage.getItem('ea_completed_actives') || '[]'); }
-function saveCompletedActives(a) { localStorage.setItem('ea_completed_actives', JSON.stringify(a)); }
-
-async function markActiveComplete(oppId) {
-  const done = getCompletedActives();
-  if (!done.includes(oppId)) { done.push(oppId); saveCompletedActives(done); }
-  toast('✅ Client marked complete', 'success');
-  renderActive();
-}
-
-async function deleteActive(oppId) {
-  if (!confirm('Delete this active client record entirely? This cannot be undone.')) return;
-  await DB.delete(oppId);
-  toast('Client record deleted', 'success');
-  renderActive();
-}
-
-async function restoreActive(oppId) {
-  const done = getCompletedActives().filter(id => id !== oppId);
-  saveCompletedActives(done);
-  toast('Client restored', 'success');
-  renderActive();
-}
-
 function _buildTasks(opps) {
-  const todayS      = localDateStr(new Date());
-  const doneTasks   = getCompletedTasks();
-  const tasks       = [];
+  const todayS  = localDateStr(new Date());
+  const tasks   = [];
 
-  function addTask(t) {
-    if (!doneTasks.includes(t.id)) tasks.push(t);
-  }
+  function addTask(t) { tasks.push(t); }
 
   // ── Active pipeline: overdue & due today ──
   opps.forEach(o => {
@@ -7055,7 +5695,7 @@ function _buildTasks(opps) {
         projectType: o.projectType || '—',
         estimate: Number(o.estimate) || 0,
         goldComp: o.goldComp || '',
-        stage: 'Postponed', activePhase: '', source: 'postponed',
+        stage: 'Postponed', activePhase: '',
         deliveryDate: '', delivery2Day: false, linkReviewDate: '',
         dueDate: o.followUpDate || '',
         activity: 'Postponed — queued for post-30/60 follow-up',
@@ -7133,7 +5773,7 @@ function _buildTasks(opps) {
         projectType: o.projectType || '—',
         estimate: Number(o.estimate) || 0,
         goldComp: o.goldComp || '',
-        stage: 'Issue', activePhase: o.activePhase || '', source: 'issue',
+        stage: 'Issue', activePhase: o.activePhase || '',
         deliveryDate: o.deliveryDate || '', delivery2Day: false,
         linkReviewDate: o.linkReviewDate || '', dueDate: todayS,
         activity: 'Resolve issue: ' + (o.issueType || 'Review with client'),
@@ -7176,38 +5816,6 @@ function _buildTasks(opps) {
     });
   } catch(e) { /* post30 unavailable */ }
 
-  // ── Post60 overdue ──
-  try {
-    const p30b = getPost30Records();
-    p30b.filter(r => r.newOpportunity === 'No' && (r.deliveryDate || '')).forEach(rec => {
-      const opp = opps.find(o => o.id === rec.oppId);
-      if (!opp) return;
-      const fu60 = offsetDate(rec.deliveryDate, 60);
-      const d60  = daysDiff(todayS, fu60);
-      if (d60 <= 3) {
-        addTask({
-          id: rec.oppId + '_p60', oppId: rec.oppId,
-          type: d60 < 0 ? 'overdue' : 'today',
-          priority: d60 < 0 ? 17 : 15,
-          icon: '📋',
-          label: d60 < 0 ? 'Post-60 ' + Math.abs(d60) + 'd overdue' : 'Post-60 Due',
-          labelColor: 'var(--ink-20)',
-          firstName: opp.firstName||'', lastName: opp.lastName||'',
-          customerNumber: opp.customerNumber||'',
-          saleDate: opp.saleDate||opp.closeDate||'',
-          projectType: opp.projectType||'—',
-          estimate: Number(opp.estimate)||0,
-          goldComp: opp.goldComp||'',
-          stage: 'Post 60', activePhase: opp.activePhase||'',
-          deliveryDate: rec.deliveryDate, delivery2Day: false,
-          linkReviewDate: opp.linkReviewDate||'', dueDate: fu60,
-          activity: rec.p60_contactReason || '60-day loyalty check-in',
-          issueFlag:'', issueType:'', issueResult:'', source:'post60',
-        });
-      }
-    });
-  } catch(e) { /* post60 unavailable */ }
-
   tasks.sort((a, b) => b.priority !== a.priority ? b.priority - a.priority : (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
   return tasks;
 }
@@ -7223,23 +5831,18 @@ async function _updateTasksWidget(opps) {
     el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All caught up — no pending tasks</p></div>';
     return;
   }
-  const shown = tasks.slice(0, 10);
-  el.innerHTML = shown.map(t =>
-    '<div class="alert-row" style="border-left:3px solid ' + t.labelColor + ';padding-left:10px;align-items:flex-start;gap:8px">'
-    + '<div style="font-size:18px;min-width:24px;padding-top:2px">' + t.icon + '</div>'
-    + '<div style="flex:1;min-width:0;cursor:pointer" onclick="editLead(\'' + t.oppId + '\')">'
+  el.innerHTML = tasks.slice(0, 8).map(t =>
+    '<div class="alert-row" onclick="editLead(\'' + t.oppId + '\')" style="border-left:3px solid ' + t.labelColor + ';padding-left:10px;cursor:pointer">'
+    + '<div style="font-size:18px;min-width:24px">' + t.icon + '</div>'
+    + '<div style="flex:1;min-width:0">'
     + '<div style="font-weight:600;font-size:13px;color:var(--ink-10)">' + esc(t.firstName) + ' ' + esc(t.lastName)
     + (t.customerNumber ? ' <span style="font-size:10px;color:var(--gold)">#' + esc(t.customerNumber) + '</span>' : '') + '</div>'
     + '<div style="font-size:11px;color:var(--ink-40)">' + esc(t.activity) + '</div>'
     + '<div style="font-size:11px;color:var(--ink-40)">' + esc(t.projectType) + (t.dueDate ? ' · ' + fmtDate(t.dueDate) : '') + '</div>'
     + '</div>'
-    + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">'
     + '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:' + t.labelColor + '22;color:' + t.labelColor + '">' + esc(t.label) + '</span>'
-    + '<button onclick="markTaskComplete(\'' + t.id + '\',\'' + t.oppId + '\',\'' + (t.firstName+' '+t.lastName).trim() + '\')" style="font-size:9px;font-weight:700;letter-spacing:.05em;background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.35);color:var(--green);border-radius:4px;padding:2px 8px;cursor:pointer;white-space:nowrap">✓ Done</button>'
     + '</div>'
-    + '</div>'
-  ).join('')
-  + (tasks.length > 10 ? '<div style="text-align:center;padding:8px;font-size:11px;color:var(--ink-40)">' + (tasks.length-10) + ' more tasks — <a onclick="navigate(\'priorities\')" style="color:var(--gold);cursor:pointer">View All</a></div>' : '');
+  ).join('');
 }
 
 /* ══════════════════════════════════════════════════
@@ -7247,41 +5850,21 @@ async function _updateTasksWidget(opps) {
    All charts built with inline SVG — no external libs
 ══════════════════════════════════════════════════ */
 
-async function renderAnalytics(analyticsFilter) {
-  if (analyticsFilter !== undefined) state.analyticsFilter = analyticsFilter;
+async function renderAnalytics() {
   const opps  = await DB.getAll();
   const today = new Date();
   const el    = document.getElementById('page-analytics');
   if (!el) return;
 
-  // ── Year/Month filter ──
-  const curYear = today.getFullYear();
-  const selYear = state.analyticsYear || curYear;
-  const selMonth= state.analyticsMonth || null; // null = full year
-
-  // ── Derived data (filtered by selected year/month) ──
-  const filterOpp = o => {
-    const d = o.closeDate || o.saleDate || o.createdAt || '';
-    if (!d) return true; // include if no date
-    const dt = new Date(d+'T12:00:00');
-    if (selMonth !== null) return dt.getFullYear() === selYear && dt.getMonth() === selMonth;
-    return dt.getFullYear() === selYear;
-  };
-  const sold     = opps.filter(o => o.saleMade === 'Yes' && filterOpp(o));
-  const allSold  = opps.filter(o => o.saleMade === 'Yes');
+  // ── Derived data ──
+  const sold     = opps.filter(o => o.saleMade === 'Yes');
   const active   = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
   const canceled = opps.filter(o => o.stage === 'Canceled');
   const allKpis  = BL.calcKPIs(opps);
 
-  // Available years
-  const availYears = [...new Set(opps.map(o => {
-    const d = o.closeDate||o.saleDate||o.createdAt||''; return d?parseInt(d.slice(0,4)):null;
-  }).filter(Boolean))].sort((a,b)=>b-a);
-  if (!availYears.includes(selYear)) availYears.unshift(selYear);
-
-  // Monthly revenue (last 12 months — always full regardless of filter, for trend)
+  // Monthly revenue (last 12 months)
   const monthRevMap = {};
-  allSold.forEach(o => {
+  sold.forEach(o => {
     const d = o.closeDate || o.saleDate || o.createdAt || '';
     const key = d.slice(0,7);
     if (key) monthRevMap[key] = (monthRevMap[key]||0) + (Number(o.estimate)||0);
@@ -7319,12 +5902,9 @@ async function renderAnalytics(analyticsFilter) {
   // Monthly goal vs actual (current year)
   const goalVsActual = LOOKUP.monthGoals.map((g,i) => {
     const goal = getGoalForMonth(i);
-    const mn   = new Date(selYear, i, 1).toISOString().slice(0,7);
-    const rev  = (selMonth === null ? monthRevMap[mn] : (sold.filter(o => {
-      const d = o.closeDate||o.saleDate||''; const dt = new Date(d+'T12:00:00');
-      return dt.getMonth() === i && dt.getFullYear() === selYear;
-    }).reduce((s,o)=>s+(Number(o.estimate)||0),0))) || 0;
-    const lbl  = new Date(selYear, i, 1).toLocaleDateString('en-US',{month:'short'});
+    const mn   = new Date(today.getFullYear(), i, 1).toISOString().slice(0,7);
+    const rev  = monthRevMap[mn] || 0;
+    const lbl  = new Date(today.getFullYear(), i, 1).toLocaleDateString('en-US',{month:'short'});
     return { lbl, goal, rev, pct: goal ? Math.min(Math.round(rev/goal*100),150) : 0 };
   });
 
@@ -7339,86 +5919,42 @@ async function renderAnalytics(analyticsFilter) {
     b.val = active.filter(o => { const p=Number(o.probability)||0; return p>=b.min && p<=b.max; }).reduce((s,o)=>s+(Number(o.estimate)||0),0);
   });
 
-  // Helper: SVG bar chart (improved with gridlines)
-  function barChart(data, {height=180, color='var(--gold)', valueFormat, maxVal, showGoal=false}={}) {
+  // Helper: SVG bar chart
+  function barChart(data, {width=520, height=200, color='var(--gold)', valueFormat, maxVal, showGoal=false}={}) {
     if (!data.length) return '<p style="color:var(--ink-40);font-size:12px">No data yet</p>';
-    const max    = maxVal || Math.max(...data.map(d=>Math.max(d.val||0, d.goal||0)), 1);
-    const W      = data.length * 42;
-    const barW   = 28;
-    const fmt    = valueFormat || (v => v >= 1000 ? '$' + Math.round(v/1000) + 'k' : String(v));
-    const GRID   = [0.25,0.5,0.75,1.0];
-    const GSVG   = GRID.map(g => {
-      const y = Math.round((height-36)*(1-g));
-      return `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--ink-60)" stroke-width=".5" stroke-dasharray="3,3"/>
-        <text x="-2" y="${y+3}" text-anchor="end" font-size="8" fill="var(--ink-50)">${fmt(Math.round(max*g))}</text>`;
-    }).join('');
+    const max = maxVal || Math.max(...data.map(d=>Math.max(d.val||0, d.goal||0)), 1);
+    const barW = Math.max(Math.floor((width - data.length*4) / data.length), 8);
+    const fmt = valueFormat || (v => v >= 1000 ? '$' + Math.round(v/1000) + 'k' : String(v));
     const bars = data.map((d,i) => {
-      const bh = Math.max(Math.round((d.val/max)*(height-36)), d.val>0?2:1);
-      const x  = i * 42;
-      const goalH = d.goal ? Math.round((d.goal/max)*(height-36)) : 0;
-      const col = showGoal && d.goal && d.val >= d.goal ? 'var(--green)' : color;
+      const h2 = Math.max(Math.round((d.val/max)*(height-40)), 2);
+      const x  = i * (barW + 4);
+      const goalH = d.goal ? Math.round((d.goal/max)*(height-40)) : 0;
+      const col = d.val >= (d.goal||0) ? 'var(--green)' : color;
       return `<g transform="translate(${x},0)">
-        ${d.goal&&showGoal?`<line x1="0" y1="${height-36-goalH}" x2="${barW+8}" y2="${height-36-goalH}" stroke="var(--gold-dk)" stroke-width="1.5" stroke-dasharray="4,3"/>`:'' }
-        <rect x="6" y="${height-36-bh}" width="${barW}" height="${bh}" fill="${col}" rx="3" opacity=".9"/>
-        <text x="${barW/2+6}" y="${height-38-bh}" text-anchor="middle" font-size="8.5" fill="${col}" font-weight="700">${d.val>0?fmt(d.val):''}</text>
-        <text x="${barW/2+6}" y="${height-16}" text-anchor="middle" font-size="8.5" fill="var(--ink-40)" transform="rotate(-30,${barW/2+6},${height-16})">${d.lbl}</text>
+        ${d.goal ? `<rect x="0" y="${height-40-goalH}" width="${barW}" height="${goalH}" fill="rgba(196,147,63,.12)" rx="2"/>
+          <line x1="0" y1="${height-40-goalH}" x2="${barW}" y2="${height-40-goalH}" stroke="var(--gold-dk)" stroke-width="1.5" stroke-dasharray="3,2"/>` : ''}
+        <rect x="0" y="${height-40-h2}" width="${barW}" height="${h2}" fill="${col}" rx="2" opacity=".9"/>
+        <text x="${barW/2}" y="${height-42-h2}" text-anchor="middle" font-size="9" fill="var(--ink-30)">${d.val>0?fmt(d.val):''}</text>
+        <text x="${barW/2}" y="${height-22}" text-anchor="middle" font-size="9" fill="var(--ink-40)" transform="rotate(-35,${barW/2},${height-22})">${d.lbl}</text>
       </g>`;
     }).join('');
-    return `<svg width="100%" viewBox="-24 0 ${W+28} ${height}" preserveAspectRatio="xMidYMid meet" style="overflow:visible">${GSVG}${bars}</svg>`;
+    return `<svg width="100%" viewBox="0 0 ${data.length*(barW+4)} ${height}" preserveAspectRatio="xMidYMid meet" style="overflow:visible">${bars}</svg>`;
   }
 
-  // Helper: SVG line chart (smooth, clean)
-  function lineChart(data, {color='var(--gold)', fillColor, valueFormat, showGoal=false, goalColor='var(--gold-dk)'}={}) {
-    if (!data.length) return '<p style="color:var(--ink-40);font-size:12px">No data yet</p>';
-    const W=700, H=170, PAD=36, BOT=24;
-    const max = Math.max(...data.map(d=>Math.max(d.val||0, showGoal&&d.goal?d.goal:0)), 1);
-    const fmt = valueFormat || (v => v>=1000?'$'+Math.round(v/1000)+'k':'$'+v);
-    const fill = fillColor || color;
-    const pts = data.map((d,i)=>({
-      x: PAD + (i/Math.max(data.length-1,1))*(W-PAD*2),
-      y: H-BOT - Math.max((d.val/max)*(H-BOT-20), d.val>0?2:0),
-      v: d.val, lbl: d.lbl
-    }));
-    const area = 'M'+pts[0].x.toFixed(1)+','+(H-BOT)+' '+pts.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')+ ' '+pts[pts.length-1].x.toFixed(1)+','+(H-BOT)+' Z';
-    const line = pts.map((p,i)=>(i===0?'M':'L')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
-    let goalSVG='';
-    if (showGoal) {
-      const gpts = data.map((d,i)=>{
-        const x=PAD+(i/Math.max(data.length-1,1))*(W-PAD*2);
-        const y=H-BOT-(Math.max((d.goal||0)/max,0))*(H-BOT-20);
-        return x.toFixed(1)+','+y.toFixed(1);
-      });
-      goalSVG='<polyline points="'+gpts.join(' ')+'" fill="none" stroke="'+goalColor+'" stroke-width="1.5" stroke-dasharray="5,3" opacity=".7"/>';
-    }
-    const GRID=[.25,.5,.75,1].map(g=>{
-      const y=(H-BOT)*(1-g);
-      return `<line x1="${PAD}" y1="${y.toFixed(0)}" x2="${W-PAD}" y2="${y.toFixed(0)}" stroke="var(--ink-60)" stroke-width=".5" stroke-dasharray="3,3"/>
-        <text x="${PAD-3}" y="${(y+3).toFixed(0)}" text-anchor="end" font-size="8" fill="var(--ink-50)">${fmt(Math.round(max*g))}</text>`;
-    }).join('');
-    const dots = pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${p.v>0?4:2}" fill="${p.v>0?color:'var(--ink-60)'}" stroke="var(--ink-90)" stroke-width="1.5"><title>${p.lbl}: ${fmt(p.v)}</title></circle>`).join('');
-    const vals = pts.filter(p=>p.v>0).map(p=>`<text x="${p.x.toFixed(1)}" y="${(p.y-8).toFixed(1)}" text-anchor="middle" font-size="8" fill="${color}" font-weight="700">${fmt(p.v)}</text>`).join('');
-    const xlbls = pts.map(p=>`<text x="${p.x.toFixed(1)}" y="${H-4}" text-anchor="middle" font-size="8.5" fill="var(--ink-40)">${p.lbl}</text>`).join('');
-    return `<svg width="100%" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="overflow:visible">
-      <defs><linearGradient id="anaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${fill}" stop-opacity=".3"/><stop offset="100%" stop-color="${fill}" stop-opacity=".02"/></linearGradient></defs>
-      ${GRID}<path d="${area}" fill="url(#anaGrad)"/>${goalSVG}<path d="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-      ${vals}${dots}${xlbls}</svg>`;
-  }
-
-  // Helper: horizontal bar chart (improved)
+  // Helper: horizontal bar chart
   function hBarChart(data, {color='var(--gold)', valueFormat}={}) {
     if (!data.length) return '<p style="color:var(--ink-40);font-size:12px">No data yet</p>';
     const max = Math.max(...data.map(d=>d[1]), 1);
     const fmt = valueFormat || (v => String(v));
     return data.map(([lbl, val]) => {
       const pct = Math.round((val/max)*100);
-      const col = pct === 100 ? 'var(--green)' : color;
       return `<div style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
-          <span style="color:var(--ink-20);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc(lbl)}</span>
-          <span style="color:${col};font-weight:700">${fmt(val)}</span>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+          <span style="color:var(--ink-20);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lbl)}</span>
+          <span style="color:${color};font-weight:700">${fmt(val)}</span>
         </div>
-        <div style="height:9px;background:var(--ink-70);border-radius:5px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${col};border-radius:5px;transition:width .4s"></div>
+        <div style="height:8px;background:var(--ink-70);border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width .3s"></div>
         </div>
       </div>`;
     }).join('');
@@ -7435,15 +5971,15 @@ async function renderAnalytics(analyticsFilter) {
       const len = (val/total)*circ;
       const arc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i%colors.length]}"
         stroke-width="${stroke}" stroke-dasharray="${len.toFixed(1)} ${(circ-len).toFixed(1)}"
-        stroke-dashoffset="${(-offset+circ/4).toFixed(1)}" style="transition:stroke-dasharray .4s"><title>${lbl}: ${val}</title></circle>`;
+        stroke-dashoffset="${(-offset+circ/4).toFixed(1)}" style="transition:stroke-dasharray .4s"/>`;
       offset += len;
       return arc;
     }).join('');
     const legend = segments.map(([lbl,val],i) =>
-      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
         <div style="width:10px;height:10px;border-radius:2px;background:${colors[i%colors.length]};flex-shrink:0"></div>
-        <span style="font-size:11px;color:var(--ink-20);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc(lbl)}</span>
-        <span style="font-size:11px;color:${colors[i%colors.length]};font-weight:700">${Math.round(val/total*100)}%</span>
+        <span style="font-size:11px;color:var(--ink-20);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lbl)}</span>
+        <span style="font-size:11px;color:var(--ink-40);font-weight:600">${Math.round(val/total*100)}%</span>
       </div>`
     ).join('');
     return `<div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
@@ -7490,8 +6026,7 @@ async function renderAnalytics(analyticsFilter) {
 
   const totalRev = sold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
   const weightedPipe = active.filter(o=>o.stage!=='Canceled').reduce((s,o)=>s+Math.floor((Number(o.probability)||0)/100*(Number(o.estimate)||0)),0);
-  const gcSales = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
-  const prodSales = sold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+  const gcSales = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
   const gcPct   = totalRev > 0 ? Math.round(gcSales/totalRev*100) : 0;
   const avgOrder = sold.length > 0 ? Math.round(totalRev/sold.length) : 0;
 
@@ -7499,12 +6034,7 @@ async function renderAnalytics(analyticsFilter) {
   <div class="section-header"><div style="padding:0 24px;max-width:1320px;margin:0 auto">
     <span class="label" style="display:block;margin-bottom:6px">Performance Intelligence</span>
     <h2 class="display">📊 ANALYTICS</h2>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
-      <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-40)">Year:</span>
-      ${availYears.map(y => '<button onclick="state.analyticsYear='+y+';state.analyticsMonth=null;renderAnalytics()" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;border:1px solid '+(y===selYear&&selMonth===null?'var(--gold-dk)':'var(--ink-60)')+';background:'+(y===selYear&&selMonth===null?'var(--gold-dk)':'var(--ink-70)')+';color:'+(y===selYear&&selMonth===null?'#000':'var(--ink-20)')+'">'+y+'</button>').join('')}
-      <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-40);margin-left:8px">Month:</span>
-      ${ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m,i) => '<button onclick="state.analyticsYear='+selYear+';state.analyticsMonth='+i+';renderAnalytics()" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;cursor:pointer;border:1px solid '+(selMonth===i?'var(--gold-dk)':'var(--ink-60)')+';background:'+(selMonth===i?'var(--gold-dk)':'var(--ink-70)')+';color:'+(selMonth===i?'#000':'var(--ink-20)')+'">'+m+'</button>').join('') }
-    </div>
+    <p style="font-size:13px;color:var(--ink-40);margin-top:8px">Visual KPI overview — all metrics at a glance</p>
   </div></div>
 
   <div class="container" style="margin-bottom:32px">
@@ -7519,13 +6049,13 @@ async function renderAnalytics(analyticsFilter) {
     ])}
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-      ${chartCard('Revenue Trend (Last 12 Months)', 'Line = actual · dashed = monthly goal',
-        lineChart(last12.map(m=>({lbl:m.lbl,val:m.val,goal:getGoalForMonth(new Date(m.key+'-15').getMonth())})),
-          {color:'var(--green)',fillColor:'#4caf7d',valueFormat:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+v,showGoal:true})
-      )}
-      ${chartCard('Goal vs Actual — ' + selYear + (selMonth!==null?' · '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][selMonth]:''), 'Bars = actual · dashed = target',
-        barChart(goalVsActual.map(m=>({lbl:m.lbl,val:m.rev,goal:m.goal})),
+      ${chartCard('Monthly Revenue vs Goal', 'Last 12 months — gold dashed line = goal',
+        barChart(last12.map(m=>({lbl:m.lbl,val:m.val,goal:getGoalForMonth(new Date(m.key+'-15').getMonth())})),
           {color:'var(--gold)',valueFormat:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+v,showGoal:true})
+      )}
+      ${chartCard('Monthly Goal vs Actual (Current Year)', 'Each bar = actual, dashed = goal',
+        barChart(goalVsActual.map(m=>({lbl:m.lbl,val:m.rev,goal:m.goal})),
+          {color:'var(--gold)',valueFormat:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+v})
       )}
     </div>
 
@@ -7575,10 +6105,10 @@ async function renderAnalytics(analyticsFilter) {
         avgDaysData.length ? hBarChart(avgDaysData, {color:'var(--gold)',valueFormat:v=>v+'d'}) :
           '<p style="color:var(--ink-40);font-size:12px">Add leads to see stage timing</p>'
       )}
-      ${chartCard('GoldComp Mix', 'GoldComp credit vs product revenue',
+      ${chartCard('GoldComp Mix', 'GoldComp sales vs standard sales',
         donutChart(
-          [['GoldComp Credit', gcSales], ['Product Sales', prodSales - gcSales >= 0 ? prodSales - gcSales : prodSales]].filter(([,v])=>v>0),
-          Math.max(prodSales, gcSales) || 1
+          [['GoldComp', gcSales], ['Standard', totalRev - gcSales]].filter(([,v])=>v>0),
+          totalRev || 1
         )
       )}
     </div>
@@ -7610,16 +6140,13 @@ async function renderActive() {
   if (!el) return;
 
   /* ── Active clients = saleMade=Yes, sorted by deliveryDate then saleDate ── */
-  const doneActiveIds = getCompletedActives();
   const clients = opps
-    .filter(o => o.saleMade === 'Yes' && !doneActiveIds.includes(o.id))
+    .filter(o => o.saleMade === 'Yes')
     .sort((a, b) => {
       const da = a.deliveryDate || a.saleDate || '9999';
       const db = b.deliveryDate || b.saleDate || '9999';
       return da.localeCompare(db);
     });
-  const completedClients = opps
-    .filter(o => o.saleMade === 'Yes' && doneActiveIds.includes(o.id));
 
   const today = localDateStr(new Date());
 
@@ -7645,7 +6172,7 @@ async function renderActive() {
   /* ── Build rows ── */
   const rows = clients.map((o, i) => {
     const rowBg = i % 2 === 0 ? 'var(--ink-90)' : 'var(--ink-80)';
-    const gcVal = o.goldComp === 'Yes' ? (Number(o.goldCompValue) || Number(o.estimate) || 0) : 0;
+    const gcVal = o.goldComp === 'Yes' ? (Number(o.estimate) || 0) : 0;
 
     /* 2-Days-Before-Delivery */
     const twoDaysBefore = o.deliveryDate ? offsetDate(o.deliveryDate, -2) : '';
@@ -7741,9 +6268,8 @@ async function renderActive() {
       /* Edit button */
       + '<td style="padding:5px 8px;border-bottom:1px solid var(--ink-70);text-align:center">'
         + '<button onclick="event.stopPropagation();editLead(\'' + o.id + '\')" title="Edit"'
-        + ' style="background:none;border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">✏️</button>'
-        + '<button onclick="event.stopPropagation();markActiveComplete(\'' + o.id + '\')" style="background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.35);color:var(--green);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer" title="Mark Complete">✓</button>'
-        + '<button onclick="event.stopPropagation();deleteActive(\'' + o.id + '\')" style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer" title="Delete">🗑</button>'
+        + ' style="background:none;border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;'
+        + 'font-size:10px;font-weight:700;padding:3px 9px;cursor:pointer;letter-spacing:.04em">EDIT ✏️</button>'
         + '</td>'
       + '</tr>';
   }).join('');
@@ -7804,26 +6330,7 @@ async function renderActive() {
           + '</tr></thead>'
           + '<tbody>' + rows + '</tbody>'
           + '</table>')
-    + '</div>'
-    + (completedClients.length > 0 ?
-        '<div style="margin:24px;background:var(--ink-85);border:1px solid var(--ink-60);border-radius:12px;overflow:hidden">'
-        + '<div style="padding:12px 16px;background:rgba(76,175,125,.07);border-bottom:1px solid var(--ink-60);display:flex;align-items:center;gap:10px">'
-        + '<span style="font-size:16px">✅</span>'
-        + '<span style="font-family:var(--font-display);font-size:14px;color:var(--green)">Completed Clients (' + completedClients.length + ')</span>'
-        + '<button onclick="saveCompletedActives([]);renderActive()" style="margin-left:auto;background:transparent;border:1px solid var(--ink-50);color:var(--ink-40);border-radius:5px;font-size:10px;padding:3px 10px;cursor:pointer">Clear All</button>'
-        + '</div>'
-        + '<div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">'
-        + completedClients.map(o =>
-            '<div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--ink-80);border-radius:7px;opacity:.7">'
-            + '<span style="color:var(--green);font-size:13px">✓</span>'
-            + '<span style="font-weight:600;color:var(--ink-20);font-size:13px">' + esc(o.lastName) + ', ' + esc(o.firstName) + '</span>'
-            + '<span style="font-size:11px;color:var(--ink-40)">' + esc(o.projectType||'') + '</span>'
-            + '<span style="font-size:11px;color:var(--green);margin-left:auto">' + (o.estimate ? fmt$(Number(o.estimate)) : '') + '</span>'
-            + '<button onclick="restoreActive(\'' + o.id + '\')" style="background:transparent;border:1px solid var(--ink-50);color:var(--ink-40);border-radius:4px;font-size:10px;padding:2px 8px;cursor:pointer">Restore</button>'
-            + '</div>'
-        ).join('')
-        + '</div></div>'
-      : '');
+    + '</div>';
 }
 
 
@@ -7888,7 +6395,7 @@ async function renderSales() {
   /* ── Build month sections ── */
   const sectionsHTML = sortedKeys.map(k => {
     const recs = monthGroups[k];
-    const monthTotal = recs.reduce((s,o) => s+(Number(o.estimate)||0)+(o.goldComp==='Yes'?Number(o.goldCompValue)||0:0), 0);
+    const monthTotal = recs.reduce((s,o) => s+(Number(o.estimate)||0), 0);
     const qLabel = k !== 'unknown' ? (() => {
       const m = parseInt(k.split('-')[1],10);
       const q = m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';
@@ -7915,10 +6422,7 @@ async function renderSales() {
         </td>
         <td style="padding:9px 12px;font-size:12px;color:var(--ink-20)">${esc(o.projectType||'—')}</td>
         <td style="padding:9px 12px;font-size:11px;color:var(--ink-40)">${esc(o.leadSource||'—')}</td>
-        <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--green);font-size:14px">
-          ${fmt$(Number(o.estimate))}
-          ${o.goldComp==='Yes'&&Number(o.goldCompValue)>0?'<div style="font-size:9px;color:var(--gold);font-weight:600;margin-top:2px">+'+fmt$(Number(o.goldCompValue))+' GC</div>':''}
-        </td>
+        <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--green);font-size:14px">${fmt$(Number(o.estimate))}</td>
         <td style="padding:9px 12px;text-align:center">
           ${o.goldComp==='Yes'?'<span style="color:var(--gold);font-size:14px" title="GoldComp">⭐</span>':'<span style="color:var(--ink-60)">—</span>'}
         </td>
@@ -7972,87 +6476,23 @@ async function renderSales() {
       </div>`;
   }).join('');
 
-  /* ── SVG line+bar chart with year/month toggle ── */
+  /* ── Monthly bar chart ── */
   const months_short = T('months_short');
-
-  // Build monthly totals for ALL years in data for multi-year view
-  const allYears = [...new Set(sold.map(o => {
-    const d = o.closeDate || o.followUpDate || '';
-    return d ? parseInt(d.slice(0,4),10) : null;
-  }).filter(Boolean))].sort();
-  const yearTotals = allYears.map(y => {
-    const tot = sold.filter(o => {
-      const d = o.closeDate || o.followUpDate || '';
-      return d && parseInt(d.slice(0,4),10) === y;
-    }).reduce((s,o) => s+(Number(o.estimate)||0), 0);
-    return { y, tot };
-  });
-
-  function buildSalesLineChart(data, labels, colorLine, colorFill, showGoals, goalsArr) {
-    const W = 800, H = 200, PAD = 40, BOTTOM = 28;
-    const maxV = Math.max(...data.map(v => Math.max(v, showGoals ? (goalsArr||[]).reduce((mx,g)=>Math.max(mx,g),0) : 0)), 1);
-    const pts = data.map((v,i) => {
-      const x = PAD + (i / Math.max(data.length-1,1)) * (W-PAD*2);
-      const y = H - BOTTOM - Math.max((v/maxV)*(H-BOTTOM-16), v>0?2:0);
-      return {x, y, v};
-    });
-    // Build area path
-    let areaPath = 'M' + pts.map(p => p.x.toFixed(1)+','+(H-BOTTOM)).join(' L');
-    areaPath = 'M'+pts[0].x.toFixed(1)+','+(H-BOTTOM)+' L'+pts.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' L')+' L'+pts[pts.length-1].x.toFixed(1)+','+(H-BOTTOM)+' Z';
-    // Line path
-    const linePath = 'M '+pts.map(p=>p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' L ');
-    // Goal line
-    let goalPathSVG = '';
-    if (showGoals && goalsArr && goalsArr.length === data.length) {
-      const gpts = goalsArr.map((g,i) => {
-        const x = PAD + (i/Math.max(data.length-1,1))*(W-PAD*2);
-        const y = H - BOTTOM - Math.max((g/maxV)*(H-BOTTOM-16),1);
-        return x.toFixed(1)+','+y.toFixed(1);
-      });
-      goalPathSVG = '<polyline points="'+gpts.join(' ')+'" fill="none" stroke="var(--gold-dk)" stroke-width="1.5" stroke-dasharray="5,3" opacity=".6"/>';
-    }
-    const dots = pts.map((p,i) => {
-      const val = p.v > 0 ? '<title>'+labels[i]+': '+fmt$(p.v)+'</title>' : '';
-      return '<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+(p.v>0?4:2)+'" fill="'+(p.v>0?colorLine:'var(--ink-60)')+'" stroke="var(--ink-90)" stroke-width="1.5">'+val+'</circle>';
-    }).join('');
-    const xLabels = labels.map((lbl,i) => {
-      const x = PAD + (i/Math.max(data.length-1,1))*(W-PAD*2);
-      return '<text x="'+x.toFixed(1)+'" y="'+(H-4)+'" text-anchor="middle" font-size="9" fill="var(--ink-40)">'+lbl+'</text>';
-    }).join('');
-    const valLabels = pts.filter(p=>p.v>0).map(p =>
-      '<text x="'+p.x.toFixed(1)+'" y="'+(p.y-7).toFixed(1)+'" text-anchor="middle" font-size="8" fill="var(--green)">'+fmt$(p.v,true)+'</text>'
-    ).join('');
-    return '<svg width="100%" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="overflow:visible">'
-      + '<defs><linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+colorFill+'" stop-opacity=".35"/><stop offset="100%" stop-color="'+colorFill+'" stop-opacity=".03"/></linearGradient></defs>'
-      + '<path d="'+areaPath+'" fill="url(#lineGrad)"/>'
-      + goalPathSVG
-      + '<path d="'+linePath+'" fill="none" stroke="'+colorLine+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
-      + valLabels + dots + xLabels
-      + '</svg>';
-  }
-
-  // Build bar chart HTML (current year monthly bars) 
-  const chartBarsHTML = monthlyTotals.map((v,i) => {
+  const chartBars = monthlyTotals.map((v,i) => {
     const barH = v > 0 ? Math.max(Math.round(v/maxMonthly*88),4) : 2;
-    const isGoalMet = v >= getGoalForMonth(i) && getGoalForMonth(i) > 0;
-    return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:28px;cursor:default">
-      <div style="font-size:9px;font-weight:700;color:${isGoalMet?'var(--green)':'var(--gold)'};margin-bottom:3px;height:14px;display:flex;align-items:flex-end">${v>0?fmt$(v,true):''}</div>
-      <div style="width:100%;flex:1;display:flex;flex-direction:column;justify-content:flex-end;position:relative;min-height:70px">
+    return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:32px;cursor:default">
+      <div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:4px;height:16px;
+                  display:flex;align-items:flex-end">${v>0?fmt$(v,true):''}</div>
+      <div style="width:100%;flex:1;display:flex;flex-direction:column;justify-content:flex-end;
+                  position:relative;min-height:80px">
         <div title="${months_short[i]}: ${fmt$(v)}"
-          style="width:75%;margin:0 auto;background:${v>0?(isGoalMet?'var(--green)':'var(--gold)'):'var(--ink-70)'};
-                 border-radius:3px 3px 0 0;height:${barH}%;min-height:${v>0?4:2}px;opacity:${v>0?0.9:0.25}"></div>
+          style="width:80%;margin:0 auto;background:${v>0?'var(--green)':'var(--ink-70)'};
+                 border-radius:4px 4px 0 0;height:${barH}%;min-height:${v>0?4:2}px;
+                 transition:height .3s;opacity:${v>0?1:0.3}"></div>
       </div>
-      <div style="font-size:9px;color:var(--ink-40);margin-top:3px;font-weight:600">${months_short[i]}</div>
+      <div style="font-size:10px;color:var(--ink-40);margin-top:4px;font-weight:600">${months_short[i]}</div>
     </div>`;
   }).join('');
-
-  const salesLineData  = monthlyTotals;
-  const salesLineGoals = months_short.map((_,i) => getGoalForMonth(i));
-  const salesLineChart = buildSalesLineChart(salesLineData, months_short, 'var(--green)', '#4caf7d', true, salesLineGoals);
-  const yearLineChart  = yearTotals.length > 1
-    ? buildSalesLineChart(yearTotals.map(y=>y.tot), yearTotals.map(y=>String(y.y)), 'var(--gold)', '#c4933f', false, null)
-    : '';
-  const chartBars = chartBarsHTML;
 
   const canceled = opps.filter(o => o.stage === 'Canceled');
   const canceledHTML = !canceled.length ? '' :
@@ -8136,25 +6576,10 @@ async function renderSales() {
           <div class="dash-card-title">${T('sales_chart_title')}</div>
           <div class="dash-card-sub">${T('sales_chart_sub')}</div>
         </div>
-        <div style="display:flex;gap:6px">
-          <button id="salesViewMonthly" onclick="document.getElementById('salesViewMonthly').style.background='var(--gold-dk)';document.getElementById('salesViewYearly').style.background='var(--ink-70)';document.getElementById('salesChartMonthly').style.display='';document.getElementById('salesChartYearly').style.display='none';document.getElementById('salesChartLine').style.display='none'"
-            style="font-size:10px;font-weight:700;padding:4px 10px;border:1px solid var(--gold-dk);border-radius:5px;background:var(--gold-dk);color:#000;cursor:pointer">Monthly</button>
-          <button id="salesViewLine" onclick="document.getElementById('salesViewLine').style.background='var(--gold-dk)';document.getElementById('salesViewMonthly').style.background='var(--ink-70)';document.getElementById('salesViewYearly').style.background='var(--ink-70)';document.getElementById('salesChartMonthly').style.display='none';document.getElementById('salesChartLine').style.display='';document.getElementById('salesChartYearly').style.display='none'"
-            style="font-size:10px;font-weight:700;padding:4px 10px;border:1px solid var(--ink-60);border-radius:5px;background:var(--ink-70);color:var(--ink-10);cursor:pointer">Line</button>
-          ${yearTotals.length > 1 ? '<button id="salesViewYearly" onclick="document.getElementById(\'salesViewYearly\').style.background=\'var(--gold-dk)\';document.getElementById(\'salesViewMonthly\').style.background=\'var(--ink-70)\';document.getElementById(\'salesViewLine\').style.background=\'var(--ink-70)\';document.getElementById(\'salesChartMonthly\').style.display=\'none\';document.getElementById(\'salesChartLine\').style.display=\'none\';document.getElementById(\'salesChartYearly\').style.display=\'\'" style="font-size:10px;font-weight:700;padding:4px 10px;border:1px solid var(--ink-60);border-radius:5px;background:var(--ink-70);color:var(--ink-10);cursor:pointer">Yearly</button>' : ''}
-        </div>
       </div>
-      <div id="salesChartMonthly" style="display:flex;gap:3px;align-items:flex-end;height:120px;padding:6px 0 0">
+      <div style="display:flex;gap:4px;align-items:flex-end;height:160px;padding:8px 0 0">
         ${chartBars}
       </div>
-      <div id="salesChartLine" style="display:none;padding:6px 0 0">
-        ${salesLineChart}
-        <div style="display:flex;gap:16px;margin-top:6px;font-size:10px;color:var(--ink-40)">
-          <span>— <span style="color:var(--green)">Actual Sales</span></span>
-          <span>- - <span style="color:var(--gold-dk)">Monthly Goal</span></span>
-        </div>
-      </div>
-      ${yearTotals.length > 1 ? '<div id="salesChartYearly" style="display:none;padding:6px 0 0">' + yearLineChart + '</div>' : '<div id="salesChartYearly" style="display:none"></div>'}
     </div>`;
 }
 
@@ -8176,375 +6601,12 @@ async function launchDemoMode() {
 /* ══════════════════════════════════════════════════
    AUTO-CONNECT ON LOAD
 ══════════════════════════════════════════════════ */
-/* ══════════════════════════════════════════════════
-   PIN LOCK + SESSION SECURITY
-══════════════════════════════════════════════════ */
-(function() {
-  'use strict';
-
-  // ── Config ─────────────────────────────────────────────────────────────
-  const PIN_KEY         = 'ea_pin_hash';    // localStorage key for hashed PIN
-  const PIN_LEN_KEY     = 'ea_pin_len';     // 4 or 6 digit PIN
-  const SESSION_KEY     = 'ea_session';     // sessionStorage key for auth flag
-  const LOCK_AFTER_MS   = 15 * 60 * 1000;  // 15 min inactivity → lock
-  const WARN_BEFORE_MS  = 60 * 1000;        // show warning 60s before lock
-  const LOCKOUT_KEY     = 'ea_lockout';
-  const ATTEMPT_KEY     = 'ea_attempts';
-  const MAX_ATTEMPTS    = 5;
-  const LOCKOUT_MS      = 5 * 60 * 1000;   // 5 min lockout after 5 wrong PINs
-
-  // ── Device-unique salt (generated once, stored in localStorage) ──────
-  function getDeviceSalt() {
-    let salt = localStorage.getItem('ea_device_salt');
-    if (!salt) {
-      // Generate a cryptographically random 32-byte salt
-      const arr = new Uint8Array(32);
-      crypto.getRandomValues(arr);
-      salt = Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
-      localStorage.setItem('ea_device_salt', salt);
-    }
-    return salt;
-  }
-
-  // ── PIN length (4 or 6 digits) ───────────────────────────────────────
-  function getPinLength() { return parseInt(localStorage.getItem(PIN_LEN_KEY)||'4', 10); }
-  function setPinLength(n) { localStorage.setItem(PIN_LEN_KEY, String(n)); }
-
-  // ── SHA-256 hash with device salt ───────────────────────────────────
-  async function hashPin(pin) {
-    const salt = getDeviceSalt();
-    const buf = await crypto.subtle.digest('SHA-256',
-      new TextEncoder().encode(salt + pin + 'ea-2026'));
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
-
-  // ── localStorage helpers ──────────────────────────────────────────────
-  function getStoredHash() { return localStorage.getItem(PIN_KEY) || ''; }
-  function setStoredHash(h) { localStorage.setItem(PIN_KEY, h); }
-  function isAuthenticated() { return sessionStorage.getItem(SESSION_KEY) === '1'; }
-  function setAuthenticated() { sessionStorage.setItem(SESSION_KEY, '1'); }
-  function clearAuth() { sessionStorage.removeItem(SESSION_KEY); }
-
-  function getAttempts() { return JSON.parse(localStorage.getItem(ATTEMPT_KEY)||'{"count":0,"ts":0}'); }
-  function setAttempts(a) { localStorage.setItem(ATTEMPT_KEY, JSON.stringify(a)); }
-  function getLockout() { return Number(localStorage.getItem(LOCKOUT_KEY)||'0'); }
-  function setLockout(ts) { localStorage.setItem(LOCKOUT_KEY, String(ts)); }
-
-  // ── PIN entry state ───────────────────────────────────────────────────
-  let _pinBuffer   = '';
-  let _pinMode     = 'enter';   // 'enter' | 'setup' | 'confirm' | 'verify-old'
-  let _pinConfirm  = '';
-  let _pinLength   = 4;         // current required PIN length
-  let _visibilityTimer = null;  // timer for lock-on-tab-hide
-  let _inactTimer  = null;
-  let _warnTimer   = null;
-  let _countdownInterval = null;
-
-  // ── DOM helpers ───────────────────────────────────────────────────────
-  const overlay   = () => document.getElementById('pinOverlay');
-  const dots      = () => Array.from(document.getElementById('pinDots')?.querySelectorAll('.pin-dot') || []);
-  const errEl     = () => document.getElementById('pinError');
-  const subEl     = () => document.getElementById('pinSubtitle');
-  const setupEl   = () => document.getElementById('pinSetupMsg');
-  const lockoutEl = () => document.getElementById('pinLockout');
-  const banner    = () => document.getElementById('lockBanner');
-  const countdown = () => document.getElementById('lockCountdown');
-
-  function updateDots(len) {
-    dots().forEach((d,i) => {
-      d.classList.toggle('filled', i < len);
-      d.classList.remove('shake');
-    });
-  }
-
-  function shakeDots() {
-    dots().forEach(d => { d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake'); });
-  }
-
-  function rebuildDots() {
-    const n = _pinLength;
-    const container = document.getElementById('pinDots');
-    if (!container) return;
-    container.innerHTML = '';
-    for (let i=0; i<n; i++) {
-      const d = document.createElement('div');
-      d.className = 'pin-dot';
-      container.appendChild(d);
-    }
-  }
-
-  function showOverlay(mode) {
-    // Only show overlay if lock is enabled OR user explicitly opened from Security page
-    const lockEnabled = localStorage.getItem('ea_pin_lock_enabled') === 'true';
-    const fromSecurity = (mode === 'setup' || mode === 'verify-old') && 
-                         document.getElementById('page-security')?.classList.contains('active');
-    if (!lockEnabled && !fromSecurity && mode !== 'setup' && mode !== 'confirm' && mode !== 'verify-old') {
-      return; // Don't show PIN overlay when lock is disabled
-    }
-    _pinMode = mode; _pinBuffer = '';
-    _pinLength = (mode === 'setup') ? getPinLength() : getPinLength();
-    rebuildDots();
-    updateDots(0); errEl().textContent = '';
-    lockoutEl().style.display = 'none';
-    if (mode === 'setup') {
-      const n = getPinLength();
-      subEl().textContent = `Create a ${n}-digit PIN`;
-      setupEl().style.display = 'block';
-    } else if (mode === 'confirm') {
-      const n = getPinLength();
-      subEl().textContent = `Confirm your ${n}-digit PIN`;
-      setupEl().style.display = 'none';
-    } else if (mode === 'verify-old') {
-      subEl().textContent = 'Enter your current PIN to change it';
-      setupEl().style.display = 'none';
-    } else {
-      subEl().textContent = 'Enter your PIN to continue';
-      setupEl().style.display = 'none';
-    }
-    const el = overlay();
-    if (el) { el.classList.add('visible'); }
-    document.body.style.overflow = 'hidden';
-  }
-
-  function hideOverlay() {
-    const el = overlay();
-    if (el) { el.classList.remove('visible'); }
-    document.body.style.overflow = '';
-  }
-
-  // ── Lockout check ─────────────────────────────────────────────────────
-  function checkLockout() {
-    const lo = getLockout();
-    if (!lo) return false;
-    const remaining = lo + LOCKOUT_MS - Date.now();
-    if (remaining <= 0) { setLockout(0); setAttempts({count:0,ts:0}); return false; }
-    lockoutEl().textContent = `Too many wrong attempts. Try again in ${Math.ceil(remaining/60000)} min.`;
-    lockoutEl().style.display = 'block';
-    return true;
-  }
-
-  // ── Keyboard support ─────────────────────────────────────────────────
-  function handleKeydown(e) {
-    if (!overlay()?.classList.contains('visible')) return;
-    if (e.key >= '0' && e.key <= '9') pinPress(e.key);
-    if (e.key === 'Backspace') pinBackspace();
-  }
-
-  // ── PIN press ─────────────────────────────────────────────────────────
-  window.pinPress = function(digit) {
-    if (checkLockout()) return;
-    if (_pinBuffer.length >= _pinLength) return;
-    _pinBuffer += digit;
-    updateDots(_pinBuffer.length);
-    if (_pinBuffer.length === _pinLength) {
-      setTimeout(() => handlePinComplete(_pinBuffer), 120);
-    }
-  };
-
-  window.pinBackspace = function() {
-    if (_pinBuffer.length > 0) { _pinBuffer = _pinBuffer.slice(0,-1); updateDots(_pinBuffer.length); }
-  };
-
-  async function handlePinComplete(pin) {
-    const storedHash = getStoredHash();
-
-    if (_pinMode === 'setup') {
-      _pinConfirm = pin; _pinBuffer = ''; updateDots(0);
-      showOverlay('confirm');
-      return;
-    }
-
-    if (_pinMode === 'confirm') {
-      if (pin !== _pinConfirm) {
-        errEl().textContent = "PINs don't match — try again";
-        shakeDots(); _pinBuffer=''; updateDots(0);
-        showOverlay('setup');
-        return;
-      }
-      const hash = await hashPin(pin);
-      setStoredHash(hash);
-      setAuthenticated();
-      setAttempts({count:0,ts:0});
-      hideOverlay();
-      startInactivityTimer();
-      auditLog('PIN_SET', `${getPinLength()}-digit PIN configured`);
-      if (localStorage.getItem('ea_pin_lock_pending') === '1') {
-        localStorage.setItem('ea_pin_lock_enabled', 'true');
-        localStorage.removeItem('ea_pin_lock_pending');
-        auditLog('PIN_LOCK_ENABLED', 'auto-enabled after PIN setup');
-        toast('🔐 PIN set & lock enabled — active on next page load', 'success');
-      } else {
-        toast('🔐 PIN set successfully', 'success');
-      }
-      return;
-    }
-
-    if (_pinMode === 'verify-old') {
-      // Verify current PIN before allowing change
-      const inputHash = await hashPin(pin);
-      if (inputHash !== storedHash) {
-        shakeDots(); _pinBuffer=''; updateDots(0);
-        errEl().textContent = 'Wrong PIN — change cancelled';
-        setTimeout(() => hideOverlay(), 1500);
-        return;
-      }
-      // Old PIN correct → proceed to setup new
-      _pinBuffer = ''; updateDots(0);
-      showOverlay('setup');
-      return;
-    }
-
-    // ── Normal enter mode ──
-    if (!storedHash) { showOverlay('setup'); return; }
-    const inputHash = await hashPin(pin);
-    if (inputHash === storedHash) {
-      setAuthenticated();
-      setAttempts({count:0,ts:0}); setLockout(0);
-      hideOverlay();
-      startInactivityTimer();
-      auditLog('LOGIN_SUCCESS');
-      errEl().textContent = '';
-    } else {
-      shakeDots(); _pinBuffer=''; updateDots(0);
-      const a = getAttempts();
-      const newCount = a.count + 1;
-      setAttempts({count: newCount, ts: Date.now()});
-      auditLog('LOGIN_FAILED', `attempt ${newCount}/${MAX_ATTEMPTS}`);
-      if (newCount >= MAX_ATTEMPTS) {
-        setLockout(Date.now());
-        auditLog('ACCOUNT_LOCKED', `${MAX_ATTEMPTS} failed attempts`);
-        checkLockout();
-        errEl().textContent = '';
-      } else {
-        errEl().textContent = `Wrong PIN (${MAX_ATTEMPTS - newCount} attempt${MAX_ATTEMPTS-newCount!==1?'s':''} left)`;
-      }
-    }
-  }
-
-  // ── Inactivity lock ───────────────────────────────────────────────────
-  function startInactivityTimer() {
-    clearTimeout(_inactTimer); clearTimeout(_warnTimer);
-    clearInterval(_countdownInterval);
-    if (banner()) banner().classList.remove('visible');
-
-    _warnTimer = setTimeout(() => {
-      if (!isAuthenticated()) return;
-      let secs = Math.round(WARN_BEFORE_MS / 1000);
-      if (banner()) { banner().classList.add('visible'); if(countdown()) countdown().textContent = secs; }
-      _countdownInterval = setInterval(() => {
-        secs--;
-        if (countdown()) countdown().textContent = secs;
-        if (secs <= 0) { clearInterval(_countdownInterval); }
-      }, 1000);
-    }, LOCK_AFTER_MS - WARN_BEFORE_MS);
-
-    _inactTimer = setTimeout(() => {
-      clearInterval(_countdownInterval);
-      if (banner()) banner().classList.remove('visible');
-      lockApp();
-    }, LOCK_AFTER_MS);
-  }
-
-  function lockApp() {
-    const lockEnabled = localStorage.getItem('ea_pin_lock_enabled') === 'true';
-    if (!lockEnabled) return; // Don't lock when PIN is disabled
-    auditLog('APP_LOCKED', 'session locked');
-    clearAuth();
-    showOverlay('enter');
-    if (banner()) banner().classList.remove('visible');
-    clearTimeout(_inactTimer); clearTimeout(_warnTimer);
-    clearInterval(_countdownInterval);
-    toast('🔒 Session locked due to inactivity', 'error');
-  }
-
-  window.resetInactivity = function() {
-    if (banner()) banner().classList.remove('visible');
-    clearInterval(_countdownInterval);
-    startInactivityTimer();
-  };
-
-  // ── Activity listeners ────────────────────────────────────────────────
-  // PIN auth disabled — inactivity lock removed
-
-  // ── Change PIN button (added to Settings area) ────────────────────────
-  window.changePIN = function() {
-    const hasPin = !!getStoredHash();
-    if (hasPin) {
-      showOverlay('verify-old');
-    } else {
-      showOverlay('setup');
-    }
-  };
-
-  window.enablePinLock = function() {
-    const hasPin = !!getStoredHash();
-    if (!hasPin) {
-      // No PIN set yet — set one first
-      showOverlay('setup');
-      // After setup completes, enable lock
-      const origHide = hideOverlay;
-      // flag to enable after next successful setup
-      localStorage.setItem('ea_pin_lock_pending', '1');
-    } else {
-      localStorage.setItem('ea_pin_lock_enabled', 'true');
-      localStorage.removeItem('ea_pin_lock_pending');
-      toast('🔐 PIN lock enabled — active on next page load', 'success');
-      auditLog('PIN_LOCK_ENABLED');
-      if (typeof renderSecurity === 'function') renderSecurity();
-    }
-  };
-
-  window.disablePinLock = function() {
-    localStorage.setItem('ea_pin_lock_enabled', 'false');
-    toast('🔓 PIN lock disabled — app will open freely', 'success');
-    auditLog('PIN_LOCK_DISABLED');
-    if (typeof renderSecurity === 'function') renderSecurity();
-  };
-
-  window.switchPinLength = function(n) {
-    const hasPin = !!getStoredHash();
-    if (n !== 4 && n !== 6) return;
-    setPinLength(n);
-    _pinLength = n;
-    if (hasPin) {
-      // Reset PIN — need to re-enroll with new length
-      toast(`Switching to ${n}-digit PIN — please set your new PIN`, 'success');
-      clearAuth();
-      localStorage.removeItem(PIN_KEY);
-      showOverlay('setup');
-    } else {
-      toast(`PIN length set to ${n} digits`, 'success');
-    }
-  };
-
-  // ── Init ──────────────────────────────────────────────────────────────
-  document.addEventListener('keydown', handleKeydown);
-
-  document.addEventListener('DOMContentLoaded', () => {
-    // PIN lock disabled by default — always open freely
-    // User can re-enable from Security page if desired
-    localStorage.setItem('ea_pin_lock_enabled', 'false');
-    setAuthenticated();
-    hideOverlay();
-  });
-
-  // PIN auth disabled — visibility lock removed
-
-  // ── Expose lock for manual use ────────────────────────────────────────
-  window.lockNow = function() { lockApp(); };
-
-})();
-
 document.addEventListener('DOMContentLoaded', async () => {
-  // Note: Supabase anon key is public by design — restrict access via RLS policies
-  // and domain allowlisting in Supabase dashboard > API Settings
-  const _a="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6",_b="InJzb3VrZ3BhcXNnc2RmdndyY2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDYzM",_c="TIsImV4cCI6MjA4ODU4MjMxMn0.akKmWJfNncLA-Fxq38gDCXvSuIk_L95zdj1p0_ylqAY";
-  const SB_URL = ["https://","rsoukgpaqsgsdfvwrceu",".supabase.co"].join("");
-  const SB_KEY = _a+_b+_c;
+  const SB_URL = "https://rsoukgpaqsgsdfvwrceu.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzb3VrZ3BhcXNnc2RmdndyY2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDYzMTIsImV4cCI6MjA4ODU4MjMxMn0.akKmWJfNncLA-Fxq38gDCXvSuIk_L95zdj1p0_ylqAY";
 
   initDropdowns();
   document.getElementById('configScreen').style.display = 'flex'; // show loading state
-  document.getElementById('cfg-loading-msg').textContent = 'Connecting to database… (auto Demo Mode in ~15s)';
 
   /* ── helper: diagnose error and return {msg, steps} ── */
   function diagnose(e) {
@@ -8634,7 +6696,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       diag.steps.map(s => '<div style="margin-bottom:4px">→ ' + s + '</div>').join('');
 
     // Auto-countdown to demo mode
-    let secs = 5;
+    let secs = 12;
     const countEl = document.getElementById('cfg-countdown');
     const tick = () => {
       if (secs <= 0) { launchDemoMode(); return; }
@@ -8667,8 +6729,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ── Connection with retry (handles Supabase cold-start / free-tier sleep) ── */
-  const RETRIES = 2;
-  const DELAYS  = [0, 2000]; // immediate, 2s
+  const RETRIES = 3;
+  const DELAYS  = [0, 3000, 8000]; // immediate, 3s, 8s
   let lastErr = null;
 
   for (let attempt = 0; attempt < RETRIES; attempt++) {
@@ -8677,7 +6739,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const msgEl = document.getElementById('cfg-loading-msg');
       if (msgEl) {
         msgEl.textContent = attempt === 1
-          ? 'Connecting to database… switching to Demo Mode if unreachable.' 
+          ? 'Waking up database… (Supabase free tier may take 30s)' 
           : 'Retrying connection (' + attempt + '/' + (RETRIES-1) + ')…';
       }
       await new Promise(r => setTimeout(r, wait));
@@ -8685,9 +6747,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       const client = window.supabase.createClient(SB_URL, SB_KEY);
-      // Use Promise.race with a 6s timeout per attempt
+      // Use Promise.race with a 15s timeout per attempt
       const testQuery = client.from('opportunities').select('id').limit(1);
-      const timeout   = new Promise((_, rej) => setTimeout(() => rej(new Error('Request timed out after 6s')), 6000));
+      const timeout   = new Promise((_, rej) => setTimeout(() => rej(new Error('Request timed out after 15s')), 15000));
       const { data, error } = await Promise.race([testQuery, timeout]);
       if (error) throw Object.assign(new Error(error.message), { code: error.code });
       // ✅ Success
