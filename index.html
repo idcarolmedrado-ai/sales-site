@@ -964,7 +964,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
           <div class="field"><label data-i18n="lbl_prob">Probability (%)</label>
             <select id="f-probability" onchange="onFieldChange()"><option value="">Select…</option></select></div>
           <div class="field"><label data-i18n="lbl_est">Estimate ($)</label>
-            <input id="f-estimate" type="number" min="0" step="100" placeholder="15000" oninput="onFieldChange()"></div>
+            <input id="f-estimate" type="number" min="0" step="100" placeholder="15000" oninput="onFieldChange();updateTotalSaleDisplay()">
+            <div id="totalSaleDisplay" style="display:none;font-size:11px;color:var(--gold);margin-top:4px;font-weight:700"></div></div>
           <div class="field"><label data-i18n="lbl_followup">Follow-Up Date</label>
             <input id="f-followUpDate" type="date" onchange="onFieldChange()"></div>
           <div class="field"><label data-i18n="lbl_closedate">Expected Close Date</label>
@@ -982,9 +983,13 @@ tbody td { padding: 11px 12px; font-size: 13px; }
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
           <div class="field"><label data-i18n="lbl_gc">GoldComp?</label>
-            <select id="f-goldComp">
+            <select id="f-goldComp" onchange="toggleGoldCompValue()">
               <option value="">—</option><option>Yes</option><option>No</option>
-            </select></div>
+            </select>
+          <div class="field" id="goldCompValueField" style="display:none">
+            <label>GoldComp Value ($)</label>
+            <input type="number" id="f-goldCompValue" min="0" step="100" placeholder="0" oninput="updateTotalSaleDisplay()">
+          </div></div>
         </div>
       </div>
 
@@ -1952,7 +1957,7 @@ Interior Design Consultant | Ethan Allen`
     if (!dateStr) return null;
     const m = parseInt((dateStr||'').split('-')[1], 10);
     if (!m || isNaN(m)) return null;
-    // EA fiscal year: Q1=Jul-Sep, Q2=Oct-Dec, Q3=Jan-Mar, Q4=Apr-Jun
+    // EA fiscal: Q1=Jul-Sep, Q2=Oct-Dec, Q3=Jan-Mar, Q4=Apr-Jun
     if (m >= 7 && m <= 9)  return 'Q1';
     if (m >= 10)           return 'Q2';
     if (m <= 3)            return 'Q3';
@@ -2341,7 +2346,7 @@ const DB = {
       issueFlag:      row.issueFlag      || '',
       issueType:      row.issueType      || '',
       issueResult:    row.issueResult    || '',
-      goldCompValue:  Number(row.goldCompValue) || 0,
+      goldCompValue: Number(row.goldCompValue) || 0,
     };
   },
 
@@ -2374,7 +2379,7 @@ const DB = {
       issueFlag:       o.issueFlag     || null,
       issueType:       o.issueType     || null,
       issueResult:     o.issueResult   || null,
-      goldCompValue:   Number(o.goldCompValue) || 0,
+      goldCompValue:  Number(o.goldCompValue) || 0,
     };
   },
 
@@ -2464,6 +2469,94 @@ async function renderPage(page) {
     case 'tests': break;
   }
 }
+
+/* ══════════════════════════════════════════════════
+   HELPERS: TASK / ACTIVE / MAIL COMPLETION
+══════════════════════════════════════════════════ */
+function getCompletedTasks()    { try{return JSON.parse(localStorage.getItem('ea_completed_tasks')||'[]');}catch(e){return[];} }
+function saveCompletedTasks(a)  { localStorage.setItem('ea_completed_tasks',JSON.stringify(a)); }
+function markTaskComplete(id)   { var d=getCompletedTasks(); if(!d.includes(id)){d.push(id);saveCompletedTasks(d);} renderDashboard(); }
+function clearCompletedTasks()  { localStorage.removeItem('ea_completed_tasks'); renderDashboard(); }
+function getCompletedActives()  { try{return JSON.parse(localStorage.getItem('ea_completed_actives')||'[]');}catch(e){return[];} }
+function saveCompletedActives(a){ localStorage.setItem('ea_completed_actives',JSON.stringify(a)); }
+function markActiveComplete(id) { var d=getCompletedActives(); if(!d.includes(id)){d.push(id);saveCompletedActives(d);} toast('Marked complete','success'); renderActive(); }
+async function deleteActive(id) { if(!confirm('Delete this record?')) return; await DB.delete(id); toast('Deleted','success'); renderActive(); }
+function restoreActive(id)      { var d=getCompletedActives(); saveCompletedActives(d.filter(function(x){return x!==id;})); renderActive(); }
+function getSentMails()         { try{return JSON.parse(localStorage.getItem('ea_mail_sent')||'[]');}catch(e){return[];} }
+function saveSentMails(a)       { localStorage.setItem('ea_mail_sent',JSON.stringify(a)); }
+function clearSentMails()       { if(!confirm('Clear sent list?')) return; localStorage.removeItem('ea_mail_sent'); renderMailing(); }
+async function markMailSent(oppId) {
+  var opps=await DB.getAll(), o=opps.find(function(x){return x.id===oppId;});
+  if (!o) { toast('Contact not found','error'); return; }
+  var sent=getSentMails();
+  if (sent.find(function(s){return s.oppId===oppId;})) { toast('Already marked sent','error'); return; }
+  var em=BL.generatePersuasionEmail(o);
+  sent.push({oppId:oppId,name:(o.firstName+' '+o.lastName).trim(),email:o.email||'',subject:em.subject,sentAt:new Date().toISOString()});
+  saveSentMails(sent); toast('Marked as sent','success'); renderMailing();
+}
+function _buildSentBox() {
+  var sent=getSentMails(); if(!sent.length) return '';
+  var rows=[].concat(sent).reverse().map(function(s){
+    var dt=new Date(s.sentAt);
+    var dts=dt.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--ink-75)">'
+      +'<span style="color:var(--green)">✓</span>'
+      +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12px;color:var(--ink-20)">'+esc(s.name)+'</div>'
+      +'<div style="font-size:10px;color:var(--ink-40);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(s.subject||'')+'</div></div>'
+      +'<span style="font-size:10px;color:var(--ink-50);white-space:nowrap">'+dts+'</span></div>';
+  }).join('');
+  return '<div style="grid-column:1/-1;margin-top:20px;background:var(--ink-85);border:1px solid rgba(76,175,125,.25);border-radius:12px;overflow:hidden">'
+    +'<div style="padding:12px 16px;background:rgba(76,175,125,.07);border-bottom:1px solid rgba(76,175,125,.2);display:flex;align-items:center;gap:10px">'
+    +'<span>📤</span><span style="font-family:var(--font-display);font-size:14px;color:var(--green);font-weight:600">Emails Sent ('+sent.length+')</span>'
+    +'<button onclick="clearSentMails()" style="margin-left:auto;background:transparent;border:1px solid var(--ink-50);color:var(--ink-40);border-radius:5px;font-size:10px;padding:3px 10px;cursor:pointer">Clear</button>'
+    +'</div>'+rows+'</div>';
+}
+function toggleGoldCompValue() {
+  var gc=document.getElementById('f-goldComp')&&document.getElementById('f-goldComp').value;
+  var fld=document.getElementById('goldCompValueField');
+  if(fld) fld.style.display=gc==='Yes'?'':'none';
+  if(gc!=='Yes'){var inp=document.getElementById('f-goldCompValue');if(inp)inp.value='';}
+  updateTotalSaleDisplay();
+}
+function updateTotalSaleDisplay() {
+  var prod=Number(document.getElementById('f-estimate')&&document.getElementById('f-estimate').value)||0;
+  var gc=document.getElementById('f-goldComp')&&document.getElementById('f-goldComp').value;
+  var gcv=gc==='Yes'?(Number(document.getElementById('f-goldCompValue')&&document.getElementById('f-goldCompValue').value)||0):0;
+  var disp=document.getElementById('totalSaleDisplay');
+  if(!disp) return;
+  if(gcv>0){disp.style.display='';disp.textContent='Total: '+fmt$(prod+gcv)+' (Product: '+fmt$(prod)+' + GoldComp: '+fmt$(gcv)+')';}
+  else{disp.style.display='none';}
+}
+function _buildContactRows(opps,sentIds){
+  return opps.filter(function(o){return o.firstName||o.lastName;})
+    .sort(function(a,b){return(a.lastName||'').localeCompare(b.lastName||'');})
+    .map(function(o){return{
+      'First Name':o.firstName||'','Last Name':o.lastName||'','Email':o.email||'',
+      'Phone':o.phone||'','Address':o.address||'','Project':o.projectType||'',
+      'Stage':o.saleMade==='Yes'?'Sold':(o.stage||''),'Estimate':Number(o.estimate)||0,
+      'Customer #':o.customerNumber||'','Email Sent':sentIds.has(o.id)?'Yes':'No',
+      'GoldComp':o.goldComp||'No','GoldComp Value':Number(o.goldCompValue)||0};});
+}
+async function exportContactsCSV(){
+  var opps=await DB.getAll(),sentIds=new Set(getSentMails().map(function(s){return s.oppId;}));
+  var rows=_buildContactRows(opps,sentIds);
+  if(!rows.length){toast('No contacts','error');return;}
+  var hs=Object.keys(rows[0]);
+  var ce=function(v){var s=String(v==null?'':v);return(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)?'"'+s.replace(/"/g,'""')+'"':s;};
+  var csv=[hs.map(ce).join(',')].concat(rows.map(function(r){return hs.map(function(k){return ce(r[k]);}).join(',');})).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='EA_Contacts_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(a.href);
+  toast('CSV exported','success');
+}
+function filterContactList(q){
+  var tbody=document.getElementById('contactListBody'),cntEl=document.getElementById('contactListCount');
+  if(!tbody) return;
+  var qry=(q||'').toLowerCase().trim();
+  var rows=Array.from(tbody.querySelectorAll('tr')),vis=0;
+  rows.forEach(function(tr){var show=!qry||tr.textContent.toLowerCase().indexOf(qry)>=0;tr.style.display=show?'':'none';if(show)vis++;});
+  if(cntEl) cntEl.textContent='Showing '+vis+' of '+rows.length+' contacts';
+}
+
 
 /* ══════════════════════════════════════════════════
    RENDER: DASHBOARD
@@ -2904,7 +2997,7 @@ function getPost30ByOppId(oppId) { return getPost30Records().find(r => r.oppId =
 function getMileageRecords() { return Store.load('mileage'); }
 function saveMileageRecord(rec) { Store.upsert('mileage', rec, 'id'); }
 function deleteMileageRecord(id) { Store.remove('mileage', id, 'id'); }
-// uid() defined above
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 
 /* ════════════════════════════════════════════════════
@@ -2922,7 +3015,7 @@ async function renderPost30() {
   // For each sold opp, get or create a post30 record
   const rows = sold.map(o => {
     const rec = records.find(r => r.oppId === o.id) || { oppId: o.id, deliveryDate: '', contactReason: '', newOpportunity: '', notes: '' };
-    const delivDate   = rec.deliveryDate || '';
+    const delivDate   = o.deliveryDate || rec.deliveryDate || '';
     const followup30  = delivDate ? offsetDate(delivDate, 30) : '';
     const daysToFU    = followup30 ? daysDiff(today, followup30) : null;
     return { opp: o, rec, delivDate, followup30, daysToFU };
@@ -3032,7 +3125,8 @@ async function renderPost60() {
   const rows = eligible.map(rec => {
     const opp = opps.find(o => o.id === rec.oppId);
     if (!opp) return null;
-    const followup60 = offsetDate(rec.deliveryDate, 60);
+    const _dv60 = opp.deliveryDate || rec.deliveryDate || '';
+    const followup60 = _dv60 ? offsetDate(_dv60, 60) : '';
     const daysToFU   = daysDiff(today, followup60);
     // Post60 has its own contact/notes — stored as rec.p60_*
     return { opp, rec, followup60, daysToFU };
@@ -3133,6 +3227,22 @@ async function renderMileage() {
   const MS = window._mileState;
 
   let allRecs = getMileageRecords();
+  // Auto-sync mileage from home-call opportunities
+  (await DB.getAll()).filter(function(o){return o.homeCall==='Yes'&&o.homeCallDate;}).forEach(function(o){
+    var rec=allRecs.find(function(r){return r.sourceOppId===o.id;});
+    var nm=(o.firstName+' '+o.lastName).trim();
+    if(!rec){
+      rec={id:uid(),sourceOppId:o.id,date:o.homeCallDate,clientName:nm,address:o.address||'',
+        leg1:'',leg2:'',leg3:'',leg4:'',leg5:'',commute:'',tolls:'',notes:'',purpose:'Home Call'};
+      allRecs.push(rec); saveMileageRecord(rec);
+    } else {
+      var changed=false;
+      if(rec.date!==o.homeCallDate){rec.date=o.homeCallDate;changed=true;}
+      if(rec.clientName!==nm){rec.clientName=nm;changed=true;}
+      if(o.address&&rec.address!==o.address){rec.address=o.address;changed=true;}
+      if(changed) saveMileageRecord(rec);
+    }
+  });
 
   /* ── Build month groups ── */
   const grouped = {};  // key: "YYYY-MM"
@@ -3534,7 +3644,7 @@ function formatDateShort(dateStr) {
   const [y,m,d] = dateStr.split('-').map(Number);
   return new Date(y,m-1,d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
-// esc() defined above
+function esc(str) { return String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 /* ── Mailing tone policy: positive-only selling ──
    No harsh, negative, or disrespectful language.
@@ -3574,7 +3684,8 @@ async function renderMailing() {
      <button class="filter-chip ${state.mailFilter==='sold'?'active':''}" onclick="setMailFilter('sold')">Sold (${all.filter(o=>o.saleMade==='Yes').length})</button>
      <button class="filter-chip ${state.mailFilter==='nurture'?'active':''}" onclick="setMailFilter('nurture')">Nurture (${all.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)<50).length})</button>`;
 
-  let list = all;
+  const _sentIds = new Set(getSentMails().map(function(s){return s.oppId;}));
+  let list = all.filter(function(o){return !_sentIds.has(o.id);});
   if (state.mailFilter==='overdue') list = list.filter(o=>BL.isOverdue(o));
   if (state.mailFilter==='high')    list = list.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)>=75);
   if (state.mailFilter==='sold')    list = list.filter(o=>o.saleMade==='Yes');
@@ -3633,153 +3744,51 @@ async function renderMailing() {
         <button class="mail-action-btn preview" onclick="openEmailPreview('${o.id}')">
           Preview Draft
         </button>
+        <button class="mail-action-btn" onclick="event.stopPropagation();markMailSent('${o.id}')" style="background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.35);color:var(--green)">
+          &#10003; Mark Sent
+        </button>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + _buildSentBox();
 
-  // ── Contact List + Export ─────────────────────────────────────────────
-  const _allOpps   = await DB.getAll();
-  const _sentIds   = new Set((JSON.parse(localStorage.getItem('ea_mail_sent')||'[]')).map(s => s.oppId));
-  const _contacts  = _allOpps.filter(o => o.firstName || o.lastName)
-    .sort((a,b) => (a.lastName||'').localeCompare(b.lastName||''));
-
-  const _cRows = _contacts.map((o,i) => {
-    const isSent = _sentIds.has(o.id);
-    const isSold = o.saleMade === 'Yes';
-    const stageCol = isSold ? 'var(--green)' : o.stage === 'Canceled' ? 'var(--ink-50)' : 'var(--gold)';
-    return `<tr style="border-bottom:1px solid var(--ink-75);${isSent?'background:rgba(76,175,125,.06)':''}">
-      <td style="padding:7px 8px;font-size:11px;color:var(--ink-50);text-align:center">${i+1}</td>
-      <td style="padding:7px 10px"><div style="font-weight:700;font-size:12px;color:var(--ink-10)">${esc(o.lastName)}, ${esc(o.firstName)}</div></td>
-      <td style="padding:7px 10px;font-size:11px">${o.email?`<a href="mailto:${esc(o.email)}" style="color:var(--gold)">${esc(o.email)}</a>`:'—'}</td>
-      <td style="padding:7px 10px;font-size:11px;color:var(--ink-30)">${esc(o.phone)||'—'}</td>
-      <td style="padding:7px 10px;font-size:11px;color:var(--ink-40);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.address)||'—'}</td>
-      <td style="padding:7px 10px"><span style="font-size:10px;font-weight:700;color:${stageCol}">${isSold?'SOLD':esc(o.stage||'—').toUpperCase()}</span></td>
-      <td style="padding:7px 10px;font-size:11px;color:var(--ink-40)">${esc(o.projectType)||'—'}</td>
-      <td style="padding:7px 8px;text-align:center">${isSent?'<span style="font-size:10px;background:rgba(76,175,125,.18);color:var(--green);border-radius:4px;padding:2px 6px;font-weight:700">✓</span>':'—'}</td>
-    </tr>`;
-  }).join('');
-
-  let _lw = document.getElementById('contactListWrapper');
-  if (!_lw) { _lw = document.createElement('div'); _lw.id = 'contactListWrapper';
-    document.getElementById('mailingGrid')?.parentNode.appendChild(_lw); }
-  _lw.innerHTML = `<div style="margin-top:28px;background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;overflow:hidden">
-    <div style="padding:14px 18px;border-bottom:1px solid var(--ink-75);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div style="flex:1"><div style="font-family:var(--font-display);font-size:14px;color:var(--gold);font-weight:600">📇 CONTACT LIST</div>
-        <div style="font-size:11px;color:var(--ink-50);margin-top:2px">${_contacts.length} contacts &nbsp;·&nbsp; <span style="color:var(--green)">${_sentIds.size} emailed</span></div></div>
-      <button onclick="exportContactsCSV()" style="padding:7px 14px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:7px;color:var(--gold);font-size:11px;font-weight:600;cursor:pointer">⬇ CSV</button>
-      <button onclick="exportContactsExcel()" style="padding:7px 14px;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.3);border-radius:7px;color:var(--green);font-size:11px;font-weight:600;cursor:pointer">⬇ Excel</button>
-    </div>
-    <div style="padding:8px 14px;border-bottom:1px solid var(--ink-75)">
-      <input id="contactListSearch" type="text" maxlength="100" placeholder="Search name, email, phone…"
-        style="width:100%;background:var(--ink-80);border:1px solid var(--ink-65);border-radius:6px;padding:6px 10px;color:var(--ink-10);font-size:12px;box-sizing:border-box"
-        oninput="filterContactList(this.value)">
-    </div>
-    <div style="overflow-x:auto;max-height:440px;overflow-y:auto">
-      <table style="width:100%;border-collapse:collapse">
-        <thead><tr style="background:var(--ink-80);position:sticky;top:0">
-          <th style="padding:8px;font-size:10px;color:var(--ink-50);text-align:center">#</th>
-          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">NAME</th>
-          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">EMAIL</th>
-          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">PHONE</th>
-          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">ADDRESS</th>
-          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">STAGE</th>
-          <th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">PROJECT</th>
-          <th style="padding:8px;font-size:10px;color:var(--ink-50);text-align:center">EMAILED</th>
-        </tr></thead>
-        <tbody id="contactListBody">${_cRows}</tbody>
-      </table>
-    </div>
-    <div id="contactListCount" style="padding:8px 14px;font-size:11px;color:var(--ink-50);border-top:1px solid var(--ink-75);text-align:right">Showing ${_contacts.length} contacts</div>
-  </div>`;
-
+  // Contact list at bottom
+  (async function() {
+    var _co=(await DB.getAll()).filter(function(o){return o.firstName||o.lastName;}).sort(function(a,b){return(a.lastName||'').localeCompare(b.lastName||'');});
+    var _si=new Set(getSentMails().map(function(s){return s.oppId;}));
+    var _cr=_co.map(function(o,idx){
+      var sent=_si.has(o.id),sold=o.saleMade==='Yes';
+      return '<tr style="border-bottom:1px solid var(--ink-75)">'   
+        +'<td style="padding:7px 8px;font-size:11px;color:var(--ink-50);text-align:center">'+(idx+1)+'</td>'
+        +'<td style="padding:7px 10px;font-weight:700;font-size:12px">'+esc(o.lastName)+', '+esc(o.firstName)+'</td>'
+        +'<td style="padding:7px 10px;font-size:11px">'+(o.email?'<a href="mailto:'+esc(o.email)+'" style="color:var(--gold)">'+esc(o.email)+'</a>':'—')+'</td>'
+        +'<td style="padding:7px 10px;font-size:11px;color:var(--ink-30)">'+(esc(o.phone)||'—')+'</td>'
+        +'<td style="padding:7px 10px"><span style="font-size:10px;font-weight:700;color:'+(sold?'var(--green)':'var(--gold)')+'">'+(sold?'SOLD':esc(o.stage||'—').toUpperCase())+'</span></td>'
+        +'<td style="padding:7px 8px;text-align:center">'+(sent?'<span style="font-size:10px;background:rgba(76,175,125,.18);color:var(--green);border-radius:4px;padding:2px 5px;font-weight:700">&#10003;</span>':'—')+'</td>'
+        +'</tr>';
+    }).join('');
+    var _lw=document.getElementById('contactListWrapper');
+    if(!_lw){_lw=document.createElement('div');_lw.id='contactListWrapper';
+      var _mg=document.getElementById('mailingGrid');
+      if(_mg&&_mg.parentNode) _mg.parentNode.appendChild(_lw);}
+    _lw.innerHTML='<div style="margin-top:24px;background:var(--ink-85);border:1px solid var(--ink-70);border-radius:12px;overflow:hidden">'
+      +'<div style="padding:12px 16px;border-bottom:1px solid var(--ink-75);display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+      +'<div style="flex:1"><div style="font-family:var(--font-display);font-size:14px;color:var(--gold);font-weight:600">&#128202; CONTACT LIST</div>'
+      +'<div style="font-size:11px;color:var(--ink-50)">'+_co.length+' contacts &nbsp;&middot;&nbsp; <span style="color:var(--green)">'+_si.size+' emailed</span></div></div>'
+      +'<button onclick="exportContactsCSV()" style="padding:6px 13px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:7px;color:var(--gold);font-size:11px;font-weight:600;cursor:pointer">&#8595; CSV</button>'
+      +'</div>'
+      +'<div style="padding:8px 14px;border-bottom:1px solid var(--ink-75)"><input id="contactListSearch" type="text" maxlength="100" placeholder="Search name, email, phone…" style="width:100%;background:var(--ink-80);border:1px solid var(--ink-65);border-radius:6px;padding:6px 10px;color:var(--ink-10);font-size:12px;box-sizing:border-box" oninput="filterContactList(this.value)"></div>'
+      +'<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--ink-80);position:sticky;top:0">'
+      +'<th style="padding:8px;font-size:10px;color:var(--ink-50);text-align:center">#</th>'
+      +'<th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">NAME</th>'
+      +'<th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">EMAIL</th>'
+      +'<th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">PHONE</th>'
+      +'<th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">STAGE</th>'
+      +'<th style="padding:8px;font-size:10px;color:var(--ink-50);text-align:center">SENT</th>'
+      +'</tr></thead><tbody id="contactListBody">'+_cr+'</tbody></table></div>'
+      +'<div id="contactListCount" style="padding:8px 14px;font-size:11px;color:var(--ink-50);border-top:1px solid var(--ink-75);text-align:right">'+_co.length+' contacts</div>'
+      +'</div>';
+  })();
 }
-
-/* ══════════════════════════════════════════════════
-   CONTACT LIST — EXPORT (CSV + Excel)
-══════════════════════════════════════════════════ */
-
-function _buildContactRows(opps, sentMailIds) {
-  const sort = o => {
-    if (sentMailIds.has(o.id)) return 0;
-    if (o.saleMade === 'Yes') return 2;
-    if (o.stage === 'Canceled') return 3;
-    return 1;
-  };
-  return [...opps]
-    .filter(o => o.firstName || o.lastName)
-    .sort((a,b) => sort(a)-sort(b) || (a.lastName||'').localeCompare(b.lastName||''))
-    .map(o => ({
-      'First Name':      o.firstName || '',
-      'Last Name':       o.lastName || '',
-      'Email':           o.email || '',
-      'Phone':           o.phone || '',
-      'Address':         o.address || '',
-      'Project Type':    o.projectType || '',
-      'Lead Source':     o.leadSource || '',
-      'Stage':           o.saleMade === 'Yes' ? 'Sold' : (o.stage || ''),
-      'Estimate ($)':    Number(o.estimate) || 0,
-      'Probability (%)': Number(o.probability) || 0,
-      'Follow-Up Date':  o.followUpDate || '',
-      'Sale Date':       o.saleDate || '',
-      'Customer #':      o.customerNumber || '',
-      'Email Sent':      sentMailIds.has(o.id) ? 'Yes' : 'No',
-      'GoldComp':        o.goldComp || 'No',
-    }));
-}
-
-async function exportContactsCSV() {
-  const opps = await DB.getAll();
-  const sentMailIds = new Set((JSON.parse(localStorage.getItem('ea_mail_sent')||'[]')).map(s => s.oppId));
-  const rows = _buildContactRows(opps, sentMailIds);
-  if (!rows.length) { toast('No contacts to export', 'error'); return; }
-  const headers = Object.keys(rows[0]);
-  const esc = v => { const s = String(v==null?'':v); return (s.includes(',')||s.includes('"')||s.includes('\n')) ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const csv = [headers.map(esc).join(','), ...rows.map(r => headers.map(k=>esc(r[k])).join(','))].join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
-  a.download = 'EA_Contacts_' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast('CSV exported — ' + rows.length + ' contacts', 'success');
-}
-
-async function exportContactsExcel() {
-  if (typeof XLSX === 'undefined') { toast('Excel library not loaded', 'error'); return; }
-  const opps = await DB.getAll();
-  const sentMailIds = new Set((JSON.parse(localStorage.getItem('ea_mail_sent')||'[]')).map(s => s.oppId));
-  const rows = _buildContactRows(opps, sentMailIds);
-  if (!rows.length) { toast('No contacts to export', 'error'); return; }
-  const wb = XLSX.utils.book_new();
-  const ws1 = XLSX.utils.json_to_sheet(rows);
-  ws1['!cols'] = [{wch:14},{wch:16},{wch:28},{wch:16},{wch:32},{wch:18},{wch:14},{wch:16},{wch:13},{wch:16},{wch:14},{wch:12},{wch:14},{wch:10},{wch:10}];
-  XLSX.utils.book_append_sheet(wb, ws1, 'All Contacts');
-  const emailed = opps.filter(o => sentMailIds.has(o.id));
-  if (emailed.length) {
-    const sent = JSON.parse(localStorage.getItem('ea_mail_sent')||'[]');
-    const ws2 = XLSX.utils.json_to_sheet(emailed.map(o => {
-      const s = sent.find(x=>x.oppId===o.id)||{};
-      return {'First Name':o.firstName||'','Last Name':o.lastName||'','Email':o.email||'',
-        'Phone':o.phone||'','Stage':o.saleMade==='Yes'?'Sold':(o.stage||''),
-        'Subject Sent':s.subject||'','Date Sent':s.sentAt?new Date(s.sentAt).toLocaleDateString('en-US'):''};
-    }));
-    XLSX.utils.book_append_sheet(wb, ws2, 'Emailed Contacts');
-  }
-  XLSX.writeFile(wb, 'EA_Contacts_' + new Date().toISOString().slice(0,10) + '.xlsx');
-  toast('Excel exported — ' + rows.length + ' contacts', 'success');
-}
-
-function filterContactList(q) {
-  const tbody = document.getElementById('contactListBody');
-  const countEl = document.getElementById('contactListCount');
-  if (!tbody) return;
-  const query = (q||'').toLowerCase().trim();
-  const rows = Array.from(tbody.querySelectorAll('tr'));
-  let visible = 0;
-  rows.forEach(tr => { const show = !query || tr.textContent.toLowerCase().includes(query); tr.style.display = show?'':'none'; if(show) visible++; });
-  if (countEl) countEl.textContent = 'Showing ' + visible + ' of ' + rows.length + ' contacts';
-}
-
-
 
 function setMailFilter(f) { state.mailFilter = f; renderMailing(); }
 
@@ -3919,6 +3928,8 @@ async function editLead(id) {
   document.getElementById('f-homeCallDate').value = o.homeCallDate || '';
   document.getElementById('f-saleMade').value     = o.saleMade    || '';
   document.getElementById('f-goldComp').value     = o.goldComp    || '';
+  const _gcvEl=document.getElementById('f-goldCompValue'); if(_gcvEl) _gcvEl.value=o.goldCompValue||'';
+  const _gcvFld=document.getElementById('goldCompValueField'); if(_gcvFld) _gcvFld.style.display=o.goldComp==='Yes'?'':'none';
   document.getElementById('f-notes').value        = o.notes       || '';
   // Active client fields
   const _sf = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
@@ -4084,6 +4095,7 @@ async function saveLead() {
     homeCallDate:   document.getElementById('f-homeCallDate').value,
     saleMade:       isSold ? 'Yes' : saleMade,
     goldComp:       document.getElementById('f-goldComp').value,
+    goldCompValue:  Number(document.getElementById('f-goldCompValue')?.value) || 0,
     notes:          document.getElementById('f-notes').value.trim(),
     closeDate,
     saleDate,
@@ -5649,10 +5661,36 @@ function deleteMileEditRow() {
 ══════════════════════════════════════════════════ */
 
 function _buildTasks(opps) {
-  const todayS  = localDateStr(new Date());
-  const tasks   = [];
+  const todayS = localDateStr(new Date());
+  const done   = getCompletedTasks();
+  const p30    = getPost30Records();
+  const tasks  = [];
+  function addTask(t) { if (done.indexOf(t.id) < 0) tasks.push(t); }
 
-  function addTask(t) { tasks.push(t); }
+  // Post-30 / Post-60 delivery tasks (due within 7 days or overdue)
+  opps.filter(function(o){ return o.saleMade==='Yes'; }).forEach(function(o) {
+    var rec=p30.find(function(r){return r.oppId===o.id;}) || {};
+    var dv=o.deliveryDate||(rec.deliveryDate||'');
+    if (!dv) return;
+    var fu30=offsetDate(dv,30), d30=daysDiff(todayS,fu30);
+    var fu60=offsetDate(dv,60), d60=daysDiff(todayS,fu60);
+    if (d30!==null && d30<=7) addTask({id:o.id+'_p30',oppId:o.id,source:'post30',
+      type:d30<0?'overdue':d30===0?'today':'upcoming',priority:d30<0?52:42,icon:'📦',
+      label:d30<0?Math.abs(d30)+'d overdue':d30===0?'Due today':'In '+d30+'d',
+      labelColor:d30<0?'var(--red)':d30===0?'var(--gold)':'var(--green)',
+      firstName:o.firstName||'',lastName:o.lastName||'',
+      activity:'Post-30 Follow-Up (delivery: '+fmtDate(dv)+')',dueDate:fu30,
+      estimate:Number(o.estimate)||0,projectType:o.projectType||'',
+      stage:'Post-30',customerNumber:o.customerNumber||'',goldComp:o.goldComp||''});
+    if (d60!==null && d60<=7) addTask({id:o.id+'_p60',oppId:o.id,source:'post60',
+      type:d60<0?'overdue':d60===0?'today':'upcoming',priority:d60<0?50:40,icon:'🔔',
+      label:d60<0?Math.abs(d60)+'d overdue':d60===0?'Due today':'In '+d60+'d',
+      labelColor:d60<0?'var(--red)':d60===0?'var(--gold)':'var(--green)',
+      firstName:o.firstName||'',lastName:o.lastName||'',
+      activity:'Post-60 Follow-Up (delivery: '+fmtDate(dv)+')',dueDate:fu60,
+      estimate:Number(o.estimate)||0,projectType:o.projectType||'',
+      stage:'Post-60',customerNumber:o.customerNumber||'',goldComp:o.goldComp||''});
+  });
 
   // ── Active pipeline: overdue & due today ──
   opps.forEach(o => {
@@ -5824,25 +5862,38 @@ async function _updateTasksWidget(opps) {
   const tasks = _buildTasks(opps);
   const el    = document.getElementById('tasksWidget');
   if (!el) return;
-  const urgentCnt = tasks.filter(t => t.type === 'overdue' || t.type === 'today').length;
+  const urgentCnt = tasks.filter(function(t){return t.type==='overdue'||t.type==='today';}).length;
   const badge = document.getElementById('tasksBadge');
-  if (badge) { badge.textContent = String(urgentCnt); badge.style.display = urgentCnt > 0 ? 'flex' : 'none'; }
+  if (badge) { badge.textContent=String(urgentCnt); badge.style.display=urgentCnt>0?'flex':'none'; }
   if (!tasks.length) {
-    el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All caught up — no pending tasks</p></div>';
+    el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All caught up!</p></div>';
     return;
   }
-  el.innerHTML = tasks.slice(0, 8).map(t =>
-    '<div class="alert-row" onclick="editLead(\'' + t.oppId + '\')" style="border-left:3px solid ' + t.labelColor + ';padding-left:10px;cursor:pointer">'
-    + '<div style="font-size:18px;min-width:24px">' + t.icon + '</div>'
-    + '<div style="flex:1;min-width:0">'
-    + '<div style="font-weight:600;font-size:13px;color:var(--ink-10)">' + esc(t.firstName) + ' ' + esc(t.lastName)
-    + (t.customerNumber ? ' <span style="font-size:10px;color:var(--gold)">#' + esc(t.customerNumber) + '</span>' : '') + '</div>'
-    + '<div style="font-size:11px;color:var(--ink-40)">' + esc(t.activity) + '</div>'
-    + '<div style="font-size:11px;color:var(--ink-40)">' + esc(t.projectType) + (t.dueDate ? ' · ' + fmtDate(t.dueDate) : '') + '</div>'
-    + '</div>'
-    + '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:' + t.labelColor + '22;color:' + t.labelColor + '">' + esc(t.label) + '</span>'
-    + '</div>'
-  ).join('');
+  const sorted = tasks.slice().sort(function(a,b){return (b.priority||0)-(a.priority||0);});
+  el.innerHTML = sorted.slice(0,10).map(function(t) {
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;'
+      + 'border-left:3px solid ' + t.labelColor + ';background:' + t.labelColor + '12;'
+      + 'border-radius:0 8px 8px 0;margin-bottom:4px">'
+      + '<span style="font-size:18px;flex-shrink:0">' + t.icon + '</span>'
+      + '<div style="flex:1;min-width:0;cursor:pointer" onclick="editLead(\'' + t.oppId + '\')">'
+      + '<div style="font-weight:700;font-size:13px;color:var(--ink-10)">'
+      + esc(t.firstName) + ' ' + esc(t.lastName)
+      + (t.customerNumber ? ' <span style="font-size:10px;color:var(--gold)">#' + esc(t.customerNumber) + '</span>' : '')
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--ink-40)">' + esc(t.activity) + (t.dueDate ? ' &middot; ' + fmtDate(t.dueDate) : '') + '</div>'
+      + '<div style="font-size:10px;color:var(--ink-50)">' + esc(t.stage||'') + '</div>'
+      + '</div>'
+      + '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;'
+      + 'background:' + t.labelColor + '22;color:' + t.labelColor + ';flex-shrink:0">' + esc(t.label) + '</span>'
+      + '<button onclick="event.stopPropagation();markTaskComplete(\'' + t.id + '\')"'
+      + ' style="flex-shrink:0;padding:3px 8px;background:rgba(76,175,125,.15);'
+      + 'border:1px solid rgba(76,175,125,.4);border-radius:5px;color:var(--green);'
+      + 'font-size:10px;font-weight:700;cursor:pointer">&#10003; Done</button>'
+      + '</div>';
+  }).join('')
+  + '<div style="text-align:right;padding:4px 2px 0">'
+  + '<button onclick="clearCompletedTasks()" style="font-size:10px;color:var(--ink-60);background:none;border:none;cursor:pointer">Reset completed</button>'
+  + '</div>';
 }
 
 /* ══════════════════════════════════════════════════
@@ -5856,6 +5907,14 @@ async function renderAnalytics() {
   const el    = document.getElementById('page-analytics');
   if (!el) return;
 
+  // View state
+  if (!window._anaState) window._anaState = { year: today.getFullYear(), month: null };
+  var AS = window._anaState;
+  var _allYears=[...new Set(opps.map(function(o){return(o.closeDate||o.saleDate||o.createdAt||'').slice(0,4);}).filter(function(y){return y&&y>'2020';}))].map(Number).sort(function(a,b){return b-a;});
+  if(_allYears.length&&_allYears.indexOf(AS.year)<0) AS.year=_allYears[0];
+  var MO_S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var yearChips=_allYears.map(function(y){return '<button onclick="window._anaState.year='+y+';window._anaState.month=null;renderAnalytics()" style="padding:4px 10px;border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid '+(y===AS.year?'var(--gold)':'var(--ink-60)')+';background:'+(y===AS.year?'rgba(196,147,63,.2)':'transparent')+';color:'+(y===AS.year?'var(--gold)':'var(--ink-50)')+'">'+y+'</button>';}).join('');
+  var monthChips=MO_S.map(function(lbl,i){return '<button onclick="window._anaState.month=window._anaState.month==='+i+'?null:'+i+';renderAnalytics()" style="padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid '+(AS.month===i?'rgba(196,147,63,.8)':'var(--ink-70)')+';background:'+(AS.month===i?'rgba(196,147,63,.18)':'transparent')+';color:'+(AS.month===i?'var(--gold)':'var(--ink-50)')+'">'+lbl+'</button>';}).join('');
   // ── Derived data ──
   const sold     = opps.filter(o => o.saleMade === 'Yes');
   const active   = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
@@ -6031,6 +6090,17 @@ async function renderAnalytics() {
   const avgOrder = sold.length > 0 ? Math.round(totalRev/sold.length) : 0;
 
   el.innerHTML = `
+  <div style="background:var(--ink-85);border:1px solid var(--ink-70);border-radius:10px;padding:12px 16px;margin:0 24px 16px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <span style="font-size:10px;color:var(--ink-50);font-weight:700;letter-spacing:.05em">YEAR</span>
+      ${yearChips}
+      <button onclick="window._anaState.month=null;renderAnalytics()" style="padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid ${AS.month===null?'var(--gold)':'var(--ink-70)'};background:${AS.month===null?'rgba(196,147,63,.15)':'transparent'};color:${AS.month===null?'var(--gold)':'var(--ink-50)'};margin-left:8px">All</button>
+    </div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:10px;color:var(--ink-50);font-weight:700;letter-spacing:.05em">MONTH</span>
+      ${monthChips}
+    </div>
+  </div>
   <div class="section-header"><div style="padding:0 24px;max-width:1320px;margin:0 auto">
     <span class="label" style="display:block;margin-bottom:6px">Performance Intelligence</span>
     <h2 class="display">📊 ANALYTICS</h2>
@@ -6265,11 +6335,11 @@ async function renderActive() {
       + TD(o.notes ? '<span style="color:var(--ink-40);font-style:italic;font-size:11px">'
             + esc(o.notes.slice(0, 45)) + (o.notes.length > 45 ? '…' : '') + '</span>' : '')
       /* [S, T, U — EXCLUDED] */
-      /* Edit button */
+      /* Action buttons */
       + '<td style="padding:5px 8px;border-bottom:1px solid var(--ink-70);text-align:center">'
-        + '<button onclick="event.stopPropagation();editLead(\'' + o.id + '\')" title="Edit"'
-        + ' style="background:none;border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;'
-        + 'font-size:10px;font-weight:700;padding:3px 9px;cursor:pointer;letter-spacing:.04em">EDIT ✏️</button>'
+        + '<button onclick="event.stopPropagation();editLead(\'' + o.id + '\')" style="display:block;width:100%;background:none;border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">✏️ Edit</button>'
+        + '<button onclick="event.stopPropagation();markActiveComplete(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">✓ Done</button>'
+        + '<button onclick="event.stopPropagation();deleteActive(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer">🗑 Del</button>'
         + '</td>'
       + '</tr>';
   }).join('');
