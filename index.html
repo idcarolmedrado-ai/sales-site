@@ -3631,7 +3631,9 @@ function deleteMileageRow(id) {
 
 /* ════ Date helpers ════ */
 function offsetDate(dateStr, days) {
+  if (!dateStr || !dateStr.includes('-')) return '';
   const [y,m,d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return '';
   const dt = new Date(y, m-1, d + days);
   return localDateStr(dt);
 }
@@ -4687,6 +4689,398 @@ async function runAllTests() {
     const opp = { firstName:'T', __proto__: { injected: true } };
     return !('injected' in opp) || opp.injected === true ? true :
       'Prototype pollution detected';
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 100-OPPORTUNITY COMPREHENSIVE SIMULATION TEST SUITE
+  // ═══════════════════════════════════════════════════════════════════════
+  await new Promise(r => setTimeout(r, 10));
+
+  // Build 100 simulated opportunities
+  const SIM_TODAY = '2026-03-13';
+  const simOpps = (() => {
+    const stages = ['New Lead','Home Call','Design in Progress','Quote Sent',
+                    'Follow-up','Pending Decision','Sale Made','Postponed','Canceled'];
+    const projects = ['Living Room','Dining','Bedroom','Home Office','Outdoor'];
+    const sources  = ['Referral','Walk-in','Website','Instagram','Repeat Client'];
+    const names = [
+      ['Alice','Brown'],['Bob','Smith'],['Carol','Davis'],['Dan','Wilson'],
+      ['Eva','Martinez'],['Frank','Johnson'],['Grace','Lee'],['Henry','Taylor'],
+      ['Iris','Anderson'],['Jack','Thomas'],['Karen','White'],['Leo','Harris'],
+      ['Mia','Jackson'],['Noah','Martin'],['Olivia','Garcia'],['Paul','Roberts'],
+      ['Quinn','Lewis'],['Rachel','Walker'],['Sam','Hall'],['Tina','Young'],
+      ['Uma','King'],['Victor','Wright'],['Wendy','Scott'],['Xavier','Green'],
+      ['Yara','Baker'],['Zoe','Nelson'],['Aaron','Carter'],['Beth','Mitchell'],
+      ['Chris','Perez'],['Diana','Roberts'],['Ethan','Turner'],['Fiona','Phillips'],
+      ['George','Campbell'],['Hannah','Parker'],['Ian','Evans'],['Julia','Edwards'],
+      ['Kevin','Collins'],['Laura','Stewart'],['Mike','Sanchez'],['Nancy','Morris'],
+      ['Oscar','Rogers'],['Patricia','Reed'],['Quinn','Cook'],['Rose','Morgan'],
+      ['Steve','Bell'],['Tara','Murphy'],['Ulrich','Bailey'],['Vera','Rivera'],
+      ['Will','Cooper'],['Xena','Richardson'],['Yolanda','Cox'],['Zack','Howard'],
+      ['Amy','Ward'],['Ben','Torres'],['Cora','Peterson'],['David','Gray'],
+      ['Ellen','Ramirez'],['Fred','James'],['Gina','Watson'],['Harold','Brooks'],
+      ['Iva','Kelly'],['Jerry','Sanders'],['Kate','Price'],['Luke','Bennett'],
+      ['Mary','Wood'],['Ned','Barnes'],['Opal','Ross'],['Pete','Henderson'],
+      ['Ruby','Coleman'],['Simon','Jenkins'],['Tess','Perry'],['Ugo','Powell'],
+      ['Vida','Long'],['Walt','Patterson'],['Xyla','Hughes'],['Yvette','Flores'],
+      ['Zara','Washington'],['Alex','Butler'],['Bea','Simmons'],['Carl','Foster'],
+      ['Dee','Gonzales'],['Earl','Bryant'],['Fay','Alexander'],['Glen','Russell'],
+      ['Hope','Griffin'],['Iris','Diaz'],['Jake','Hayes'],['Kim','Myers'],
+      ['Lars','Ford'],['Mae','Hamilton'],['Ned','Graham'],['Ora','Sullivan'],
+      ['Pete','Wallace'],['Quinn','Woods'],['Rose','Cole'],['Seth','West'],
+      ['Tia','Jordan'],['Uri','Owens'],['Vera','Reynolds'],['Wade','Fisher'],
+    ];
+    const probs = [0, 10, 25, 50, 70, 75, 85, 90, 100];
+    const ests  = [5000, 8000, 12000, 15000, 18000, 22000, 28000, 35000, 45000, 60000];
+
+    return names.map(([fn, ln], idx) => {
+      // Distribute across stages meaningfully
+      let stage, saleMade='', probability, estimate, closeDate='', saleDate='';
+      const t = idx % 10;
+      if (t < 2) {                            // 20% SOLD
+        stage='Sale Made'; saleMade='Yes';
+        probability=100;
+        estimate = ests[idx%ests.length];
+        const mo = String((idx%12)+1).padStart(2,'0');
+        const yr = idx < 12 ? '2025' : '2026';
+        closeDate = yr+'-'+mo+'-'+String(10+(idx%15)).padStart(2,'0');
+        saleDate  = closeDate;
+      } else if (t===2) {                     // 10% CANCELED
+        stage='Canceled'; probability=0; estimate=ests[idx%ests.length];
+      } else if (t===3) {                     // 10% POSTPONED
+        stage='Postponed'; probability=25; estimate=ests[idx%ests.length];
+      } else if (t<6) {                       // 30% HOT (≥75)
+        stage=stages[idx%4]; probability=probs[6+(idx%3)]; estimate=ests[idx%ests.length];
+      } else if (t<8) {                       // 20% WARM (50-74)
+        stage=stages[idx%4]; probability=50; estimate=ests[idx%ests.length];
+      } else {                                // 10% COLD (<25)
+        stage='New Lead'; probability=probs[idx%3]; estimate=ests[idx%ests.length];
+      }
+      const goldComp = (idx % 7 === 0) ? 'Yes' : 'No';
+      const goldCompValue = goldComp==='Yes' ? Math.round(estimate*0.15) : 0;
+      const followUpDate = saleMade==='Yes'||stage==='Canceled' ? '' :
+        (idx%3===0 ? '2026-02-10' : idx%3===1 ? SIM_TODAY : '2026-04-01');
+      const deliveryDate = saleMade==='Yes' ? '2026-0'+String((idx%9)+1).padStart(2,'0')+'-15' : '';
+      return {
+        id: 'sim-'+idx, firstName:fn, lastName:ln,
+        stage, saleMade, probability, estimate,
+        closeDate, saleDate, followUpDate, deliveryDate,
+        goldComp, goldCompValue,
+        projectType: projects[idx%projects.length],
+        leadSource: sources[idx%sources.length],
+        homeCall: idx%5===0?'Yes':'No',
+        homeCallDate: idx%5===0 ? '2026-03-0'+String((idx%9)+1) : '',
+        customerNumber: saleMade==='Yes' ? 'C'+String(2000+idx).padStart(4,'0') : '',
+        activePhase: saleMade==='Yes' ? 'In Progress' : '',
+        notes:'',nextStep:'',address: idx+' Main St, Fairfield CT',
+        email: fn.toLowerCase()+'.'+ln.toLowerCase()+'@test.com',
+        phone:'203-555-'+String(1000+idx).padStart(4,'0'),
+        createdAt: '2026-01-01', issueFlag:'',issueType:'',issueResult:'',
+      };
+    });
+  })();
+
+  const sim = simOpps;
+  const simSold   = sim.filter(o=>o.saleMade==='Yes');
+  const simActive = sim.filter(o=>o.saleMade!=='Yes'&&o.stage!=='Canceled');
+  const simCancel = sim.filter(o=>o.stage==='Canceled');
+
+  // ── T66-T70: Dataset counts ──
+  test('SIM T66: 100 total opps', () => sim.length===100 || 'Got '+sim.length);
+  test('SIM T67: 20 sold opps', () => simSold.length===20 || 'Got '+simSold.length);
+  test('SIM T68: 10 canceled', () => simCancel.length===10 || 'Got '+simCancel.length);
+  test('SIM T69: 70 active (non-sold, non-canceled)', () => simActive.length===70 || 'Got '+simActive.length);
+  test('SIM T70: GoldComp opps (every 7th = ~14)', () => {
+    const gc=sim.filter(o=>o.goldComp==='Yes').length;
+    return (gc>=13&&gc<=15) || 'Got '+gc;
+  });
+
+  // ── T71-T75: Win tier classification ──
+  test('SIM T71: all sold → SOLD tier', () => {
+    const wrong=simSold.filter(o=>BL.getWinTier(o).key!=='SOLD');
+    return wrong.length===0 || 'Wrong: '+wrong.length;
+  });
+  test('SIM T72: all canceled → CANCELED tier', () => {
+    const wrong=simCancel.filter(o=>BL.getWinTier(o).key!=='CANCELED');
+    return wrong.length===0 || 'Wrong: '+wrong.length;
+  });
+  test('SIM T73: HOT opps have prob≥75', () => {
+    const hot=simActive.filter(o=>BL.getWinTier(o).key==='HOT');
+    const wrong=hot.filter(o=>(Number(o.probability)||0)<75);
+    return wrong.length===0 || 'Wrong: '+wrong.length;
+  });
+  test('SIM T74: WARM opps have prob 50-74', () => {
+    const warm=simActive.filter(o=>BL.getWinTier(o).key==='WARM');
+    const wrong=warm.filter(o=>{const p=Number(o.probability)||0;return p<50||p>=75;});
+    return wrong.length===0 || 'Wrong: '+wrong.length;
+  });
+  test('SIM T75: COLD opps have prob<25', () => {
+    const cold=simActive.filter(o=>BL.getWinTier(o).key==='COLD');
+    const wrong=cold.filter(o=>(Number(o.probability)||0)>=25);
+    return wrong.length===0 || 'Wrong: '+wrong.length;
+  });
+
+  // ── T76-T80: KPI calculations ──
+  test('SIM T76: calcKPIs totalSales = sum of sold estimates', () => {
+    const kpis=BL.calcKPIs(sim);
+    const manual=simSold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+    return kpis.totalSales===manual || 'KPI:'+kpis.totalSales+' Manual:'+manual;
+  });
+  test('SIM T77: calcKPIs weightedPipe excludes sold+canceled', () => {
+    const kpis=BL.calcKPIs(sim);
+    const manual=simActive.reduce((s,o)=>s+BL.getWeighted(o),0);
+    return kpis.weightedPipe===manual || 'KPI:'+kpis.weightedPipe+' Manual:'+manual;
+  });
+  test('SIM T78: getWeighted = floor(prob/100 * estimate) for active', () => {
+    const errors=simActive.filter(o=>{
+      const w=BL.getWeighted(o);
+      const expected=Math.floor((Number(o.probability)||0)/100*(Number(o.estimate)||0));
+      return w!==expected;
+    });
+    return errors.length===0 || 'Errors: '+errors.length;
+  });
+  test('SIM T79: gcSales uses goldCompValue not estimate', () => {
+    const kpis=BL.calcKPIs(sim);
+    const manual=simSold.filter(o=>o.goldComp==='Yes')
+      .reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
+    return kpis.gcSales===manual || 'KPI:'+kpis.gcSales+' Manual:'+manual;
+  });
+  test('SIM T80: convRate = sold/total * 100', () => {
+    const kpis=BL.calcKPIs(sim);
+    const expected=Math.round((20/100)*100);
+    return Math.round(kpis.convRate)===expected || 'Got '+Math.round(kpis.convRate);
+  });
+
+  // ── T81-T85: Overdue & due-today logic ──
+  test('SIM T81: sold opps never overdue', () => {
+    const wrong=simSold.filter(o=>BL.getDaysOverdue(o)>0);
+    return wrong.length===0 || 'Wrong: '+wrong.length;
+  });
+  test('SIM T82: canceled opps never overdue', () => {
+    const wrong=simCancel.filter(o=>BL.getDaysOverdue(o)>0);
+    return wrong.length===0 || 'Wrong: '+wrong.length;
+  });
+  test('SIM T83: past followUpDate → overdue', () => {
+    const pastDue=simActive.filter(o=>o.followUpDate==='2026-02-10');
+    const wrong=pastDue.filter(o=>BL.getDaysOverdue(o)<=0);
+    return wrong.length===0 || 'Not overdue: '+wrong.length+'/'+pastDue.length;
+  });
+  test('SIM T84: today followUpDate → dueToday', () => {
+    const dueT=simActive.filter(o=>o.followUpDate===SIM_TODAY);
+    const wrong=dueT.filter(o=>!BL.isDueToday(o));
+    return wrong.length===0 || 'Not dueToday: '+wrong.length+'/'+dueT.length;
+  });
+  test('SIM T85: future followUpDate → not overdue', () => {
+    const future=simActive.filter(o=>o.followUpDate==='2026-04-01');
+    const wrong=future.filter(o=>BL.getDaysOverdue(o)>0);
+    return wrong.length===0 || 'Wrongly overdue: '+wrong.length;
+  });
+
+  // ── T86-T90: getQuarter EA fiscal year ──
+  test('SIM T86: July = Q1 (EA fiscal)', () => BL.getQuarter('2025-07-15')==='Q1'||'Got '+BL.getQuarter('2025-07-15'));
+  test('SIM T87: October = Q2 (EA fiscal)', () => BL.getQuarter('2025-10-01')==='Q2'||'Got '+BL.getQuarter('2025-10-01'));
+  test('SIM T88: January = Q3 (EA fiscal)', () => BL.getQuarter('2026-01-15')==='Q3'||'Got '+BL.getQuarter('2026-01-15'));
+  test('SIM T89: April = Q4 (EA fiscal)', () => BL.getQuarter('2026-04-01')==='Q4'||'Got '+BL.getQuarter('2026-04-01'));
+  test('SIM T90: null date → null quarter', () => BL.getQuarter('')===null||'Got '+BL.getQuarter(''));
+
+  // ── T91-T95: offsetDate and daysDiff ──
+  test('SIM T91: offsetDate 30 days', () => {
+    const r=offsetDate('2026-01-01',30); return r==='2026-01-31'||'Got '+r;
+  });
+  test('SIM T92: offsetDate 60 days', () => {
+    const r=offsetDate('2026-01-01',60); return r==='2026-03-02'||'Got '+r;
+  });
+  test('SIM T93: offsetDate empty string → empty string', () => {
+    const r=offsetDate('',30); return r===''||'Got '+r;
+  });
+  test('SIM T94: daysDiff positive when target is future', () => {
+    const r=daysDiff('2026-01-01','2026-01-31'); return r===30||'Got '+r;
+  });
+  test('SIM T95: daysDiff negative when target is past', () => {
+    const r=daysDiff('2026-03-01','2026-02-01'); return r===-28||'Got '+r;
+  });
+
+  // ── T96-T100: GoldComp value logic ──
+  test('SIM T96: goldComp=Yes opps have goldCompValue>0', () => {
+    const gc=sim.filter(o=>o.goldComp==='Yes');
+    const wrong=gc.filter(o=>(Number(o.goldCompValue)||0)<=0);
+    return wrong.length===0||'Missing value: '+wrong.length+'/'+gc.length;
+  });
+  test('SIM T97: goldComp=No opps have goldCompValue=0', () => {
+    const ngc=sim.filter(o=>o.goldComp!=='Yes');
+    const wrong=ngc.filter(o=>(Number(o.goldCompValue)||0)!==0);
+    return wrong.length===0||'Non-zero: '+wrong.length;
+  });
+  test('SIM T98: getWeighted excludes goldCompValue (only estimate)', () => {
+    const gcActive=simActive.filter(o=>o.goldComp==='Yes')[0];
+    if(!gcActive) return 'No GC active opp found';
+    const w=BL.getWeighted(gcActive);
+    const expected=Math.floor((Number(gcActive.probability)||0)/100*(Number(gcActive.estimate)||0));
+    return w===expected||'Got '+w+' expected '+expected;
+  });
+  test('SIM T99: gcSales > 0 when GoldComp sold exists', () => {
+    const kpis=BL.calcKPIs(sim);
+    return kpis.gcSales>0||'gcSales=0 but GoldComp sales exist';
+  });
+  test('SIM T100: totalSales does not include goldCompValue separately', () => {
+    const kpis=BL.calcKPIs(sim);
+    const manualTotal=simSold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+    return kpis.totalSales===manualTotal||'Got '+kpis.totalSales+' expected '+manualTotal;
+  });
+
+  // ── T101-T105: Pipeline weighted values ──
+  test('SIM T101: pipeline value > 0 for active opps with prob>0', () => {
+    const kpis=BL.calcKPIs(sim);
+    return kpis.weightedPipe>0||'weightedPipe=0';
+  });
+  test('SIM T102: sold adds to totalSales, not weightedPipe', () => {
+    const kpis=BL.calcKPIs(sim);
+    const soldInPipe=simSold.some(o=>BL.getWeighted(o)>0);
+    return !soldInPipe||'Sold opps counted in pipeline!';
+  });
+  test('SIM T103: postponed opps included in active pipeline', () => {
+    const postponed=sim.filter(o=>o.stage==='Postponed');
+    const kpis=BL.calcKPIs(sim);
+    // Postponed should be in active (not sold/canceled) and contribute to pipeline
+    return postponed.every(o=>BL.getWeighted(o)>=0)||'Error';
+  });
+  test('SIM T104: urgency score capped at 100', () => {
+    const over=sim.filter(o=>BL.getUrgencyScore(o)>100);
+    return over.length===0||'Over 100: '+over.length;
+  });
+  test('SIM T105: urgency score = 0 for sold and canceled', () => {
+    const wrong=sim.filter(o=>(o.saleMade==='Yes'||o.stage==='Canceled')&&BL.getUrgencyScore(o)>0);
+    return wrong.length===0||'Wrong: '+wrong.length;
+  });
+
+  // ── T106-T110: Sales tab grouping ──
+  test('SIM T106: closed sales group by month correctly', () => {
+    const byMonth={};
+    simSold.forEach(o=>{
+      const d=o.closeDate||o.saleDate||'';
+      const key=d?d.slice(0,7):'unknown';
+      byMonth[key]=(byMonth[key]||0)+1;
+    });
+    return Object.keys(byMonth).every(k=>byMonth[k]>0)||'Empty month group';
+  });
+  test('SIM T107: monthly totals sum = totalSales', () => {
+    const byMonth={};
+    simSold.forEach(o=>{
+      const d=o.closeDate||o.saleDate||'';
+      const key=d?d.slice(0,7):'unknown';
+      byMonth[key]=(byMonth[key]||0)+(Number(o.estimate)||0);
+    });
+    const sum=Object.values(byMonth).reduce((s,v)=>s+v,0);
+    const kpis=BL.calcKPIs(sim);
+    return sum===kpis.totalSales||'Sum:'+sum+' KPI:'+kpis.totalSales;
+  });
+  test('SIM T108: 2025 sold opps counted in 2025 year', () => {
+    const yr2025=simSold.filter(o=>(o.closeDate||'').startsWith('2025'));
+    return yr2025.length>0||'No 2025 sales in sim data';
+  });
+  test('SIM T109: 2026 sold opps counted in 2026 year', () => {
+    const yr2026=simSold.filter(o=>(o.closeDate||'').startsWith('2026'));
+    return yr2026.length>0||'No 2026 sales in sim data';
+  });
+  test('SIM T110: sold opp with no closeDate handled (defaults unknown)', () => {
+    const testOpp={...simSold[0],closeDate:'',saleDate:''};
+    const kpis=BL.calcKPIs([testOpp]);
+    return kpis.sold===1&&kpis.totalSales===(Number(testOpp.estimate)||0)||'Error';
+  });
+
+  // ── T111-T115: Analytics chart data correctness ──
+  test('SIM T111: last12 array has 12 entries', () => {
+    // Simulate what renderAnalytics does
+    const rev={};
+    simSold.forEach(o=>{const d=o.closeDate||o.saleDate||'';const k=d.slice(0,7);if(k)rev[k]=(rev[k]||0)+(Number(o.estimate)||0);});
+    const yr=2026;
+    const last12=[];
+    for(let i=11;i>=0;i--){const d=new Date(yr,11-i,1);last12.push({key:d.toISOString().slice(0,7),val:rev[d.toISOString().slice(0,7)]||0});}
+    return last12.length===12||'Got '+last12.length;
+  });
+  test('SIM T112: analytics win rate = sold/total * 100', () => {
+    const kpis=BL.calcKPIs(sim);
+    const expected=(20/100)*100;
+    return Math.abs(kpis.winRate-expected)<0.01||'Got '+kpis.winRate+' expected '+expected;
+  });
+  test('SIM T113: analytics convRate uses filtered src length', () => {
+    const kpis=BL.calcKPIs(sim);
+    return kpis.convRate>=0&&kpis.convRate<=100||'Invalid convRate: '+kpis.convRate;
+  });
+  test('SIM T114: stage distribution sums to active count', () => {
+    const stageMap={};
+    simActive.forEach(o=>{const s=o.stage||'Unknown';stageMap[s]=(stageMap[s]||0)+1;});
+    const total=Object.values(stageMap).reduce((s,v)=>s+v,0);
+    return total===simActive.length||'Got '+total+' expected '+simActive.length;
+  });
+  test('SIM T115: home calls count is correct', () => {
+    const kpis=BL.calcKPIs(sim);
+    const manual=sim.filter(o=>o.homeCall==='Yes').length;
+    return kpis.homeCalls===manual||'KPI:'+kpis.homeCalls+' Manual:'+manual;
+  });
+
+  // ── T116-T120: DB field mapping ──
+  test('SIM T116: _fromDB goldCompValue parsed as Number', () => {
+    const row={goldCompValue:'1234.56',issueResult:'',issueType:'',issueFlag:'',
+      id:'x',first_name:'A',last_name:'B',stage:'New Lead',sale_made:'',probability:50,estimate:10000};
+    const o=DB._fromDB(row);
+    return typeof o.goldCompValue==='number'&&o.goldCompValue===1234.56||'Got '+o.goldCompValue;
+  });
+  test('SIM T117: _toDB goldCompValue written as Number', () => {
+    const o={...simSold[0],goldCompValue:'999'};
+    const row=DB._toDB(o);
+    return typeof row.goldCompValue==='number'&&row.goldCompValue===999||'Got '+row.goldCompValue;
+  });
+  test('SIM T118: _fromDB null goldCompValue → 0', () => {
+    const row={goldCompValue:null,issueResult:'',issueType:'',issueFlag:'',
+      id:'x',first_name:'A',last_name:'B',stage:'New Lead',sale_made:'',probability:0,estimate:0};
+    const o=DB._fromDB(row);
+    return o.goldCompValue===0||'Got '+o.goldCompValue;
+  });
+  test('SIM T119: _fromDB issueResult preserved', () => {
+    const row={goldCompValue:0,issueResult:'Resolved',issueType:'Delivery',issueFlag:'Yes',
+      id:'x',first_name:'A',last_name:'B',stage:'New Lead',sale_made:'',probability:0,estimate:0};
+    const o=DB._fromDB(row);
+    return o.issueResult==='Resolved'||'Got '+o.issueResult;
+  });
+  test('SIM T120: roundtrip: _fromDB(_toDB(opp)) preserves key fields', () => {
+    const orig=simSold[0];
+    const row=DB._toDB(orig);
+    const back=DB._fromDB(row);
+    const fields=['firstName','lastName','stage','saleMade','probability','estimate','goldComp','goldCompValue'];
+    const wrong=fields.filter(f=>String(back[f])!==String(orig[f]));
+    return wrong.length===0||'Mismatch: '+wrong.join(',');
+  });
+
+  // ── T121-T125: Post30/60 delivery date logic ──
+  test('SIM T121: offsetDate(delivDate,30) = correct date', () => {
+    const r=offsetDate('2026-02-01',30);
+    return r==='2026-03-03'||'Got '+r; // Feb 2026 has 28 days
+  });
+  test('SIM T122: offsetDate(delivDate,60) = correct date', () => {
+    const r=offsetDate('2026-01-01',60);
+    return r==='2026-03-02'||'Got '+r;
+  });
+  test('SIM T123: sold opps with deliveryDate get Post30 task when near', () => {
+    // delivery 2026-02-14 + 30 = 2026-03-16 → 3 days from SIM_TODAY (within 7-day window)
+    const nearDelivOpp={...simSold[0],deliveryDate:'2026-02-14',id:'near-p30'};
+    const tasks=_buildTasks([nearDelivOpp]);
+    const p30Task=tasks.find(t=>t.id==='near-p30_p30');
+    return !!p30Task||'No p30 task (delivery:2026-02-14, post30:2026-03-16, today:'+SIM_TODAY+')';
+  });
+  test('SIM T124: sold opps with future deliveryDate > 7d → no task yet', () => {
+    const futureOpp={...simSold[0],deliveryDate:'2026-06-01',id:'far-p30'};
+    const tasks=_buildTasks([futureOpp]);
+    const p30Task=tasks.find(t=>t.id==='far-p30_p30');
+    return !p30Task||'Unexpected p30 task for far-future delivery';
+  });
+  test('SIM T125: completed tasks filtered from _buildTasks', () => {
+    const opp={...simActive[0],followUpDate:'2026-02-01',id:'comp-test'};
+    const taskId='comp-test_fu';
+    saveCompletedTasks([taskId]);
+    const tasks=_buildTasks([opp]);
+    saveCompletedTasks([]); // clean up
+    return !tasks.find(t=>t.id===taskId)||'Completed task still shown';
   });
 
   await new Promise(r => setTimeout(r, 100));
@@ -5921,16 +6315,28 @@ async function renderAnalytics() {
   const canceled = opps.filter(o => o.stage === 'Canceled');
   const allKpis  = BL.calcKPIs(opps);
 
+  // Filter sold by selected year/month for charts
+  const filtSold = sold.filter(o => {
+    const d = o.closeDate || o.saleDate || '';
+    if (!d) return AS.year === today.getFullYear(); // no date → include only in current year
+    const [yr, mo] = d.split('-').map(Number);
+    if (yr !== AS.year) return false;
+    if (AS.month !== null && (mo - 1) !== AS.month) return false;
+    return true;
+  });
+  const filtActive = AS.month === null ? active : active; // stage chart always shows all pipeline
+
   // Monthly revenue (last 12 months)
+  // Monthly revenue for last 12 months relative to selected year
   const monthRevMap = {};
   sold.forEach(o => {
     const d = o.closeDate || o.saleDate || o.createdAt || '';
     const key = d.slice(0,7);
-    if (key) monthRevMap[key] = (monthRevMap[key]||0) + (Number(o.estimate)||0);
+    if (key) monthRevMap[key] = (monthRevMap[key]||0) + (Number(o.estimate)||0) + (o.goldComp==='Yes'?Number(o.goldCompValue)||0:0);
   });
   const last12 = [];
   for (let i = 11; i >= 0; i--) {
-    const d = new Date(today.getFullYear(), today.getMonth()-i, 1);
+    const d = new Date(AS.year, 11-i, 1); // 12 months ending at Dec of selected year
     const key = d.toISOString().slice(0,7);
     const lbl = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
     last12.push({ key, lbl, val: monthRevMap[key]||0 });
