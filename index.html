@@ -1625,7 +1625,11 @@ const BL = {
 
   /* Month auto — from home_call_date or follow_up_date */
   getMonthAuto(opp) {
-    const src = opp.homeCallDate || opp.followUpDate || opp.createdAt || '';
+    // For sold opps: use close/sale date for correct month assignment
+    // For pipeline opps: use homeCallDate or followUpDate for tracking
+    const src = opp.saleMade === 'Yes'
+      ? (opp.closeDate || opp.saleDate || opp.homeCallDate || opp.followUpDate || opp.createdAt || '')
+      : (opp.homeCallDate || opp.followUpDate || opp.createdAt || '');
     if (!src) return '';
     try {
       const d = new Date(src + 'T12:00:00');
@@ -1919,22 +1923,22 @@ Interior Design Consultant | Ethan Allen`
   },
 
   /* Per-month KPI breakdown for Year view */
-  calcAllMonthsKPIs(opps) {
-    const year = new Date().getFullYear();
+  calcAllMonthsKPIs(opps, forYear) {
+    const year = forYear || new Date().getFullYear();
     return LOOKUP.months.map((m, i) => {
       const key  = m + ' ' + year;
       const src  = opps.filter(o => this.getMonthAuto(o) === key);
       const sold = src.filter(o => o.saleMade === 'Yes');
       const active = src.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
       const totalSales  = sold.reduce((s,o) => s+(Number(o.estimate)||0), 0);
-      const gcSales     = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+      const gcSales     = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
       const weightedPipe= active.reduce((s,o)=>s+this.getWeighted(o),0);
-      const goal        = getGoalForMonth(i);
+      const goal        = getGoalForMonth(i, year);
       const convRate    = src.length ? (sold.length/src.length)*100 : 0;
       const overdue     = src.filter(o=>this.isOverdue(o)).length;
       const homeCalls   = src.filter(o=>o.homeCall==='Yes').length;
       return {
-        month:m, short:MONTHS_SHORT[i], idx:i, goal,
+        month:m, short:MONTHS_SHORT[i], idx:i, monthIdx:i, year, goal,
         totalSales, gcSales, gcPct: totalSales ? (gcSales/totalSales)*100 : 0,
         weightedPipe, deals:sold.length, totalOpps:src.length,
         convRate, overdue, homeCalls,
@@ -2681,14 +2685,23 @@ function getQuarter(dateStr) {
   return 'Q4';
 }
 
-function getGoalForMonth(monthIdx) {
+function getGoalForMonth(monthIdx, year) {
+  const yr   = year || new Date().getFullYear();
+  const key  = yr + '-' + monthIdx;
   const saved = getGoals();
-  return saved[monthIdx] !== undefined ? Number(saved[monthIdx]) : (LOOKUP.monthGoals[monthIdx] || 0);
+  // Try year-keyed first, fall back to legacy month-only key, then LOOKUP default
+  if (saved[key] !== undefined) return Number(saved[key]);
+  if (saved[monthIdx] !== undefined) return Number(saved[monthIdx]);
+  return LOOKUP.monthGoals[monthIdx] || 0;
 }
 
-function saveGoalForMonth(monthIdx, value) {
+function saveGoalForMonth(monthIdx, value, year) {
+  const yr   = year || new Date().getFullYear();
+  const key  = yr + '-' + monthIdx;
   const goals = getGoals();
-  goals[monthIdx] = Number(value) || 0;
+  goals[key] = Number(value) || 0;
+  // Also keep legacy key for current year compatibility
+  if (yr === new Date().getFullYear()) goals[monthIdx] = Number(value) || 0;
   localStorage.setItem('ea_monthly_goals', JSON.stringify(goals));
 }
 
@@ -2701,33 +2714,54 @@ function _insToggle(i) {
   if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
 }
 
-function openGoalEditor() {
+function openGoalEditor(presetMonthIdx, presetYear) {
   const today    = new Date();
-  const monthIdx = today.getMonth();
-  const current  = getGoalForMonth(monthIdx);
-  const months   = T('months');
-  const monthName = months[monthIdx];
+  const MONTHS   = T('months');
+  const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Build year options: 3 years back to 2 years forward
+  const curYear  = today.getFullYear();
+  const years    = [curYear-2, curYear-1, curYear, curYear+1, curYear+2];
+  const selYear  = presetYear  !== undefined ? presetYear  : curYear;
+  const selMonth = presetMonthIdx !== undefined ? presetMonthIdx : today.getMonth();
+
+  const yearOpts  = years.map(y  => `<option value="${y}" ${y===selYear?'selected':''}>${y}</option>`).join('');
+  const monthOpts = MONTHS.map((m,i) => `<option value="${i}" ${i===selMonth?'selected':''}>${m}</option>`).join('');
+  const current   = getGoalForMonth(selMonth, selYear);
 
   const modal = document.createElement('div');
   modal.id = 'goalModal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.65);backdrop-filter:blur(4px)';
   modal.innerHTML = `
     <div style="background:var(--ink-90);border:1px solid var(--ink-60);border-radius:var(--r-lg);
-                padding:28px 32px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+                padding:28px 32px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <div>
-          <div style="font-family:var(--font-display);font-size:22px;color:var(--gold-lt)">
-            ${getLang()==='pt'?'Meta do Mês':'Monthly Goal'}
-          </div>
-          <div style="font-size:12px;color:var(--ink-40);margin-top:3px">${monthName} ${today.getFullYear()}</div>
+        <div style="font-family:var(--font-display);font-size:22px;color:var(--gold-lt)">
+          ${getLang()==='pt'?'Meta Mensal':'Monthly Goal'}
         </div>
         <button onclick="document.getElementById('goalModal').remove()"
           style="background:none;border:none;color:var(--ink-40);font-size:20px;cursor:pointer;line-height:1">✕</button>
       </div>
 
-      <div style="margin-bottom:20px">
-        <label style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-                      color:var(--ink-40);display:block;margin-bottom:8px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+        <div>
+          <label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40);display:block;margin-bottom:6px">Month</label>
+          <select id="goalMonth" onchange="refreshGoalModal()"
+            style="width:100%;background:var(--ink-80);border:1px solid var(--ink-60);color:var(--ink-10);border-radius:var(--r);padding:8px 10px;font-size:13px">
+            ${monthOpts}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40);display:block;margin-bottom:6px">Year</label>
+          <select id="goalYear" onchange="refreshGoalModal()"
+            style="width:100%;background:var(--ink-80);border:1px solid var(--ink-60);color:var(--ink-10);border-radius:var(--r);padding:8px 10px;font-size:13px">
+            ${yearOpts}
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <label style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-40);display:block;margin-bottom:8px">
           ${getLang()==='pt'?'Meta de Vendas (USD)':'Sales Goal (USD)'}
         </label>
         <div style="display:flex;align-items:center;gap:8px">
@@ -2746,23 +2780,13 @@ function openGoalEditor() {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
         <div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:var(--r);padding:10px 12px;text-align:center">
-          <div style="font-size:10px;color:var(--ink-40);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">
-            ${getLang()==='pt'?'Vendas Atuais':'Current Sales'}
-          </div>
+          <div style="font-size:10px;color:var(--ink-40);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Current Sales</div>
           <div id="goalCurrentSales" style="font-family:var(--font-display);font-size:16px;color:var(--green)">…</div>
         </div>
         <div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:var(--r);padding:10px 12px;text-align:center">
-          <div style="font-size:10px;color:var(--ink-40);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">
-            ${getLang()==='pt'?'Faltando':'Remaining'}
-          </div>
+          <div style="font-size:10px;color:var(--ink-40);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Remaining</div>
           <div id="goalRemaining" style="font-family:var(--font-display);font-size:16px;color:var(--gold)">…</div>
         </div>
-      </div>
-
-      <div style="font-size:11px;color:var(--ink-40);margin-bottom:16px;line-height:1.5">
-        ${getLang()==='pt'
-          ? '💡 Edite a meta de um m\u00eas sem afetar os outros meses.'
-          : '💡 Editing this month goal only \u2014 other months are unaffected.'}
       </div>
 
       <div style="display:flex;gap:10px">
@@ -2779,27 +2803,48 @@ function openGoalEditor() {
       </div>
     </div>`;
   document.body.appendChild(modal);
+  _refreshGoalContext();
+}
 
-  // Populate live sales context
+function refreshGoalModal() {
+  const mo = Number(document.getElementById('goalMonth')?.value);
+  const yr = Number(document.getElementById('goalYear')?.value);
+  if (isNaN(mo)||isNaN(yr)) return;
+  const current = getGoalForMonth(mo, yr);
+  const inp = document.getElementById('goalInput');
+  if (inp) { inp.value = current; document.getElementById('goalPreview').textContent =
+    new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(current); }
+  _refreshGoalContext();
+}
+
+function _refreshGoalContext() {
+  const mo = Number(document.getElementById('goalMonth')?.value ?? new Date().getMonth());
+  const yr = Number(document.getElementById('goalYear')?.value  ?? new Date().getFullYear());
+  const monthName = T('months')[mo];
   DB.getAll().then(opps => {
-    const today = new Date();
-    const mn = T('months')[today.getMonth()];
     const salesNow = opps
-      .filter(o => o.saleMade === 'Yes' && BL.getMonthAuto(o) === mn + ' ' + today.getFullYear())
-      .reduce((s,o) => s + (Number(o.estimate)||0), 0);
-    const goal = Number(document.getElementById('goalInput')?.value) || current;
+      .filter(o => o.saleMade === 'Yes')
+      .filter(o => {
+        const d = o.closeDate || o.saleDate || o.followUpDate || '';
+        if (!d) return false;
+        const [y,m] = d.split('-').map(Number);
+        return y === yr && (m-1) === mo;
+      })
+      .reduce((s,o) => s+(Number(o.estimate)||0)+(o.goldComp==='Yes'?Number(o.goldCompValue)||0:0), 0);
+    const goal = Number(document.getElementById('goalInput')?.value) || getGoalForMonth(mo, yr);
     const rem  = Math.max(goal - salesNow, 0);
     const sEl = document.getElementById('goalCurrentSales');
     const rEl = document.getElementById('goalRemaining');
     if (sEl) sEl.textContent = fmt$(salesNow);
-    if (rEl) rEl.textContent = rem > 0 ? fmt$(rem) : (getLang()==='pt'?'Meta atingida! 🎉':'Goal reached! 🎉');
-    // Update remaining as goal input changes
+    if (rEl) rEl.textContent = rem > 0 ? fmt$(rem) : 'Goal reached! 🎉';
     const inp = document.getElementById('goalInput');
-    if (inp) inp.addEventListener('input', () => {
+    if (inp) inp.oninput = () => {
       const g = Number(inp.value)||0;
       const r = Math.max(g - salesNow, 0);
-      if (rEl) rEl.textContent = r > 0 ? fmt$(r) : (getLang()==='pt'?'Meta atingida! 🎉':'Goal reached! 🎉');
-    });
+      const prev = document.getElementById('goalPreview');
+      if (prev) prev.textContent = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(g);
+      if (rEl) rEl.textContent = r > 0 ? fmt$(r) : 'Goal reached! 🎉';
+    };
   });
 }
 
@@ -2808,9 +2853,12 @@ async function saveGoalEdit() {
   if (!inp) return;
   const val = Number(inp.value) || 0;
   if (val <= 0) { toast(getLang()==='pt'?'Insira um valor válido':'Enter a valid goal amount','error'); return; }
-  saveGoalForMonth(new Date().getMonth(), val);
+  const mo = Number(document.getElementById('goalMonth')?.value ?? new Date().getMonth());
+  const yr = Number(document.getElementById('goalYear')?.value  ?? new Date().getFullYear());
+  saveGoalForMonth(mo, val, yr);
   document.getElementById('goalModal')?.remove();
-  toast(getLang()==='pt'?`✅ Meta atualizada: ${fmt$(val)}`:`✅ Goal updated: ${fmt$(val)}`,'success');
+  const mName = T('months')[mo];
+  toast(`✅ Goal saved: ${fmt$(val)} for ${mName} ${yr}`, 'success');
   await renderDashboard();
 }
 
@@ -5759,6 +5807,14 @@ async function renderYear() {
         <div class="m-stat"><div class="m-stat-val">${m.weightedPipe>0?fmt$(m.weightedPipe,true):'—'}</div><div class="m-stat-lbl">Wtd Pipeline</div></div>
         <div class="m-stat"><div class="m-stat-val">${m.overdue>0?m.overdue:'—'}</div><div class="m-stat-lbl" style="color:${m.overdue>0?'var(--red)':''}">Overdue</div></div>
         <div class="m-stat"><div class="m-stat-val">${m.homeCalls}</div><div class="m-stat-lbl">Home Calls</div></div>
+        <div class="m-stat"><div class="m-stat-val">${fmt$(getGoalForMonth(m.monthIdx, m.year),true)}</div><div class="m-stat-lbl">Goal</div></div>
+        <div class="m-stat"><div class="m-stat-val" style="color:${m.totalSales>=getGoalForMonth(m.monthIdx,m.year)&&getGoalForMonth(m.monthIdx,m.year)>0?'var(--green)':'var(--gold)'}">${getGoalForMonth(m.monthIdx,m.year)>0?Math.round(m.totalSales/getGoalForMonth(m.monthIdx,m.year)*100)+'%':'—'}</div><div class="m-stat-lbl">vs Goal</div></div>
+      </div>
+      <div style="padding:6px 12px 10px;text-align:right">
+        <button onclick="openGoalEditor(${m.monthIdx},${m.year})"
+          style="font-size:10px;padding:3px 10px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:5px;color:var(--gold);cursor:pointer;font-weight:600">
+          ✏️ Edit Goal
+        </button>
       </div>
     </div>`;
   }).join('');
@@ -6504,7 +6560,7 @@ async function renderAnalytics() {
   // Monthly revenue for last 12 months relative to selected year
   const monthRevMap = {};
   sold.forEach(o => {
-    const d = o.closeDate || o.saleDate || o.createdAt || '';
+    const d = o.closeDate || o.saleDate || '';  // use actual sale date
     const key = d.slice(0,7);
     if (key) monthRevMap[key] = (monthRevMap[key]||0) + (Number(o.estimate)||0) + (o.goldComp==='Yes'?Number(o.goldCompValue)||0:0);
   });
@@ -7015,8 +7071,8 @@ async function renderSales() {
     .filter(o => o.saleMade === 'Yes' || o.stage === 'Sale Made')
     .sort((a,b) => {
       // Sort by closeDate desc, then followUpDate desc, then createdAt desc
-      const da = a.closeDate || a.followUpDate || a.createdAt || '';
-      const db = b.closeDate || b.followUpDate || b.createdAt || '';
+      const da = a.closeDate || a.saleDate || a.createdAt || '';
+      const db = b.closeDate || b.saleDate || b.createdAt || '';
       return db.localeCompare(da);
     });
 
@@ -7026,7 +7082,7 @@ async function renderSales() {
                      'July','August','September','October','November','December'];
 
   sold.forEach(o => {
-    const dateStr = o.closeDate || o.followUpDate || '';
+    const dateStr = o.closeDate || o.saleDate || '';  // use sale date, not follow-up date
     let key = 'unknown';
     if (dateStr) {
       const [y,m] = dateStr.split('-');
@@ -7038,7 +7094,7 @@ async function renderSales() {
 
   const sortedKeys = Object.keys(monthGroups)
     .filter(k => k !== 'unknown')
-    .sort((a,b) => b.localeCompare(a));
+    .sort((a,b) => a.localeCompare(b));  // chronological: oldest first
   if (monthGroups['unknown']?.length) sortedKeys.push('unknown');
 
   const keyLabel = k => {
