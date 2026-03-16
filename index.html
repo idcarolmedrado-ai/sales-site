@@ -4852,7 +4852,7 @@ async function runAllTests() {
   await new Promise(r => setTimeout(r, 10));
 
   // Build 100 simulated opportunities
-  const SIM_TODAY = '2026-03-13';
+  const SIM_TODAY = localDateStr(new Date());  // always real today for isDueToday test
   const simOpps = (() => {
     const stages = ['New Lead','Home Call','Design in Progress','Quote Sent',
                     'Follow-up','Pending Decision','Sale Made','Postponed','Canceled'];
