@@ -315,3 +315,41 @@ END;
 $$;
 
     ← Remove this line  */
+
+
+-- ══════════════════════════════════════════════════════════════
+--  v4.4 FIELD SEMANTIC UPDATES (no new columns needed)
+--
+--  The following existing columns have been repurposed in the app:
+--
+--  issue_flag   → "Next Follow-up (Date)"  — stores a date string (YYYY-MM-DD)
+--                  Previously: Yes/No flag. Now: follow-up date for active phase.
+--
+--  issue_type   → "Details"               — free-text notes about the active phase
+--                  Previously: issue description. Now: general phase details.
+--
+--  issue_result → "Active Phase Result"   — Done | Postpone
+--                  Previously: Yes/No resolved flag.
+--                  Done    = case closed, removed from Tasks dashboard
+--                  Postpone = appears in Tasks dashboard
+--
+--  active_phase → dropdown:
+--                  Design Review | Balance Due | Exchange |
+--                  Cancelation | GoldComp | Issue | Other
+--
+--  customer_number → MANUAL entry only (no auto-generation).
+--                    Format recommended: EA-YYYY-XXXX
+--
+--  link_review_date → AUTO-CALCULATED: delivery_date + 5 days
+--                     (previously +7 days)
+--
+--  PIPELINE rule:
+--    sale_made = 'Yes' → client moves to ACTIVES, removed from Pipeline
+--
+--  POST 60 rule:
+--    All sold clients with a delivery date appear in POST 60
+--    follow_up_60 = delivery_date + 60 days
+--    (previously only Post30 clients where new_opportunity = 'No')
+--
+--  No ALTER TABLE statements needed — column names unchanged.
+-- ══════════════════════════════════════════════════════════════
