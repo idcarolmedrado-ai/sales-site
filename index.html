@@ -1614,7 +1614,7 @@ const BL = {
   isDueToday(opp) {
     if (opp.saleMade === 'Yes' || opp.stage === 'Canceled') return false;
     if (!opp.followUpDate) return false;
-    return opp.followUpDate === todayStr() && this.getDaysOverdue(opp) === 0;  // todayStr() is now TZ-safe
+    return opp.followUpDate === todayStr();
   },
 
   /* Weighted pipeline value */
