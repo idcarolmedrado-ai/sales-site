@@ -353,3 +353,37 @@ $$;
 --
 --  No ALTER TABLE statements needed — column names unchanged.
 -- ══════════════════════════════════════════════════════════════
+
+
+-- ══════════════════════════════════════════════════════════════
+--  v4.5 DATE & GOALS FIXES (no schema changes needed)
+--
+--  All fixes are app-logic only — no ALTER TABLE required.
+--
+--  DATE ASSIGNMENT FIXES:
+--    Sales tab / renderSales:
+--      Sales are now grouped by closeDate || saleDate only.
+--      followUpDate is NO LONGER used as a fallback for sale grouping
+--      (followUpDate is the next-action date, not the sale date).
+--
+--    getMonthAuto() (used by calcKPIs, Dashboard, Analytics):
+--      For sold opps: now uses closeDate || saleDate || homeCallDate
+--      For pipeline opps: uses homeCallDate || followUpDate (unchanged)
+--
+--    Sales months displayed in chronological order (oldest → newest).
+--
+--  MONTHLY GOALS FIXES:
+--    Goals are now stored per year: key = "{year}-{monthIndex}"
+--      e.g. "2026-2" = March 2026, "2025-10" = November 2025
+--    Old format (key = monthIndex integer) is still readable (backward compat).
+--
+--    Goal editor now shows Month + Year dropdowns — any month in any year
+--    can be edited, including past months.
+--
+--    Year tab now shows Goal ($) and vs Goal (%) per month card,
+--    with an Edit Goal button that pre-fills the correct month/year.
+--
+--  TEST FIX:
+--    T84 isDueToday: simplified to followUpDate === todayStr() only.
+--    SIM_TODAY in test suite: dynamically set to real today's date.
+-- ══════════════════════════════════════════════════════════════
