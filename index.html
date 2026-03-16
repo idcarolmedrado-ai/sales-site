@@ -1024,12 +1024,21 @@ tbody td { padding: 11px 12px; font-size: 13px; }
         <div class="form-grid">
           <div class="field">
             <label>Customer #</label>
-            <input id="f-customerNumber" type="text" readonly placeholder="Auto-assigned on sale"
-              style="background:var(--ink-70);color:var(--gold);font-family:var(--font-display);font-weight:700">
+            <input id="f-customerNumber" type="text" placeholder="e.g. EA-2026-0042" maxlength="30"
+              style="color:var(--gold);font-family:var(--font-display);font-weight:700">
           </div>
           <div class="field">
             <label>Active Phase</label>
-            <input id="f-activePhase" type="text" placeholder="e.g. Design Review, Ordering…">
+            <select id="f-activePhase">
+              <option value="">—</option>
+              <option>Design Review</option>
+              <option>Balance Due</option>
+              <option>Exchange</option>
+              <option>Cancelation</option>
+              <option>GoldComp</option>
+              <option>Issue</option>
+              <option>Other</option>
+            </select>
           </div>
           <div class="field">
             <label>Sale Date</label>
@@ -1040,23 +1049,23 @@ tbody td { padding: 11px 12px; font-size: 13px; }
             <input id="f-deliveryDate" type="date" onchange="onDeliveryDateChange()">
           </div>
           <div class="field">
-            <label>Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: +7d)</span></label>
+            <label>Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: delivery+5d)</span></label>
             <input id="f-linkReviewDate" type="date">
           </div>
           <div class="field">
-            <label>Issue Flag</label>
-            <select id="f-issueFlag">
-              <option value="">—</option><option>Yes</option><option>No</option>
-            </select>
+            <label>Next Follow-up <span style="font-size:10px;color:var(--gold)">(Date)</span></label>
+            <input id="f-issueFlag" type="date">
           </div>
           <div class="field">
-            <label>Issue Type <span style="font-size:10px;color:var(--ink-40)">(manual notes)</span></label>
-            <input id="f-issueType" type="text" placeholder="Describe issue…">
+            <label>Details</label>
+            <input id="f-issueType" type="text" placeholder="Notes, details about this phase…" maxlength="300">
           </div>
           <div class="field">
-            <label>Issue Resolved?</label>
-            <select id="f-issueResult">
-              <option value="">—</option><option>Yes</option><option>No</option>
+            <label>Active Phase Result</label>
+            <select id="f-issueResult" onchange="onActivePhaseResultChange()">
+              <option value="">—</option>
+              <option>Done</option>
+              <option>Postpone</option>
             </select>
           </div>
         </div>
@@ -2470,6 +2479,61 @@ async function renderPage(page) {
   }
 }
 
+function renderClientTimeline(query) {
+  const el = document.getElementById('timelineResults');
+  if (!el) return;
+  const q = (query||'').trim().toLowerCase();
+  if (!q) {
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-50);font-size:12px">Enter a Customer #, email, or phone to view timeline</div>';
+    return;
+  }
+  DB.getAll().then(opps => {
+    // Find matching clients
+    const matches = opps.filter(o =>
+      (o.customerNumber||'').toLowerCase().includes(q) ||
+      (o.email||'').toLowerCase().includes(q) ||
+      (o.phone||'').toLowerCase().replace(/[^0-9]/g,'').includes(q.replace(/[^0-9]/g,''))
+    );
+    if (!matches.length) {
+      el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-50);font-size:12px">No clients found matching "'+esc(query)+'"</div>';
+      return;
+    }
+    el.innerHTML = matches.map(o => {
+      const events = getTimeline(o.id);
+      // Auto-generate events from record fields if timeline is empty
+      const allEvents = [...events];
+      const addAuto = (date, label) => { if (date && !allEvents.find(e=>e.label===label)) allEvents.push({date,label}); };
+      if (o.saleMade==='Yes') addAuto(o.saleDate||o.closeDate, 'Sale Made');
+      if (o.deliveryDate) addAuto(o.deliveryDate, o.deliveryDate<=localDateStr(new Date())?'Delivery Completed':'Delivery Scheduled');
+      if (o.linkReviewDate) addAuto(o.linkReviewDate, 'Link Review Sent');
+      if (o.deliveryDate) addAuto(offsetDate(o.deliveryDate,30), 'Post-Delivery Follow-up (30 days)');
+      if (o.deliveryDate) addAuto(offsetDate(o.deliveryDate,60), 'Post-Delivery Follow-up (60 days)');
+      if (o.issueResult==='Done') addAuto(localDateStr(new Date()), 'Case Closed');
+      allEvents.sort((a,b)=>a.date.localeCompare(b.date));
+
+      const rows = allEvents.map(e => {
+        const d = e.date ? new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+        const isKey = ['Sale Made','Delivery Completed','Case Closed'].includes(e.label);
+        return '<div style="display:flex;align-items:center;gap:12px;padding:8px 20px;border-bottom:1px solid var(--ink-75)">'
+          +'<div style="font-size:11px;color:var(--ink-40);width:90px;flex-shrink:0;text-align:right">'+esc(d)+'</div>'
+          +'<div style="width:8px;height:8px;border-radius:50%;background:'+(isKey?'var(--gold)':'var(--ink-50)')+';flex-shrink:0"></div>'
+          +'<div style="font-size:12px;font-weight:'+(isKey?'700':'400')+';color:'+(isKey?'var(--ink-10)':'var(--ink-30)')+'">'+esc(e.label)+'</div>'
+          +'</div>';
+      }).join('');
+
+      return '<div style="border-bottom:2px solid var(--ink-70)">'
+        +'<div style="padding:12px 18px;display:flex;align-items:center;gap:10px;background:var(--ink-80)">'
+        +'<div style="font-weight:700;font-size:13px;color:var(--ink-10)">'+esc(o.lastName)+', '+esc(o.firstName)+'</div>'
+        +(o.customerNumber?'<span style="font-size:11px;color:var(--gold);font-weight:700">#'+esc(o.customerNumber)+'</span>':'')
+        +'<span style="font-size:11px;color:var(--ink-50)">'+(o.projectType||'')+'</span>'
+        +'</div>'
+        +(allEvents.length ? rows : '<div style="padding:16px 20px;color:var(--ink-50);font-size:11px">No timeline events recorded yet</div>')
+        +'</div>';
+    }).join('');
+  });
+}
+
+
 /* ══════════════════════════════════════════════════
    HELPERS: TASK / ACTIVE / MAIL COMPLETION
 ══════════════════════════════════════════════════ */
@@ -2537,6 +2601,32 @@ function _buildContactRows(opps,sentIds){
       'Customer #':o.customerNumber||'','Email Sent':sentIds.has(o.id)?'Yes':'No',
       'GoldComp':o.goldComp||'No','GoldComp Value':Number(o.goldCompValue)||0};});
 }
+async function exportMileageExcel() {
+  if (typeof XLSX==='undefined') { toast('Excel library not loaded','error'); return; }
+  const allRecs = getMileageRecords();
+  if (!allRecs.length) { toast('No mileage records','error'); return; }
+  const RATE = 0.725;
+  const rows = allRecs.map(r => {
+    const legs = [r.leg1,r.leg2,r.leg3,r.leg4,r.leg5].map(v=>Number(v)||0);
+    const total = legs.reduce((s,v)=>s+v,0);
+    return {
+      'Date': r.date||'', 'Client Name': r.clientName||'', 'Address': r.address||'',
+      'Purpose': r.purpose||'', 'Leg 1 (mi)': legs[0]||'', 'Leg 2 (mi)': legs[1]||'',
+      'Leg 3 (mi)': legs[2]||'', 'Leg 4 (mi)': legs[3]||'', 'Leg 5 (mi)': legs[4]||'',
+      'Commute Deduct': Number(r.commute)||0, 'Tolls/Parking': Number(r.tolls)||0,
+      'Net Miles': Math.max(total-(Number(r.commute)||0),0),
+      'Reimbursement ($)': (Math.max(total-(Number(r.commute)||0),0)*RATE).toFixed(2),
+      'Notes': r.notes||'',
+    };
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:22},{wch:30},{wch:16},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:14},{wch:14},{wch:10},{wch:16},{wch:24}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Mileage Log');
+  XLSX.writeFile(wb, 'EA_Mileage_'+new Date().toISOString().slice(0,7)+'.xlsx');
+  toast('Mileage exported to Excel','success');
+}
+
 async function exportContactsCSV(){
   var opps=await DB.getAll(),sentIds=new Set(getSentMails().map(function(s){return s.oppId;}));
   var rows=_buildContactRows(opps,sentIds);
@@ -2863,11 +2953,12 @@ async function renderPipeline() {
   document.getElementById('stageFilters').innerHTML =
     `<button class="filter-chip ${!state.stageFilter?'active':''}" onclick="setStageFilter(null)">All</button>` +
     LOOKUP.stages.map(s=>{
-      const cnt = opps.filter(o=>o.stage===s).length;
+      const cnt = opps.filter(o=>o.stage===s&&o.saleMade!=='Yes').length;
       return cnt ? `<button class="filter-chip ${state.stageFilter===s?'active':''}" onclick="setStageFilter('${s}')">${s} <span style="opacity:.5">(${cnt})</span></button>` : '';
     }).join('');
 
-  let list = opps;
+  // Pipeline: exclude Sale Made=YES (those are in Actives)
+  let list = opps.filter(o => o.saleMade !== 'Yes');
   if (state.stageFilter) list = list.filter(o=>o.stage===state.stageFilter);
   if (search) list = list.filter(o=>`${o.firstName} ${o.lastName} ${o.projectType} ${o.stage} ${o.email} ${o.leadSource} ${o.notes}`.toLowerCase().includes(search));
 
@@ -3119,12 +3210,11 @@ async function renderPost60() {
   const records = getPost30Records();
   const today   = localDateStr(new Date());
 
-  // Only clients from Post30 where newOpportunity = 'No'
-  const eligible = records.filter(r => r.newOpportunity === 'No' && r.deliveryDate);
+  // POST 60: ALL sold clients with a delivery date (same as POST 30)
+  const allSoldWithDelivery = opps.filter(o => o.saleMade === 'Yes' && (o.deliveryDate || records.find(r=>r.oppId===o.id)?.deliveryDate));
 
-  const rows = eligible.map(rec => {
-    const opp = opps.find(o => o.id === rec.oppId);
-    if (!opp) return null;
+  const rows = allSoldWithDelivery.map(opp => {
+    const rec = records.find(r => r.oppId === opp.id) || { oppId: opp.id };
     const _dv60 = opp.deliveryDate || rec.deliveryDate || '';
     const followup60 = _dv60 ? offsetDate(_dv60, 60) : '';
     const daysToFU   = daysDiff(today, followup60);
@@ -3441,9 +3531,9 @@ async function renderMileage() {
           </div>
           <div style="flex:1"></div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button onclick="printMilePage()" class="print-btn" title="${T('btn_print')}">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg>
-              ${T('mile_print')}
+            <button onclick="exportMileageExcel()" class="export-btn" title="Export to Excel" style="background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.4);color:var(--green)">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v1a1 1 0 001 1h10a1 1 0 001-1v-1M12 12l-4-4m0 0l4-4m-4 4h12"/></svg>
+              <span>Export Excel</span>
             </button>
             <button onclick="addMileageRow()"
               style="background:var(--gold);color:var(--ink);border:none;border-radius:8px;
@@ -3966,7 +4056,73 @@ function onFieldChange() {
 function onDeliveryDateChange() {
   const dv = document.getElementById('f-deliveryDate')?.value || '';
   const lr = document.getElementById('f-linkReviewDate');
-  if (lr && dv && !lr.value) lr.value = offsetDate(dv, 7);
+  if (lr && dv) lr.value = offsetDate(dv, 5);  // auto: delivery + 5 days
+}
+
+function onActivePhaseResultChange() {
+  // When Done → client removed from Tasks via issueResult='Done'
+  // When Postpone → client appears in Tasks via issueResult='Postpone'
+  // This is handled in _buildTasks which checks issueResult
+}
+
+/* ══════════════════════════════════════════════════
+   CLIENT TIMELINE — event recording helpers
+══════════════════════════════════════════════════ */
+function getTimeline(oppId) {
+  try { return JSON.parse(localStorage.getItem('ea_timeline_'+oppId)||'[]'); } catch(e) { return []; }
+}
+function saveTimeline(oppId, events) {
+  localStorage.setItem('ea_timeline_'+oppId, JSON.stringify(events));
+}
+function addTimelineEvent(oppId, label, date) {
+  if (!oppId || !label) return;
+  const events = getTimeline(oppId);
+  const dateStr = date || localDateStr(new Date());
+  // Avoid duplicates on same date+label
+  if (!events.find(e => e.date===dateStr && e.label===label)) {
+    events.push({ date: dateStr, label });
+    events.sort((a,b) => a.date.localeCompare(b.date));
+    saveTimeline(oppId, events);
+  }
+}
+
+function syncTimeline(opp, prevOpp) {
+  if (!opp || !opp.id) return;
+  const id = opp.id;
+  const today = localDateStr(new Date());
+
+  // Sale Made
+  if (opp.saleMade==='Yes' && (!prevOpp || prevOpp.saleMade!=='Yes')) {
+    addTimelineEvent(id, 'Sale Made', opp.saleDate || opp.closeDate || today);
+  }
+  // Delivery scheduled
+  if (opp.deliveryDate && (!prevOpp || prevOpp.deliveryDate!==opp.deliveryDate)) {
+    addTimelineEvent(id, 'Delivery Scheduled', opp.deliveryDate);
+  }
+  // Delivery completed (delivery date in the past)
+  if (opp.deliveryDate && opp.deliveryDate <= today && opp.saleMade==='Yes') {
+    addTimelineEvent(id, 'Delivery Completed', opp.deliveryDate);
+  }
+  // Link Review
+  if (opp.linkReviewDate && (!prevOpp || prevOpp.linkReviewDate!==opp.linkReviewDate)) {
+    addTimelineEvent(id, 'Link Review Sent', opp.linkReviewDate);
+  }
+  // Active Phase events
+  if (opp.activePhase && (!prevOpp || prevOpp.activePhase!==opp.activePhase)) {
+    const phaseEventMap = {
+      'Issue':     'Issue Opened',
+      'Exchange':  'Exchange Started',
+      'GoldComp':  'GoldComp Approved',
+      'Cancelation':'Cancelation Started',
+      'Balance Due':'Balance Due Flagged',
+    };
+    const evt = phaseEventMap[opp.activePhase];
+    if (evt) addTimelineEvent(id, evt, today);
+  }
+  // Active Phase Result: Done → Case Closed
+  if (opp.issueResult==='Done' && (!prevOpp || prevOpp.issueResult!=='Done')) {
+    addTimelineEvent(id, 'Case Closed', today);
+  }
 }
 
 function updateAutoFields() {
@@ -4059,13 +4215,8 @@ async function saveLead() {
 
   // ── Auto customer number on sale ──
   let customerNumber = document.getElementById('f-customerNumber')?.value?.trim() || '';
-  if (isSold && !customerNumber) {
-    customerNumber = existingRec?.customerNumber || (() => {
-      const seq = parseInt(localStorage.getItem('ea_cust_seq') || '0', 10) + 1;
-      localStorage.setItem('ea_cust_seq', String(seq));
-      return 'EA-' + new Date().getFullYear() + '-' + String(seq).padStart(4, '0');
-    })();
-  }
+  // Customer # is manual — not auto-generated
+  // User enters it directly in the Active Client Info section
 
   // ── Auto saleDate / closeDate ──
   let saleDate  = document.getElementById('f-saleDate')?.value  || '';
@@ -4115,7 +4266,11 @@ async function saveLead() {
   if (btn) { btn.textContent = '⏳ Saving…'; btn.disabled = true; }
 
   try {
-    await DB.save(opp);
+    // Timeline sync
+  const _prevAllOpps = await DB.getAll();
+  const _prevOpp = _prevAllOpps.find(x=>x.id===opp.id);
+  await DB.save(opp);
+  syncTimeline(opp, _prevOpp);
     // Auto-create link review mailing task if new delivery date set
     if (linkReviewDate && linkReviewDate !== (existingRec?.linkReviewDate || '')) {
       _scheduleReviewTask(opp, linkReviewDate);
@@ -6086,6 +6241,25 @@ function _buildTasks(opps) {
       stage:'Post-60',customerNumber:o.customerNumber||'',goldComp:o.goldComp||''});
   });
 
+  // ── Active clients: Active Phase Result = Postpone → show in Tasks ──────
+  opps.filter(o => o.saleMade === 'Yes').forEach(o => {
+    if (o.issueResult === 'Done') return;  // Done → removed from tasks
+    if (o.issueResult === 'Postpone' || (o.activePhase && o.issueFlag)) {
+      const dueDate = o.issueFlag || localDateStr(new Date());
+      addTask({
+        id: o.id+'_ap', oppId: o.id, source:'active',
+        type: 'upcoming', priority: 35, icon: '🔄',
+        label: o.issueResult === 'Postpone' ? 'Postponed' : 'Active',
+        labelColor: 'var(--gold)',
+        firstName: o.firstName||'', lastName: o.lastName||'',
+        activity: (o.activePhase||'Active Phase') + (o.issueType ? ': '+o.issueType : ''),
+        dueDate, estimate: Number(o.estimate)||0,
+        projectType: o.projectType||'', stage: 'Active · '+(o.activePhase||''),
+        customerNumber: o.customerNumber||'', goldComp: o.goldComp||'',
+      });
+    }
+  });
+
   // ── Active pipeline: overdue & due today ──
   opps.forEach(o => {
     if (o.saleMade === 'Yes' || o.stage === 'Canceled') return;
@@ -6798,8 +6972,8 @@ async function renderActive() {
           /* [L excluded] */
           /* M-R */
           + TH('Follow-up / Link<br>Review','text-align:center')
-          + TH('Issue Flag<br>Yes/No','text-align:center')
-          + TH('Issue Type') + TH('Issue Follow-up') + TH('Issue Result','text-align:center')
+          + TH('Next Follow-up<br>(Date)','text-align:center')
+          + TH('Details') + TH('Active Phase<br>Result','text-align:center')
           + TH('Notes')
           /* [S, T, U excluded] */
           + TH('','width:60px')
@@ -6807,6 +6981,31 @@ async function renderActive() {
           + '<tbody>' + rows + '</tbody>'
           + '</table>')
     + '</div>';
+
+  // ── CLIENT TIMELINE ─────────────────────────────────────────────────────
+  const _timelineWrap = document.getElementById('clientTimelineWrapper') ||
+    (() => { const d=document.createElement('div'); d.id='clientTimelineWrapper'; el.appendChild(d); return d; })();
+
+  _timelineWrap.innerHTML = `<div style="margin-top:32px;background:var(--ink-85);border:1px solid var(--ink-70);border-radius:14px;overflow:hidden">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--ink-75);display:flex;align-items:center;gap:12px">
+      <span style="font-size:18px">⏱</span>
+      <div style="font-family:var(--font-display);font-size:15px;color:var(--gold);font-weight:700">CLIENT TIMELINE</div>
+      <div style="font-size:11px;color:var(--ink-50)">Full history — search by Customer #, Email, or Phone</div>
+    </div>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--ink-75)">
+      <input id="timelineSearch" type="text" maxlength="100"
+        placeholder="Search by Customer #, Email, or Phone number…"
+        style="width:100%;background:var(--ink-80);border:1px solid var(--ink-65);border-radius:6px;padding:7px 12px;color:var(--ink-10);font-size:12px;box-sizing:border-box"
+        oninput="renderClientTimeline(this.value)">
+    </div>
+    <div id="timelineResults" style="min-height:80px;padding:0">
+      <div style="padding:24px;text-align:center;color:var(--ink-50);font-size:12px">
+        Enter a Customer #, email, or phone to view timeline
+      </div>
+    </div>
+  </div>`;
+
+  
 }
 
 
