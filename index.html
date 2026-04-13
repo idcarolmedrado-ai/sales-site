@@ -2936,7 +2936,7 @@ async function renderDashboard() {
 
   // Month filter chips — sorted by fiscal year (Jul-Jun)
   const _fyOrder = m => { const mo = new Date(m + '-01T12:00:00').getMonth(); return mo >= 6 ? mo - 6 : mo + 6; };
-  const months = [...new Set(opps.map(o=>BL.getMonthAuto(o)).filter(Boolean))].sort((a,b) => _fyOrder(a) - _fyOrder(b));
+  const months = [...new Set(opps.map(o=>BL.getMonthAuto(o)).filter(Boolean))].sort();
 
   // FY picker buttons
   const _fyYears = [...new Set(months.map(m => { const [y, mo] = m.split('-').map(Number); return mo >= 7 ? y : y - 1; }))].sort();
