@@ -30,6 +30,8 @@ body { background: var(--ink); color: #fff; font-family: var(--font-body);
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--ink-80); }
 ::-webkit-scrollbar-thumb { background: var(--ink-60); border-radius: 3px; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
 
 /* ── NAV ── */
 nav {
@@ -1026,6 +1028,14 @@ tbody td { padding: 11px 12px; font-size: 13px; }
             <label>Customer #</label>
             <input id="f-customerNumber" type="text" placeholder="e.g. EA-2026-0042" maxlength="30"
               style="color:var(--gold);font-family:var(--font-display);font-weight:700">
+          </div>
+          <div class="field">
+            <label>Sale Order #</label>
+            <input id="f-saleOrderNumber" type="text" placeholder="e.g. SO-12345" maxlength="30">
+          </div>
+          <div class="field">
+            <label>Sale Amount ($)</label>
+            <input id="f-saleAmount" type="number" placeholder="0.00" min="0" step="0.01">
           </div>
           <div class="field">
             <label>Active Phase</label>
@@ -2264,24 +2274,39 @@ const DB = {
     b.innerHTML = `<span class="dot"></span>${type === 'live' ? 'Live' : 'Demo'}`;
   },
 
+  /* ── CACHE ── */
+  _cache: null,
+  _cacheTs: 0,
+  _cacheTTL: 3000,
+  _invalidateCache() { this._cache = null; this._cacheTs = 0; },
+
   /* ── READ ── */
   async getAll() {
+    const now = Date.now();
+    if (this._cache && (now - this._cacheTs) < this._cacheTTL) return this._cache;
+
+    let result;
     if (this.mode === 'supabase') {
       try {
         const { data, error } = await this.client
           .from('opportunities').select('*').order('created_at', { ascending: false });
         if (error) throw error;
-        return (data || []).map(r => this._fromDB(r));
+        result = (data || []).map(r => this._fromDB(r));
       } catch(e) {
         console.error('DB.getAll error:', e);
-        return this._localLoad();
+        result = this._localLoad();
       }
+    } else {
+      result = this._localLoad();
     }
-    return this._localLoad();
+    this._cache = result;
+    this._cacheTs = Date.now();
+    return result;
   },
 
   /* ── SAVE (insert or update) ── */
   async save(opp) {
+    this._invalidateCache();
     // Ensure ID
     if (!opp.id) opp.id = uid();
 
@@ -2314,6 +2339,7 @@ const DB = {
 
   /* ── DELETE ── */
   async delete(id) {
+    this._invalidateCache();
     if (this.mode === 'supabase') {
       try {
         const { error } = await this.client.from('opportunities').delete().eq('id', id);
@@ -2360,6 +2386,8 @@ const DB = {
       issueType:      row.issueType      || '',
       issueResult:    row.issueResult    || '',
       goldCompValue: Number(row.goldCompValue) || 0,
+      saleOrderNumber: row.saleOrderNumber || '',
+      saleAmount: Number(row.saleAmount) || 0,
     };
   },
 
@@ -2393,6 +2421,8 @@ const DB = {
       issueType:       o.issueType     || null,
       issueResult:     o.issueResult   || null,
       goldCompValue:  Number(o.goldCompValue) || 0,
+      saleOrderNumber: o.saleOrderNumber || null,
+      saleAmount: Number(o.saleAmount) || 0,
     };
   },
 
@@ -2452,6 +2482,8 @@ let state = {
   stageFilter: null,
   mailFilter: null,
   editingId: null,
+  fyFilter: null,
+  _fyStartYr: null,
 };
 
 /* ══════════════════════════════════════════════════
@@ -2467,19 +2499,30 @@ async function navigate(page) {
 }
 
 async function renderPage(page) {
-  switch(page) {
-    case 'dashboard':  await renderDashboard(); break;
-    case 'pipeline':   await renderPipeline();  break;
-    case 'priorities': await renderPriorities(); break;
-    case 'year':       await renderYear();       break;
-    case 'mailing':    await renderMailing();    break;
-    case 'active':     await renderActive();     break;
-    case 'post30':     await renderPost30();     break;
-    case 'post60':     await renderPost60();     break;
-    case 'sales': window._currentPage='sales'; await renderSales(); break;
-    case 'mileage':    await renderMileage();    break;
-    case 'analytics': await renderAnalytics(); break;
-    case 'tests': break;
+  try {
+    switch(page) {
+      case 'dashboard':  await renderDashboard(); break;
+      case 'pipeline':   await renderPipeline();  break;
+      case 'priorities': await renderPriorities(); break;
+      case 'year':       await renderYear();       break;
+      case 'mailing':    await renderMailing();    break;
+      case 'active':     await renderActive();     break;
+      case 'post30':     await renderPost30();     break;
+      case 'post60':     await renderPost60();     break;
+      case 'sales': window._currentPage='sales'; await renderSales(); break;
+      case 'mileage':    await renderMileage();    break;
+      case 'analytics': await renderAnalytics(); break;
+      case 'tests': break;
+    }
+  } catch(err) {
+    console.error('renderPage error:', err);
+    const el = document.getElementById(`page-${page}`);
+    if (el) el.innerHTML = `<div class="container" style="padding:60px 24px;text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+      <div style="font-family:var(--font-display);font-size:24px;color:var(--red);margin-bottom:8px">Something went wrong</div>
+      <div style="color:var(--ink-40);font-size:13px;margin-bottom:20px">${esc(err.message || 'Unknown error')}</div>
+      <button onclick="renderPage('${page}')" style="background:var(--gold);color:#000;border:none;border-radius:8px;padding:10px 24px;font-weight:700;cursor:pointer">Retry</button>
+    </div>`;
   }
 }
 
@@ -2610,22 +2653,35 @@ async function exportMileageExcel() {
   const allRecs = getMileageRecords();
   if (!allRecs.length) { toast('No mileage records','error'); return; }
   const RATE = 0.725;
-  const rows = allRecs.map(r => {
-    const legs = [r.leg1,r.leg2,r.leg3,r.leg4,r.leg5].map(v=>Number(v)||0);
-    const total = legs.reduce((s,v)=>s+v,0);
-    return {
-      'Date': r.date||'', 'Client Name': r.clientName||'', 'Address': r.address||'',
-      'Purpose': r.purpose||'', 'Leg 1 (mi)': legs[0]||'', 'Leg 2 (mi)': legs[1]||'',
-      'Leg 3 (mi)': legs[2]||'', 'Leg 4 (mi)': legs[3]||'', 'Leg 5 (mi)': legs[4]||'',
-      'Commute Deduct': Number(r.commute)||0, 'Tolls/Parking': Number(r.tolls)||0,
-      'Net Miles': Math.max(total-(Number(r.commute)||0),0),
-      'Reimbursement ($)': (Math.max(total-(Number(r.commute)||0),0)*RATE).toFixed(2),
-      'Notes': r.notes||'',
-    };
+
+  const hdr = ['Date','Client Name','Address','Home→DC','DC→Client',
+    'Client→Home','Home→DC2','DC→Home','Total Miles','Commute Deduct',
+    'Net Miles','Tolls/Parking','Reimbursement ($)','Design Partner','Purpose'];
+  const dataRows = allRecs.map(r => {
+    const total = parseFloat(r.totalMiles) || 0;
+    const commute = parseFloat(r.commuteDeduct) || 0;
+    const net = Math.max(total - commute, 0);
+    const tolls = parseFloat(r.tollsParking) || 0;
+    const reimb = net > 0 ? +(net * RATE + tolls).toFixed(2) : 0;
+    return [r.date||'', r.clientName||'', r.address||'',
+      parseFloat(r.stopHome1)||0, parseFloat(r.stopDC1)||0,
+      parseFloat(r.stopClient)||0, parseFloat(r.stopHome2)||0, parseFloat(r.stopDC2)||0,
+      total, commute, +net.toFixed(1), tolls, reimb,
+      r.designPartner||'', r.isManual ? 'Manual Trip' : 'Home Call'];
   });
+
+  // Subtotals row
+  const totals = ['','','SUBTOTALS','','','','','',0,0,0,0,0,'',''];
+  dataRows.forEach(r => { for (let i=3;i<=12;i++) totals[i] = (totals[i]||0) + (Number(r[i])||0); });
+  totals[12] = +totals[12].toFixed(2);
+
+  const aoa = [hdr, ...dataRows, totals,
+    [], ['Signature: _________________________','','','Date: _____________'],
+    ['Supervisor: _________________________','','','Date: _____________']];
+
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{wch:12},{wch:22},{wch:30},{wch:16},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:14},{wch:14},{wch:10},{wch:16},{wch:24}];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [12,16,20,8,8,8,8,8,8,8,8,8,12,14,10].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, ws, 'Mileage Log');
   XLSX.writeFile(wb, 'EA_Mileage_'+new Date().toISOString().slice(0,7)+'.xlsx');
   toast('Mileage exported to Excel','success');
@@ -2878,10 +2934,20 @@ async function renderDashboard() {
   document.getElementById('goalFill').style.width = pct + '%';
   document.getElementById('goalPct').textContent = T('pct_of_goal')(pct);
 
-  // Month filter chips
-  const months = [...new Set(opps.map(o=>BL.getMonthAuto(o)).filter(Boolean))].sort();
+  // Month filter chips — sorted by fiscal year (Jul-Jun)
+  const _fyOrder = m => { const mo = new Date(m + '-01T12:00:00').getMonth(); return mo >= 6 ? mo - 6 : mo + 6; };
+  const months = [...new Set(opps.map(o=>BL.getMonthAuto(o)).filter(Boolean))].sort((a,b) => _fyOrder(a) - _fyOrder(b));
+
+  // FY picker buttons
+  const _fyYears = [...new Set(months.map(m => { const [y, mo] = m.split('-').map(Number); return mo >= 7 ? y : y - 1; }))].sort();
+  const fyButtons = _fyYears.map(yr => {
+    const label = `FY${yr}-${String(yr+1).slice(2)}`;
+    return `<button class="filter-chip ${state._fyStartYr===yr?'active':''}" onclick="setFiscalYearFilter(${yr})" style="font-size:10px">${label}</button>`;
+  }).join('');
+
   document.getElementById('monthFilter').innerHTML =
-    `<button class="filter-chip ${!state.monthFilter?'active':''}" onclick="setMonthFilter(null)">${T('all_months')}</button>` +
+    `<button class="filter-chip ${!state.monthFilter&&!state._fyStartYr?'active':''}" onclick="setMonthFilter(null)">${T('all_months')}</button>` +
+    fyButtons +
     months.map(m=>`<button class="filter-chip ${state.monthFilter===m?'active':''}" onclick="setMonthFilter('${m}')">${localMonthLabel(m)}</button>`).join('');
 
   // KPI values
@@ -2988,7 +3054,12 @@ async function renderDashboard() {
   await _updateTasksWidget(opps);
 }
 
-function setMonthFilter(m) { state.monthFilter = m; renderDashboard(); }
+function setMonthFilter(m) { state.monthFilter = m; state._fyStartYr = null; renderDashboard(); }
+function setFiscalYearFilter(startYr) {
+  if (state._fyStartYr === startYr) { state._fyStartYr = null; state.monthFilter = null; }
+  else { state._fyStartYr = startYr; state.monthFilter = null; }
+  renderDashboard();
+}
 
 /* ══════════════════════════════════════════════════
    RENDER: PIPELINE
@@ -3136,7 +3207,6 @@ function getPost30ByOppId(oppId) { return getPost30Records().find(r => r.oppId =
 function getMileageRecords() { return Store.load('mileage'); }
 function saveMileageRecord(rec) { Store.upsert('mileage', rec, 'id'); }
 function deleteMileageRecord(id) { Store.remove('mileage', id, 'id'); }
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 
 /* ════════════════════════════════════════════════════
@@ -3157,7 +3227,17 @@ async function renderPost30() {
     const delivDate   = o.deliveryDate || rec.deliveryDate || '';
     const followup30  = delivDate ? offsetDate(delivDate, 30) : '';
     const daysToFU    = followup30 ? daysDiff(today, followup30) : null;
-    return { opp: o, rec, delivDate, followup30, daysToFU };
+    const daysSinceDelivery = delivDate ? -daysDiff(today, delivDate) : null;
+    return { opp: o, rec, delivDate, followup30, daysToFU, daysSinceDelivery };
+  });
+
+  // Auto-archive entries past 60 days since delivery
+  rows.forEach(row => {
+    if (row.daysSinceDelivery !== null && row.daysSinceDelivery > 60 && !row.rec.newOpportunity) {
+      row.rec.newOpportunity = 'No';
+      row.rec.notes = (row.rec.notes || '') + (row.rec.notes ? ' | ' : '') + 'Auto-archived (60d)';
+      savePost30Record(row.rec);
+    }
   });
 
   // Sort: overdue first, then by follow-up date ascending
@@ -3174,14 +3254,14 @@ async function renderPost30() {
   const pending  = rows.filter(r => r.daysToFU === null).length;
 
   const tbody = rows.map((row, i) => {
-    const { opp, rec, delivDate, followup30, daysToFU } = row;
+    const { opp, rec, delivDate, followup30, daysToFU, daysSinceDelivery } = row;
     const statusBadge = daysToFU === null
       ? `<span class="status-badge status-waiting">No Delivery Date</span>`
       : daysToFU < 0
-        ? `<span class="status-badge status-overdue">Overdue ${Math.abs(daysToFU)}d</span>`
+        ? `<span class="status-badge status-overdue">${Math.abs(daysToFU)}d Past Due</span>`
         : daysToFU === 0
           ? `<span class="status-badge status-today">Due Today</span>`
-          : `<span class="status-badge status-upcoming">In ${daysToFU}d</span>`;
+          : `<span class="status-badge status-upcoming">${daysToFU}d Remaining</span>`;
 
     const noNew = rec.newOpportunity === 'No';
     return `<tr style="${noNew ? 'opacity:.55' : ''}">
@@ -3266,9 +3346,19 @@ async function renderPost60() {
     const _dv60 = opp.deliveryDate || rec.deliveryDate || '';
     const followup60 = _dv60 ? offsetDate(_dv60, 60) : '';
     const daysToFU   = daysDiff(today, followup60);
+    const daysSinceDelivery = _dv60 ? -daysDiff(today, _dv60) : null;
     // Post60 has its own contact/notes — stored as rec.p60_*
-    return { opp, rec, followup60, daysToFU };
+    return { opp, rec, followup60, daysToFU, daysSinceDelivery };
   }).filter(Boolean);
+
+  // Auto-archive entries past 90 days since delivery
+  rows.forEach(row => {
+    if (row.daysSinceDelivery !== null && row.daysSinceDelivery > 90 && !row.rec.p60_newOpportunity) {
+      row.rec.p60_newOpportunity = 'No';
+      row.rec.p60_notes = (row.rec.p60_notes || '') + (row.rec.p60_notes ? ' | ' : '') + 'Auto-archived (90d)';
+      savePost30Record(row.rec);
+    }
+  });
 
   rows.sort((a,b) => a.daysToFU - b.daysToFU);
 
@@ -3277,12 +3367,12 @@ async function renderPost60() {
   const upcoming = rows.filter(r => r.daysToFU > 0).length;
 
   const tbody = rows.map(row => {
-    const { opp, rec, followup60, daysToFU } = row;
+    const { opp, rec, followup60, daysToFU, daysSinceDelivery } = row;
     const statusBadge = daysToFU < 0
-      ? `<span class="status-badge status-overdue">Overdue ${Math.abs(daysToFU)}d</span>`
+      ? `<span class="status-badge status-overdue">${Math.abs(daysToFU)}d Past Due</span>`
       : daysToFU === 0
         ? `<span class="status-badge status-today">Due Today</span>`
-        : `<span class="status-badge status-upcoming">In ${daysToFU}d</span>`;
+        : `<span class="status-badge status-upcoming">${daysToFU}d Remaining</span>`;
 
     const done = rec.p60_newOpportunity === 'Yes' || rec.p60_newOpportunity === 'No';
     return `<tr style="${done&&rec.p60_newOpportunity==='No'?'opacity:.5':''}">
@@ -3784,7 +3874,6 @@ function formatDateShort(dateStr) {
   const [y,m,d] = dateStr.split('-').map(Number);
   return new Date(y,m-1,d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
-function esc(str) { return String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 /* ── Mailing tone policy: positive-only selling ──
    No harsh, negative, or disrespectful language.
@@ -4074,6 +4163,8 @@ async function editLead(id) {
   // Active client fields
   const _sf = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
   _sf('f-customerNumber', o.customerNumber);
+  _sf('f-saleOrderNumber', o.saleOrderNumber);
+  _sf('f-saleAmount', o.saleAmount || '');
   _sf('f-activePhase',    o.activePhase);
   _sf('f-saleDate',       o.saleDate || o.closeDate);
   _sf('f-deliveryDate',   o.deliveryDate);
@@ -4226,6 +4317,14 @@ async function saveLead() {
   const lastName  = document.getElementById('f-lastName').value.trim();
   if (!firstName || !lastName) { toast('First and last name are required', 'error'); return; }
 
+  // Input validation
+  const _email = document.getElementById('f-email').value.trim();
+  if (_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(_email)) { toast('Please enter a valid email address', 'error'); return; }
+  const _estVal = Number(document.getElementById('f-estimate').value);
+  if (_estVal && _estVal < 0) { toast('Estimate must be a positive number', 'error'); return; }
+  const _saVal = Number(document.getElementById('f-saleAmount')?.value);
+  if (_saVal && _saVal < 0) { toast('Sale Amount must be a positive number', 'error'); return; }
+
   const existingId  = document.getElementById('leadId').value;
   const stage       = document.getElementById('f-stage').value;
   const saleMade    = document.getElementById('f-saleMade').value;
@@ -4307,6 +4406,8 @@ async function saveLead() {
     issueFlag:      document.getElementById('f-issueFlag')?.value     || '',
     issueType:      document.getElementById('f-issueType')?.value     || '',
     issueResult:    document.getElementById('f-issueResult')?.value   || '',
+    saleOrderNumber: document.getElementById('f-saleOrderNumber')?.value?.trim() || '',
+    saleAmount:     Number(document.getElementById('f-saleAmount')?.value) || 0,
     createdAt:      existingRec?.createdAt || todayStr(),
   };
 
@@ -6042,7 +6143,7 @@ async function exportToExcel() {
       o.stage, o.projectType, Number(o.probability)||0, Number(o.estimate)||0,
       o.leadSource, o.homeCall, o.homeCallDate, o.saleMade, o.goldComp,
       o.followUpDate, o.nextStep, o.notes,
-      wt.label, BL.getWeighted(o), BL.urgencyScore(o)
+      wt.label, BL.getWeighted(o), BL.getUrgencyScore(o)
     ];
   });
   const wsOpps = XLSX.utils.aoa_to_sheet([oppHeaders, ...oppRows]);
@@ -6067,21 +6168,21 @@ async function exportToExcel() {
     return [o.firstName, o.lastName, o.stage, o.projectType,
       Number(o.probability)||0, Number(o.estimate)||0,
       BL.getWeighted(o), wt.label, o.followUpDate,
-      BL.getDaysOverdue(o), BL.urgencyScore(o), o.nextStep];
+      BL.getDaysOverdue(o), BL.getUrgencyScore(o), o.nextStep];
   });
   const wsAct = XLSX.utils.aoa_to_sheet([actHdr, ...actRows]);
   wsAct['!cols'] = [12,12,14,14,10,10,10,8,12,8,8,18].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, wsAct, 'Active Pipeline');
 
   /* ── Sheet 4: Priorities ── */
-  const prioOpps = [...active].sort((a,b) => BL.urgencyScore(b) - BL.urgencyScore(a));
+  const prioOpps = [...active].sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
   const prioHdr = ['Rank','First Name','Last Name','Stage','Probability %','Estimate $',
     'Urgency Score','Win Tier','Days Overdue','Follow-Up Date','Next Step'];
   const prioRows = prioOpps.map((o,i) => {
     const wt = BL.getWinTier(o);
     return [i+1, o.firstName, o.lastName, o.stage,
       Number(o.probability)||0, Number(o.estimate)||0,
-      BL.urgencyScore(o), wt.label, BL.getDaysOverdue(o), o.followUpDate, o.nextStep];
+      BL.getUrgencyScore(o), wt.label, BL.getDaysOverdue(o), o.followUpDate, o.nextStep];
   });
   const wsPrio = XLSX.utils.aoa_to_sheet([prioHdr, ...prioRows]);
   wsPrio['!cols'] = [5,12,12,14,10,10,8,8,8,12,18].map(w=>({wch:w}));
@@ -6132,14 +6233,14 @@ async function copyForSheets() {
 
   const hdr = ['Name','Stage','Project Type','Probability %','Estimate $',
     'Weighted','Win Tier','Follow-Up','Days Overdue','Urgency Score','GoldComp','Lead Source'];
-  const rows = active.sort((a,b) => BL.urgencyScore(b)-BL.urgencyScore(a)).map(o => {
+  const rows = active.sort((a,b) => BL.getUrgencyScore(b)-BL.getUrgencyScore(a)).map(o => {
     const wt = BL.getWinTier(o);
     return [
       `${o.firstName||''} ${o.lastName||''}`.trim(),
       o.stage||'', o.projectType||'',
       Number(o.probability)||0, Number(o.estimate)||0,
       BL.getWeighted(o), wt.label, o.followUpDate||'',
-      BL.getDaysOverdue(o), BL.urgencyScore(o),
+      BL.getDaysOverdue(o), BL.getUrgencyScore(o),
       o.goldComp||'', o.leadSource||''
     ].join('\t');
   });
@@ -6444,39 +6545,6 @@ function _buildTasks(opps) {
       });
     }
   });
-
-  // ── Post30 overdue ──
-  try {
-    const p30 = getPost30Records();
-    opps.filter(o => o.saleMade === 'Yes').forEach(o => {
-      const rec = p30.find(r => r.oppId === o.id);
-      if (!rec || !rec.deliveryDate) return;
-      const fu = offsetDate(rec.deliveryDate, 30);
-      const d  = daysDiff(todayS, fu);
-      if (d <= 3) {
-        addTask({
-          id: o.id + '_p30', oppId: o.id,
-          type: d < 0 ? 'overdue' : 'today',
-          priority: d < 0 ? 18 : 16,
-          icon: '📋',
-          label: d < 0 ? 'Post-30 ' + Math.abs(d) + 'd overdue' : 'Post-30 Due',
-          labelColor: 'var(--ink-20)',
-          firstName: o.firstName || '', lastName: o.lastName || '',
-          customerNumber: o.customerNumber || '',
-          saleDate: o.saleDate || o.closeDate || '',
-          projectType: o.projectType || '—',
-          estimate: Number(o.estimate) || 0,
-          goldComp: o.goldComp || '',
-          stage: 'Post 30', activePhase: o.activePhase || '',
-          deliveryDate: rec.deliveryDate, delivery2Day: false,
-          linkReviewDate: o.linkReviewDate || '', dueDate: fu,
-          activity: rec.contactReason || '30-day satisfaction check-in',
-          issueFlag: '', issueType: '', issueResult: '',
-          source: 'post30',
-        });
-      }
-    });
-  } catch(e) { /* post30 unavailable */ }
 
   tasks.sort((a, b) => b.priority !== a.priority ? b.priority - a.priority : (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
   return tasks;
@@ -7070,19 +7138,18 @@ async function renderSales() {
   const sold  = opps
     .filter(o => o.saleMade === 'Yes' || o.stage === 'Sale Made')
     .sort((a,b) => {
-      // Sort by closeDate desc, then followUpDate desc, then createdAt desc
-      const da = a.closeDate || a.saleDate || a.createdAt || '';
-      const db = b.closeDate || b.saleDate || b.createdAt || '';
+      const da = a.saleDate || a.closeDate || a.createdAt || '';
+      const db = b.saleDate || b.closeDate || b.createdAt || '';
       return db.localeCompare(da);
     });
 
-  /* ── Group by close month ── */
+  /* ── Group by sale month ── */
   const monthGroups = {}; // key = "YYYY-MM" or "Unknown"
   const MONTHS_EN = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
 
   sold.forEach(o => {
-    const dateStr = o.closeDate || o.saleDate || '';  // use sale date, not follow-up date
+    const dateStr = o.saleDate || o.closeDate || '';  // prefer saleDate over closeDate
     let key = 'unknown';
     if (dateStr) {
       const [y,m] = dateStr.split('-');
@@ -7108,25 +7175,25 @@ async function renderSales() {
   const curYear = new Date().getFullYear();
   const monthlyTotals = Array(12).fill(0);
   sold.forEach(o => {
-    const dateStr = o.closeDate || o.followUpDate || '';
+    const dateStr = o.saleDate || o.closeDate || '';
     if (!dateStr) return;
     const d = new Date(dateStr + 'T12:00:00');
     if (d.getFullYear() === curYear) {
-      monthlyTotals[d.getMonth()] += Number(o.estimate) || 0;
+      monthlyTotals[d.getMonth()] += Number(o.saleAmount) || Number(o.estimate) || 0;
     }
   });
   const maxMonthly = Math.max(...monthlyTotals, 1);
 
   /* ── Total stats ── */
-  const totalRevenue   = sold.reduce((s,o) => s + (Number(o.estimate)||0), 0);
-  const gcRevenue      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+  const totalRevenue   = sold.reduce((s,o) => s + (Number(o.saleAmount) || Number(o.estimate) || 0), 0);
+  const gcRevenue      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.saleAmount) || Number(o.estimate) || 0),0);
   const gcPct          = totalRevenue > 0 ? Math.round(gcRevenue/totalRevenue*100) : 0;
   const avgVal         = sold.length > 0 ? Math.round(totalRevenue/sold.length) : 0;
 
   /* ── Build month sections ── */
-  const sectionsHTML = sortedKeys.map(k => {
+  const sectionsHTML = sortedKeys.map((k, sIdx) => {
     const recs = monthGroups[k];
-    const monthTotal = recs.reduce((s,o) => s+(Number(o.estimate)||0), 0);
+    const monthTotal = recs.reduce((s,o) => s+(Number(o.saleAmount) || Number(o.estimate) || 0), 0);
     const qLabel = k !== 'unknown' ? (() => {
       const m = parseInt(k.split('-')[1],10);
       const q = m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';
@@ -7136,8 +7203,9 @@ async function renderSales() {
     })() : '';
 
     const rows = recs.map(o => {
-      const qtr = BL.getQuarter(o.closeDate || o.followUpDate);
-      const closeD = o.closeDate || o.followUpDate || '';
+      const _saleD = o.saleDate || o.closeDate || '';
+      const qtr = BL.getQuarter(_saleD);
+      const closeD = _saleD;
       return `<tr onclick="editLead('${o.id}')" style="cursor:pointer"
           onmouseover="this.style.background='rgba(196,147,63,.07)'"
           onmouseout="this.style.background=''">
@@ -7153,7 +7221,7 @@ async function renderSales() {
         </td>
         <td style="padding:9px 12px;font-size:12px;color:var(--ink-20)">${esc(o.projectType||'—')}</td>
         <td style="padding:9px 12px;font-size:11px;color:var(--ink-40)">${esc(o.leadSource||'—')}</td>
-        <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--green);font-size:14px">${fmt$(Number(o.estimate))}</td>
+        <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--green);font-size:14px">${fmt$(Number(o.saleAmount) || Number(o.estimate))}</td>
         <td style="padding:9px 12px;text-align:center">
           ${o.goldComp==='Yes'?'<span style="color:var(--gold);font-size:14px" title="GoldComp">⭐</span>':'<span style="color:var(--ink-60)">—</span>'}
         </td>
@@ -7172,12 +7240,15 @@ async function renderSales() {
       </tr>`;
     }).join('');
 
+    const secId = `sales-sec-${sIdx}`;
     return `
       <div style="margin-bottom:24px">
         <div style="display:flex;align-items:center;justify-content:space-between;
                     padding:10px 16px;background:var(--ink-80);border:1px solid var(--ink-60);
-                    border-radius:var(--r) var(--r) 0 0;border-bottom:none">
+                    border-radius:var(--r) var(--r) 0 0;border-bottom:none;cursor:pointer"
+                    onclick="toggleSalesSection('${secId}')">
           <div style="display:flex;align-items:center;gap:8px">
+            <span id="${secId}-chev" style="font-size:12px;color:var(--ink-40);transition:transform .2s">▼</span>
             <span style="font-family:var(--font-display);font-size:18px;color:var(--gold-lt)">${keyLabel(k)}</span>
             ${qLabel}
           </div>
@@ -7185,7 +7256,7 @@ async function renderSales() {
             <span style="font-size:11px;font-weight:400;color:var(--ink-40);margin-left:6px">${recs.length} deal${recs.length!==1?'s':''}</span>
           </div>
         </div>
-        <div style="overflow-x:auto;border:1px solid var(--ink-60);border-top:2px solid var(--gold-dk);border-radius:0 0 var(--r) var(--r)">
+        <div id="${secId}" style="overflow-x:auto;border:1px solid var(--ink-60);border-top:2px solid var(--gold-dk);border-radius:0 0 var(--r) var(--r)">
           <table style="width:100%;border-collapse:collapse;min-width:800px">
             <thead>
               <tr style="background:var(--ink-70)">
@@ -7312,6 +7383,15 @@ async function renderSales() {
         ${chartBars}
       </div>
     </div>`;
+}
+
+function toggleSalesSection(secId) {
+  const el = document.getElementById(secId);
+  const chev = document.getElementById(secId + '-chev');
+  if (!el) return;
+  const hidden = el.style.display === 'none';
+  el.style.display = hidden ? '' : 'none';
+  if (chev) chev.textContent = hidden ? '▼' : '▶';
 }
 
 async function launchApp(fromSupabase) {
@@ -7550,6 +7630,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    if (document.getElementById('leadModal')?.classList.contains('open')) closeModal();
+    if (document.getElementById('monthDetailModal')?.style.display !== 'none') closeMonthDetail();
+    if (document.getElementById('kpiModal')?.style.display !== 'none') closeKPIModal();
+    if (document.getElementById('emailPreviewModal')?.style.display !== 'none') closeEmailPreview();
+    if (document.getElementById('mileEditModal')?.style.display !== 'none' && typeof closeMileEdit === 'function') closeMileEdit();
+    const goalModal = document.getElementById('goalModal');
+    if (goalModal) goalModal.remove();
+  }
+});
+</script>
 
 </body>
 </html>
