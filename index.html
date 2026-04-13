@@ -735,6 +735,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 .kanban-toggle button { padding:4px 10px;border:none;border-radius:4px;font-size:11px;font-weight:600;
   cursor:pointer;background:transparent;color:var(--ink-40);font-family:var(--font-body); }
 .kanban-toggle button.active { background:var(--gold);color:#000; }
+.kanban-card.dragging { opacity:.4;transform:scale(.95); }
+.kanban-col-body.drag-over { background:rgba(196,147,63,.08);border:2px dashed var(--gold);border-radius:6px; }
 
 /* ── Bulk operations ── */
 .bulk-bar { display:none;align-items:center;gap:12px;padding:10px 16px;background:var(--gold-dk);
@@ -974,6 +976,9 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     <div class="kpi-card" data-kpi="totalest" onclick="showKPIDetail('totalest')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a3 3 0 016 0v2"/><path d="M2 12h16"/></svg><span class="label" data-i18n="kpi_total">Total Est. Pipeline</span><div class="kpi-value" id="k-total-est">$0</div><div class="kpi-delta" data-i18n="kpi_total_d">Sum of all estimates</div></div>
     <div class="kpi-card" data-kpi="winrate" onclick="showKPIDetail('winrate')"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h8v6a4 4 0 01-8 0V3z"/><path d="M6 6H3a2 2 0 002 2M14 6h3a2 2 0 01-3 2M10 13v4M7 17h6"/></svg><span class="label" data-i18n="kpi_winrate">Win Rate (YTD)</span><div class="kpi-value green" id="k-winrate">0%</div><div class="kpi-delta" data-i18n="kpi_winrate_d">Sales ÷ total opps</div></div>
   </div>
+
+  <!-- Year-over-Year -->
+  <div id="yoyComparison"></div>
 
   <!-- Insights -->
   <div class="label" style="padding:0 24px;max-width:1320px;margin:0 auto 10px"><span data-i18n="insights_title">💡 Insights & Recommendations</span></div>
@@ -1223,54 +1228,54 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <div class="form-section">
         <div class="form-section-title" data-i18n="sec_contact">👤 Contact Information</div>
         <div class="form-grid">
-          <div class="field"><label data-i18n="lbl_first">First Name *</label><input id="f-firstName" type="text" required placeholder="Maria"></div>
-          <div class="field"><label data-i18n="lbl_last">Last Name *</label><input id="f-lastName" type="text" required placeholder="Alvarez"></div>
-          <div class="field" id="field-email"><label data-i18n="lbl_email">Email</label><input id="f-email" type="email" placeholder="maria@email.com" oninput="validateFieldLive('email')"><div class="field-error">Please enter a valid email address</div></div>
-          <div class="field" id="field-phone"><label data-i18n="lbl_phone">Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000"></div>
-          <div class="field span-2"><label data-i18n="lbl_address">Address</label><input id="f-address" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
+          <div class="field"><label for="f-firstName" data-i18n="lbl_first">First Name *</label><input id="f-firstName" type="text" required placeholder="Maria"></div>
+          <div class="field"><label for="f-lastName" data-i18n="lbl_last">Last Name *</label><input id="f-lastName" type="text" required placeholder="Alvarez"></div>
+          <div class="field" id="field-email"><label for="f-email" data-i18n="lbl_email">Email</label><input id="f-email" type="email" placeholder="maria@email.com" oninput="validateFieldLive('email')"><div class="field-error">Please enter a valid email address</div></div>
+          <div class="field" id="field-phone"><label for="f-phone" data-i18n="lbl_phone">Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000"></div>
+          <div class="field span-2"><label for="f-address" data-i18n="lbl_address">Address</label><input id="f-address" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
         </div>
       </div>
 
       <div class="form-section">
         <div class="form-section-title" data-i18n="sec_project">🏠 Project Details</div>
         <div class="form-grid">
-          <div class="field"><label data-i18n="lbl_project">Project Type *</label>
+          <div class="field"><label for="f-projectType" data-i18n="lbl_project">Project Type *</label>
             <select id="f-projectType" onchange="onFieldChange()"><option value="">Select…</option></select></div>
-          <div class="field"><label data-i18n="lbl_source">Lead Source</label>
+          <div class="field"><label for="f-leadSource" data-i18n="lbl_source">Lead Source</label>
             <select id="f-leadSource"><option value="">Select…</option></select></div>
-          <div class="field"><label data-i18n="lbl_stage">Stage</label>
+          <div class="field"><label for="f-stage" data-i18n="lbl_stage">Stage</label>
             <select id="f-stage" onchange="onFieldChange()"><option value="">Select…</option></select></div>
-          <div class="field"><label data-i18n="lbl_prob">Probability (%)</label>
+          <div class="field"><label for="f-probability" data-i18n="lbl_prob">Probability (%)</label>
             <div class="prob-slider-wrap">
               <input id="f-probability" type="range" min="0" max="100" step="5" value="0" class="prob-slider"
                 oninput="document.getElementById('probVal').textContent=this.value+'%';document.getElementById('probVal').style.color=this.value>=70?'var(--green)':this.value>=40?'var(--gold)':'var(--red)';onFieldChange()">
               <span id="probVal" class="prob-val" style="color:var(--red)">0%</span>
             </div></div>
-          <div class="field"><label data-i18n="lbl_est">Estimate ($) <span class="field-tip" data-tip="Expected project value before sale">?</span></label>
+          <div class="field"><label for="f-estimate" data-i18n="lbl_est">Estimate ($) <span class="field-tip" data-tip="Expected project value before sale">?</span></label>
             <input id="f-estimate" type="number" min="0" step="100" placeholder="15000" oninput="onFieldChange();updateTotalSaleDisplay()">
             <div id="totalSaleDisplay" style="display:none;font-size:11px;color:var(--gold);margin-top:4px;font-weight:700"></div></div>
-          <div class="field"><label data-i18n="lbl_followup">Follow-Up Date</label>
+          <div class="field"><label for="f-followUpDate" data-i18n="lbl_followup">Follow-Up Date</label>
             <input id="f-followUpDate" type="date" onchange="onFieldChange()"></div>
-          <div class="field"><label data-i18n="lbl_closedate">Expected Close Date</label>
+          <div class="field"><label for="f-closeDate" data-i18n="lbl_closedate">Expected Close Date</label>
             <input id="f-closeDate" type="date" onchange="onFieldChange()"></div>
-          <div class="field"><label data-i18n="lbl_next">Next Step</label>
+          <div class="field"><label for="f-nextStep" data-i18n="lbl_next">Next Step</label>
             <select id="f-nextStep"><option value="">Select…</option></select></div>
-          <div class="field"><label data-i18n="lbl_hc">Home Call?</label>
+          <div class="field"><label for="f-homeCall" data-i18n="lbl_hc">Home Call?</label>
             <select id="f-homeCall" onchange="onFieldChange()">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
-          <div class="field"><label data-i18n="lbl_hcdate">Home Call Date</label>
+          <div class="field"><label for="f-homeCallDate" data-i18n="lbl_hcdate">Home Call Date</label>
             <input id="f-homeCallDate" type="date"></div>
-          <div class="field"><label data-i18n="lbl_sale">Sale Made?</label>
+          <div class="field"><label for="f-saleMade" data-i18n="lbl_sale">Sale Made?</label>
             <select id="f-saleMade" onchange="onFieldChange()">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
-          <div class="field"><label data-i18n="lbl_gc">GoldComp?</label>
+          <div class="field"><label for="f-goldComp" data-i18n="lbl_gc">GoldComp?</label>
             <select id="f-goldComp" onchange="toggleGoldCompValue()">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select>
           <div class="field" id="goldCompValueField" style="display:none">
-            <label>GoldComp Value ($)</label>
+            <label for="f-goldCompValue">GoldComp Value ($)</label>
             <input type="number" id="f-goldCompValue" min="0" step="100" placeholder="0" oninput="updateTotalSaleDisplay()">
           </div></div>
         </div>
@@ -1306,20 +1311,20 @@ tbody td { padding: 11px 12px; font-size: 13px; }
         <div class="form-section-title">✅ Active Client Info</div>
         <div class="form-grid">
           <div class="field">
-            <label>Customer #</label>
+            <label for="f-customerNumber">Customer #</label>
             <input id="f-customerNumber" type="text" placeholder="e.g. EA-2026-0042" maxlength="30"
               style="color:var(--gold);font-family:var(--font-display);font-weight:700">
           </div>
           <div class="field">
-            <label>Sale Order # <span class="field-tip" data-tip="Internal sale order reference number">?</span></label>
+            <label for="f-saleOrderNumber">Sale Order # <span class="field-tip" data-tip="Internal sale order reference number">?</span></label>
             <input id="f-saleOrderNumber" type="text" placeholder="e.g. SO-12345" maxlength="30">
           </div>
           <div class="field">
-            <label>Sale Amount ($) <span class="field-tip" data-tip="Actual sale price (may differ from estimate)">?</span></label>
+            <label for="f-saleAmount">Sale Amount ($) <span class="field-tip" data-tip="Actual sale price (may differ from estimate)">?</span></label>
             <input id="f-saleAmount" type="number" placeholder="0.00" min="0" step="0.01">
           </div>
           <div class="field">
-            <label>Active Phase</label>
+            <label for="f-activePhase">Active Phase</label>
             <select id="f-activePhase">
               <option value="">—</option>
               <option>Design Review</option>
@@ -1332,27 +1337,27 @@ tbody td { padding: 11px 12px; font-size: 13px; }
             </select>
           </div>
           <div class="field">
-            <label>Sale Date</label>
+            <label for="f-saleDate">Sale Date</label>
             <input id="f-saleDate" type="date">
           </div>
           <div class="field">
-            <label>Delivery Date</label>
+            <label for="f-deliveryDate">Delivery Date</label>
             <input id="f-deliveryDate" type="date" onchange="onDeliveryDateChange()">
           </div>
           <div class="field">
-            <label>Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: delivery+5d)</span></label>
+            <label for="f-linkReviewDate">Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: delivery+5d)</span></label>
             <input id="f-linkReviewDate" type="date">
           </div>
           <div class="field">
-            <label>Next Follow-up <span style="font-size:10px;color:var(--gold)">(Date)</span></label>
+            <label for="f-issueFlag">Next Follow-up <span style="font-size:10px;color:var(--gold)">(Date)</span></label>
             <input id="f-issueFlag" type="date">
           </div>
           <div class="field">
-            <label>Details</label>
+            <label for="f-issueType">Details</label>
             <input id="f-issueType" type="text" placeholder="Notes, details about this phase…" maxlength="300">
           </div>
           <div class="field">
-            <label>Active Phase Result</label>
+            <label for="f-issueResult">Active Phase Result</label>
             <select id="f-issueResult" onchange="onActivePhaseResultChange()">
               <option value="">—</option>
               <option>Done</option>
@@ -1364,7 +1369,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 
       <div class="form-section">
         <div class="form-section-title">📝 Notes</div>
-        <div class="field"><textarea id="f-notes" placeholder="Context about this opportunity…"></textarea></div>
+        <div class="field"><label for="f-notes" class="sr-only">Notes</label><textarea id="f-notes" placeholder="Context about this opportunity…"></textarea></div>
       </div>
 
       <div class="audit-trail" id="auditTrailSection" style="display:none">
@@ -1375,7 +1380,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <div class="cancel-reason-section" id="cancelReasonSection">
         <div style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">⚠️ Cancellation Details</div>
         <div class="field">
-          <label>Reason for Cancellation</label>
+          <label for="f-cancelReason">Reason for Cancellation</label>
           <select id="f-cancelReason">
             <option value="">Select reason…</option>
             <option>Budget constraints</option>
@@ -1389,7 +1394,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
           </select>
         </div>
         <div class="field" style="margin-top:8px">
-          <label>Additional Notes</label>
+          <label for="f-cancelNotes">Additional Notes</label>
           <input id="f-cancelNotes" type="text" placeholder="Any details about why this deal was lost…">
         </div>
       </div>
@@ -3122,14 +3127,14 @@ function openGoalEditor(presetMonthIdx, presetYear) {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
         <div>
-          <label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40);display:block;margin-bottom:6px">Month</label>
+          <label for="goalMonth" style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40);display:block;margin-bottom:6px">Month</label>
           <select id="goalMonth" onchange="refreshGoalModal()"
             style="width:100%;background:var(--ink-80);border:1px solid var(--ink-60);color:var(--ink-10);border-radius:var(--r);padding:8px 10px;font-size:13px">
             ${monthOpts}
           </select>
         </div>
         <div>
-          <label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40);display:block;margin-bottom:6px">Year</label>
+          <label for="goalYear" style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40);display:block;margin-bottom:6px">Year</label>
           <select id="goalYear" onchange="refreshGoalModal()"
             style="width:100%;background:var(--ink-80);border:1px solid var(--ink-60);color:var(--ink-10);border-radius:var(--r);padding:8px 10px;font-size:13px">
             ${yearOpts}
@@ -3262,6 +3267,20 @@ async function renderDashboard() {
     if (diff < 0) return `<span class="trend-down">${prefix||''}↓ ${pct}%</span>`;
     return '<span class="trend-flat">→ 0%</span>';
   }
+
+  // Year-over-year comparison
+  const lastYearMonth = `${today.getFullYear()-1}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  const lastYearKpis = BL.calcKPIs(opps, lastYearMonth);
+  const yoyHTML = (lastYearKpis.totalSales > 0 || lastYearKpis.opps > 0)
+    ? `<div style="display:flex;gap:16px;flex-wrap:wrap;padding:0 24px;max-width:1320px;margin:0 auto 12px">
+        <div style="background:var(--ink-80);border:1px solid var(--ink-70);border-radius:8px;padding:8px 14px;font-size:11px;color:var(--ink-40)">
+          vs. ${T('months')[today.getMonth()]} ${today.getFullYear()-1}:
+          Sales ${trendHTML(curKpis.totalSales, lastYearKpis.totalSales)}
+          &nbsp;·&nbsp; Deals ${trendHTML(curKpis.sold, lastYearKpis.sold)}
+          &nbsp;·&nbsp; Pipeline ${trendHTML(curKpis.weightedPipe, lastYearKpis.weightedPipe)}
+        </div></div>` : '';
+  const yoyEl = document.getElementById('yoyComparison');
+  if (yoyEl) yoyEl.innerHTML = yoyHTML;
 
   // Goal progress
   const goal = getGoalForMonth(today.getMonth());
@@ -3499,10 +3518,14 @@ async function _renderKanban() {
         ${stage} <span class="kanban-col-count">${cards.length}</span>
       </div>
       <div style="padding:4px 8px;font-size:10px;color:var(--ink-40)">${total>0?fmt$(total):''}</div>
-      <div class="kanban-col-body">${cards.length ? cards.map(o => {
+      <div class="kanban-col-body" data-stage="${stage}"
+        ondragover="kanbanDragOver(event)" ondragleave="kanbanDragLeave(event)"
+        ondrop="kanbanDrop(event,'${stage}')">${cards.length ? cards.map(o => {
         const urg = BL.getUrgencyScore(o);
         const ovr = BL.isOverdue(o);
-        return `<div class="kanban-card" onclick="editLead('${o.id}')" style="${ovr?'border-left:3px solid var(--red)':''}">
+        return `<div class="kanban-card" draggable="true" data-opp-id="${o.id}"
+          ondragstart="kanbanDragStart(event,'${o.id}')" ondragend="kanbanDragEnd(event)"
+          onclick="editLead('${o.id}')" style="${ovr?'border-left:3px solid var(--red)':''}">
           <div class="kanban-card-name">${esc(o.firstName)} ${esc(o.lastName)}</div>
           <div class="kanban-card-meta">${esc(o.projectType||'')}${o.followUpDate?' · '+fmtDate(o.followUpDate):''}</div>
           <div class="kanban-card-footer">
@@ -3563,6 +3586,64 @@ async function bulkDelete() {
   toast(`Deleted ${_bulkSelected.size} leads`, 'info');
   clearBulkSelection();
   renderPipeline();
+}
+
+/* ══════════════════════════════════════════════════
+   KANBAN DRAG AND DROP
+══════════════════════════════════════════════════ */
+let _dragOppId = null;
+function kanbanDragStart(e, id) {
+  _dragOppId = id;
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', id);
+}
+function kanbanDragEnd(e) {
+  e.target.classList.remove('dragging');
+  document.querySelectorAll('.kanban-col-body').forEach(el => el.classList.remove('drag-over'));
+}
+function kanbanDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+function kanbanDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+async function kanbanDrop(e, newStage) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!_dragOppId) return;
+  const opps = await DB.getAll();
+  const opp = opps.find(o => o.id === _dragOppId);
+  if (!opp || opp.stage === newStage) { _dragOppId = null; return; }
+  const oldStage = opp.stage;
+  opp.stage = newStage;
+  await DB.save(opp);
+  _logStageChange(opp.id, oldStage, newStage);
+  toast(`${opp.firstName} ${opp.lastName} → ${newStage}`, 'success');
+  _dragOppId = null;
+  _renderKanban();
+}
+
+/* ══════════════════════════════════════════════════
+   RE-ACTIVATE FROM CANCELED
+══════════════════════════════════════════════════ */
+async function reactivateLead(id) {
+  const opps = await DB.getAll();
+  const opp = opps.find(o => o.id === id);
+  if (!opp) return;
+  if (!confirm(`Re-activate ${opp.firstName} ${opp.lastName} and move back to pipeline?`)) return;
+  const oldStage = opp.stage;
+  opp.stage = 'Follow-up';
+  opp.saleMade = 'No';
+  opp.cancelReason = '';
+  opp.cancelNotes = '';
+  await DB.save(opp);
+  _logStageChange(opp.id, oldStage, 'Follow-up');
+  _logActivity(opp.id, 'edit', 'Re-activated from Canceled');
+  toast(`${opp.firstName} ${opp.lastName} re-activated`, 'success');
+  renderPage(state.page);
 }
 
 /* ══════════════════════════════════════════════════
@@ -8027,8 +8108,10 @@ async function renderSales() {
         + '<td style="padding:9px 12px;text-align:right;color:var(--red)">' + (o.estimate?fmt$(Number(o.estimate)):'—') + '</td>'
         + '<td style="padding:9px 12px;font-size:11px;color:var(--ink-40)">' + esc(o.leadSource||'—') + '</td>'
         + '<td style="padding:9px 12px;font-size:11px;color:var(--ink-40);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc((o.notes||'').slice(0,60)) + '</td>'
-        + '<td style="padding:9px 12px"><button onclick="event.stopPropagation();editLead(\'' + o.id + '\')"'
-        + ' style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">EDIT</button></td>'
+        + '<td style="padding:9px 12px;white-space:nowrap"><button onclick="event.stopPropagation();editLead(\'' + o.id + '\')"'
+        + ' style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer;margin-right:4px">EDIT</button>'
+        + '<button onclick="event.stopPropagation();reactivateLead(\'' + o.id + '\')"'
+        + ' style="background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.3);color:var(--green);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">↩ RE-OPEN</button></td>'
         + '</tr>').join('')
     + '</tbody></table></div></div>';
 
