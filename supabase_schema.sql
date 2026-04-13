@@ -131,6 +131,14 @@ CREATE TABLE opportunities (
   "issueType"       TEXT,         -- e.g. damage, delay, wrong item
   "issueResult"     TEXT,         -- Yes (resolved) | No (still open)
 
+  -- ── Sale Order Tracking (v4.6) ─────────────────────────────
+  "saleOrderNumber" TEXT,         -- Internal sale order reference
+  "saleAmount"      NUMERIC(12,2) DEFAULT 0,  -- Actual sale price
+
+  -- ── Cancellation Tracking (v4.7) ───────────────────────────
+  "cancelReason"    TEXT,         -- Why the deal was lost
+  "cancelNotes"     TEXT,         -- Additional cancellation details
+
   -- ── Server-computed (set by trigger on every write) ─────────
   urgency_score     INTEGER       DEFAULT 0,
   win_tier          TEXT          DEFAULT 'COLD',
@@ -398,4 +406,16 @@ $$;
 --  For EXISTING databases, run:
 --    ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "saleOrderNumber" TEXT;
 --    ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "saleAmount" NUMERIC(12,2) DEFAULT 0;
+-- ══════════════════════════════════════════════════════════════
+
+
+-- ══════════════════════════════════════════════════════════════
+--  v4.7 — Cancellation Reason Tracking (2026-04)
+--
+--  New columns for capturing why deals were lost/canceled.
+--  Shown in the lead form when stage = Canceled.
+--
+--  For EXISTING databases, run:
+--    ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "cancelReason" TEXT;
+--    ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "cancelNotes" TEXT;
 -- ══════════════════════════════════════════════════════════════
