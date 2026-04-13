@@ -3136,7 +3136,6 @@ function getPost30ByOppId(oppId) { return getPost30Records().find(r => r.oppId =
 function getMileageRecords() { return Store.load('mileage'); }
 function saveMileageRecord(rec) { Store.upsert('mileage', rec, 'id'); }
 function deleteMileageRecord(id) { Store.remove('mileage', id, 'id'); }
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 
 /* ════════════════════════════════════════════════════
@@ -3784,7 +3783,6 @@ function formatDateShort(dateStr) {
   const [y,m,d] = dateStr.split('-').map(Number);
   return new Date(y,m-1,d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
-function esc(str) { return String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 /* ── Mailing tone policy: positive-only selling ──
    No harsh, negative, or disrespectful language.
@@ -6042,7 +6040,7 @@ async function exportToExcel() {
       o.stage, o.projectType, Number(o.probability)||0, Number(o.estimate)||0,
       o.leadSource, o.homeCall, o.homeCallDate, o.saleMade, o.goldComp,
       o.followUpDate, o.nextStep, o.notes,
-      wt.label, BL.getWeighted(o), BL.urgencyScore(o)
+      wt.label, BL.getWeighted(o), BL.getUrgencyScore(o)
     ];
   });
   const wsOpps = XLSX.utils.aoa_to_sheet([oppHeaders, ...oppRows]);
@@ -6067,21 +6065,21 @@ async function exportToExcel() {
     return [o.firstName, o.lastName, o.stage, o.projectType,
       Number(o.probability)||0, Number(o.estimate)||0,
       BL.getWeighted(o), wt.label, o.followUpDate,
-      BL.getDaysOverdue(o), BL.urgencyScore(o), o.nextStep];
+      BL.getDaysOverdue(o), BL.getUrgencyScore(o), o.nextStep];
   });
   const wsAct = XLSX.utils.aoa_to_sheet([actHdr, ...actRows]);
   wsAct['!cols'] = [12,12,14,14,10,10,10,8,12,8,8,18].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, wsAct, 'Active Pipeline');
 
   /* ── Sheet 4: Priorities ── */
-  const prioOpps = [...active].sort((a,b) => BL.urgencyScore(b) - BL.urgencyScore(a));
+  const prioOpps = [...active].sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
   const prioHdr = ['Rank','First Name','Last Name','Stage','Probability %','Estimate $',
     'Urgency Score','Win Tier','Days Overdue','Follow-Up Date','Next Step'];
   const prioRows = prioOpps.map((o,i) => {
     const wt = BL.getWinTier(o);
     return [i+1, o.firstName, o.lastName, o.stage,
       Number(o.probability)||0, Number(o.estimate)||0,
-      BL.urgencyScore(o), wt.label, BL.getDaysOverdue(o), o.followUpDate, o.nextStep];
+      BL.getUrgencyScore(o), wt.label, BL.getDaysOverdue(o), o.followUpDate, o.nextStep];
   });
   const wsPrio = XLSX.utils.aoa_to_sheet([prioHdr, ...prioRows]);
   wsPrio['!cols'] = [5,12,12,14,10,10,8,8,8,12,18].map(w=>({wch:w}));
@@ -6132,14 +6130,14 @@ async function copyForSheets() {
 
   const hdr = ['Name','Stage','Project Type','Probability %','Estimate $',
     'Weighted','Win Tier','Follow-Up','Days Overdue','Urgency Score','GoldComp','Lead Source'];
-  const rows = active.sort((a,b) => BL.urgencyScore(b)-BL.urgencyScore(a)).map(o => {
+  const rows = active.sort((a,b) => BL.getUrgencyScore(b)-BL.getUrgencyScore(a)).map(o => {
     const wt = BL.getWinTier(o);
     return [
       `${o.firstName||''} ${o.lastName||''}`.trim(),
       o.stage||'', o.projectType||'',
       Number(o.probability)||0, Number(o.estimate)||0,
       BL.getWeighted(o), wt.label, o.followUpDate||'',
-      BL.getDaysOverdue(o), BL.urgencyScore(o),
+      BL.getDaysOverdue(o), BL.getUrgencyScore(o),
       o.goldComp||'', o.leadSource||''
     ].join('\t');
   });
