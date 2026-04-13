@@ -14,6 +14,10 @@ if (!window.supabase) {
   document.head.appendChild(s);
 }
 </script>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#C4933F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <style>
@@ -780,6 +784,42 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 .pipe-card-lbl { color:var(--ink-40);font-size:10px;text-transform:uppercase;letter-spacing:.06em; }
 .pipe-card-val { color:var(--ink-10); }
 
+/* ── Calendar view ── */
+.cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:2px; }
+.cal-hdr { text-align:center;font-size:10px;font-weight:700;color:var(--ink-40);padding:6px 0;
+  letter-spacing:.08em;text-transform:uppercase; }
+.cal-day { min-height:80px;background:var(--ink-80);border:1px solid var(--ink-70);border-radius:4px;
+  padding:4px 6px;font-size:11px;position:relative;transition:border-color .15s; }
+.cal-day:hover { border-color:var(--ink-40); }
+.cal-day.today { border-color:var(--gold);background:rgba(196,147,63,.06); }
+.cal-day.other-month { opacity:.35; }
+.cal-day-num { font-weight:700;font-size:11px;color:var(--ink-20);margin-bottom:2px; }
+.cal-day.today .cal-day-num { color:var(--gold); }
+.cal-event { font-size:9px;padding:2px 4px;border-radius:3px;margin-bottom:2px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block; }
+.cal-event.followup { background:rgba(224,82,82,.15);color:var(--red); }
+.cal-event.delivery { background:rgba(76,175,125,.15);color:var(--green); }
+.cal-event.homecall { background:rgba(196,147,63,.15);color:var(--gold); }
+.cal-event.review { background:rgba(68,114,202,.15);color:var(--blue); }
+.cal-nav { display:flex;align-items:center;gap:12px;margin-bottom:16px; }
+.cal-nav button { background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-20);
+  border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:var(--font-body); }
+.cal-nav button:hover { border-color:var(--gold);color:var(--gold); }
+.cal-month-label { font-family:var(--font-display);font-size:22px;color:var(--gold);min-width:180px;text-align:center; }
+@media(max-width:768px) {
+  .cal-day { min-height:50px;font-size:9px; }
+  .cal-event { font-size:8px;padding:1px 3px; }
+}
+
+/* ── Pagination ── */
+.pagination { display:flex;align-items:center;gap:6px;justify-content:center;margin:16px 0; }
+.pagination button { background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-20);
+  border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:var(--font-body);min-width:32px; }
+.pagination button:hover { border-color:var(--gold);color:var(--gold); }
+.pagination button.active { background:var(--gold);color:#000;border-color:var(--gold);font-weight:700; }
+.pagination button:disabled { opacity:.3;cursor:default; }
+.pagination .page-info { font-size:11px;color:var(--ink-40);padding:0 8px; }
+
 /* ── Print improvements ── */
 @media print {
   .pipe-card, .data-card { break-inside:avoid; }
@@ -892,6 +932,10 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     <button class="nav-tab" onclick="navigate('mileage')" data-page="mileage">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="11" r="2.5"/><circle cx="12" cy="11" r="2.5"/><path d="M1.5 11H1V7l3-5h7l3 5v4h-.5M6.5 11h3"/><path d="M4 6H3M12 6l1-1"/></svg>
       <span data-i18n="nav_mileage">Mileage</span>
+    </button>
+    <button class="nav-tab" onclick="navigate('calendar')" data-page="calendar">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M5 1v4M11 1v4M1 8h14"/><circle cx="5" cy="11" r="1" fill="currentColor"/></svg>
+      <span>Calendar</span>
     </button>
         <button class="nav-tab" onclick="navigate('analytics')" data-page="analytics">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="1,11 5,6 9,8 15,2"/><rect x="1" y="12" width="2" height="3"/><rect x="5" y="9" width="2" height="6"/><rect x="9" y="7" width="2" height="8"/><rect x="13" y="4" width="2" height="11"/></svg>
@@ -1146,6 +1190,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <div class="page" id="page-mileage"></div>
 
 <div class="page" id="page-analytics"></div>
+<div class="page" id="page-calendar"></div>
 <div class="page" id="page-tests">
   <div class="test-container">
     <div class="test-hero">
@@ -2837,6 +2882,7 @@ async function renderPage(page) {
       case 'post60':     await renderPost60();     break;
       case 'sales': window._currentPage='sales'; await renderSales(); break;
       case 'mileage':    await renderMileage();    break;
+      case 'calendar':  await renderCalendar();  break;
       case 'analytics': await renderAnalytics(); break;
       case 'tests': break;
     }
@@ -3439,10 +3485,15 @@ async function renderPipeline() {
   // Sort: overdue first, then by urgency score desc
   list.sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
 
+  // Paginate if large dataset
+  const fullList = list;
+  const pgInfo = PAGINATION.paginate(list, 'pipeline');
+  list = pgInfo.items;
+
   const tbody = document.getElementById('pipelineBody');
   const empty = document.getElementById('pipelineEmpty');
 
-  if (!list.length) {
+  if (!fullList.length) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
     return;
@@ -3481,6 +3532,14 @@ async function renderPipeline() {
   if (existingCards) existingCards.remove();
   const wrap = document.getElementById('pipelineTable')?.parentElement;
   if (wrap) wrap.insertAdjacentHTML('afterend', _renderPipelineCards(list));
+
+  // Pagination controls
+  const pgEl = document.getElementById('pipelinePagination');
+  if (pgEl) pgEl.remove();
+  if (pgInfo.total > 1) {
+    const pgHTML = '<div id="pipelinePagination" class="container">' + PAGINATION.renderControls('pipeline', pgInfo, 'setPipelinePage') + '</div>';
+    document.getElementById('pipelineTableWrap')?.insertAdjacentHTML('afterend', pgHTML);
+  }
 }
 
 function setStageFilter(s) { state.stageFilter = s; renderPipeline(); }
@@ -7383,6 +7442,125 @@ async function _updateTasksWidget(opps) {
    All charts built with inline SVG — no external libs
 ══════════════════════════════════════════════════ */
 
+/* ══════════════════════════════════════════════════
+   RENDER: CALENDAR VIEW
+   Visual calendar for follow-ups, deliveries, home calls
+══════════════════════════════════════════════════ */
+let _calYear, _calMonth;
+async function renderCalendar() {
+  const today = new Date();
+  if (!_calYear) { _calYear = today.getFullYear(); _calMonth = today.getMonth(); }
+
+  const opps = await DB.getAll();
+  const el = document.getElementById('page-calendar');
+  if (!el) return;
+
+  // Collect all date events from opportunities
+  const events = [];
+  opps.forEach(o => {
+    const name = (o.firstName||'')+' '+(o.lastName||'');
+    if (o.followUpDate) events.push({ date:o.followUpDate, label:name.trim(), type:'followup', id:o.id, tip:'Follow-up' });
+    if (o.deliveryDate) events.push({ date:o.deliveryDate, label:name.trim(), type:'delivery', id:o.id, tip:'Delivery' });
+    if (o.homeCallDate) events.push({ date:o.homeCallDate, label:name.trim(), type:'homecall', id:o.id, tip:'Home Call' });
+    if (o.linkReviewDate) events.push({ date:o.linkReviewDate, label:name.trim(), type:'review', id:o.id, tip:'Link Review' });
+  });
+
+  // Build calendar grid
+  const firstDay = new Date(_calYear, _calMonth, 1);
+  const lastDay = new Date(_calYear, _calMonth + 1, 0);
+  const startPad = firstDay.getDay(); // 0=Sun
+  const totalDays = lastDay.getDate();
+  const todayStr = localDateStr(today);
+  const monthNames = T('months');
+
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let gridHTML = days.map(d => `<div class="cal-hdr">${d}</div>`).join('');
+
+  // Pad start
+  const prevMonth = new Date(_calYear, _calMonth, 0);
+  for (let i = startPad - 1; i >= 0; i--) {
+    const d = prevMonth.getDate() - i;
+    const ds = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    gridHTML += `<div class="cal-day other-month"><div class="cal-day-num">${d}</div></div>`;
+  }
+
+  // Current month days
+  for (let d = 1; d <= totalDays; d++) {
+    const ds = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = ds === todayStr;
+    const dayEvents = events.filter(e => e.date === ds);
+    const evHTML = dayEvents.slice(0, 3).map(e =>
+      `<span class="cal-event ${e.type}" onclick="event.stopPropagation();editLead('${e.id}')" title="${esc(e.tip)}: ${esc(e.label)}">${esc(e.label.split(' ')[0])}</span>`
+    ).join('') + (dayEvents.length > 3 ? `<span style="font-size:8px;color:var(--ink-40)">+${dayEvents.length-3} more</span>` : '');
+    gridHTML += `<div class="cal-day${isToday?' today':''}"><div class="cal-day-num">${d}</div>${evHTML}</div>`;
+  }
+
+  // Pad end
+  const remaining = (7 - ((startPad + totalDays) % 7)) % 7;
+  for (let d = 1; d <= remaining; d++) {
+    gridHTML += `<div class="cal-day other-month"><div class="cal-day-num">${d}</div></div>`;
+  }
+
+  // Legend
+  const legend = [
+    { cls:'followup', label:'Follow-up' },
+    { cls:'delivery', label:'Delivery' },
+    { cls:'homecall', label:'Home Call' },
+    { cls:'review', label:'Link Review' },
+  ].map(l => `<span class="cal-event ${l.cls}" style="cursor:default;display:inline-flex;padding:3px 8px">${l.label}</span>`).join('');
+
+  el.innerHTML = `
+    <div class="container" style="padding-top:28px;padding-bottom:40px">
+      <span class="label" style="display:block;margin-bottom:6px">Schedule Overview</span>
+      <h2 class="display" style="margin-bottom:20px">CALENDAR</h2>
+      <div class="cal-nav">
+        <button onclick="_calMonth--;if(_calMonth<0){_calMonth=11;_calYear--;}renderCalendar()">◀ Prev</button>
+        <div class="cal-month-label">${monthNames[_calMonth]} ${_calYear}</div>
+        <button onclick="_calMonth++;if(_calMonth>11){_calMonth=0;_calYear++;}renderCalendar()">Next ▶</button>
+        <button onclick="_calYear=${today.getFullYear()};_calMonth=${today.getMonth()};renderCalendar()" style="margin-left:auto">Today</button>
+      </div>
+      <div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">${legend}</div>
+      <div class="cal-grid">${gridHTML}</div>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════════
+   PAGINATION UTILITY
+   Used by pipeline table when records exceed threshold
+══════════════════════════════════════════════════ */
+const PAGINATION = {
+  pageSize: 50,
+  _pages: {},
+  getPage(key) { return this._pages[key] || 1; },
+  setPage(key, p) { this._pages[key] = p; },
+  paginate(items, key) {
+    const page = this.getPage(key);
+    const total = Math.ceil(items.length / this.pageSize);
+    const start = (page - 1) * this.pageSize;
+    return {
+      items: items.slice(start, start + this.pageSize),
+      page, total,
+      hasNext: page < total,
+      hasPrev: page > 1,
+    };
+  },
+  renderControls(key, info, onPageChange) {
+    if (info.total <= 1) return '';
+    let html = '<div class="pagination">';
+    html += `<button ${info.hasPrev?'':'disabled'} onclick="${onPageChange}(${info.page-1})">◀</button>`;
+    for (let i = 1; i <= Math.min(info.total, 7); i++) {
+      html += `<button class="${i===info.page?'active':''}" onclick="${onPageChange}(${i})">${i}</button>`;
+    }
+    if (info.total > 7) html += `<span class="page-info">… ${info.total}</span>`;
+    html += `<button ${info.hasNext?'':'disabled'} onclick="${onPageChange}(${info.page+1})">▶</button>`;
+    html += `<span class="page-info">${info.items.length} of ${info.page > 0 ? (info.page-1)*PAGINATION.pageSize+1 : 1}–${Math.min(info.page*PAGINATION.pageSize, info.total*PAGINATION.pageSize)} shown</span>`;
+    html += '</div>';
+    return html;
+  }
+};
+function setPipelinePage(p) { PAGINATION.setPage('pipeline', p); renderPipeline(); }
+function setPriorityPage(p) { PAGINATION.setPage('priorities', p); renderPriorities(); }
+
 async function renderAnalytics() {
   const opps  = await DB.getAll();
   const today = new Date();
@@ -8436,6 +8614,11 @@ document.addEventListener('keydown', function(e) {
     if (goalModal) goalModal.remove();
   }
 });
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 </script>
 
 </body>
