@@ -4555,7 +4555,7 @@ function initDropdowns() {
   sel('f-projectType', LOOKUP.projectTypes);
   sel('f-nextStep', LOOKUP.nextSteps);
   sel('f-leadSource', LOOKUP.leadSources);
-  sel('f-probability', LOOKUP.probabilities.map(String));
+  // f-probability is now a range slider, not a select dropdown
 }
 
 function openNewLead() {
