@@ -387,3 +387,15 @@ $$;
 --    T84 isDueToday: simplified to followUpDate === todayStr() only.
 --    SIM_TODAY in test suite: dynamically set to real today's date.
 -- ══════════════════════════════════════════════════════════════
+
+
+-- ══════════════════════════════════════════════════════════════
+--  v4.6 — Sale Order # and Sale Amount (2026-04)
+--
+--  New columns for tracking sale order numbers and actual sale amounts.
+--  saleAmount allows recording the real sale price separately from estimate.
+--
+--  For EXISTING databases, run:
+--    ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "saleOrderNumber" TEXT;
+--    ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "saleAmount" NUMERIC(12,2) DEFAULT 0;
+-- ══════════════════════════════════════════════════════════════
