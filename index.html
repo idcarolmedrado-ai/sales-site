@@ -784,6 +784,40 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 .pipe-card-lbl { color:var(--ink-40);font-size:10px;text-transform:uppercase;letter-spacing:.06em; }
 .pipe-card-val { color:var(--ink-10); }
 
+/* ── File attachments ── */
+.attach-zone { border:2px dashed var(--ink-60);border-radius:8px;padding:16px;text-align:center;
+  cursor:pointer;transition:border-color .2s;margin-top:8px; }
+.attach-zone:hover, .attach-zone.drag-hover { border-color:var(--gold);background:rgba(196,147,63,.04); }
+.attach-zone input[type=file] { display:none; }
+.attach-list { display:flex;flex-direction:column;gap:6px;margin-top:8px; }
+.attach-item { display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--ink-70);
+  border:1px solid var(--ink-60);border-radius:6px;font-size:11px; }
+.attach-item .name { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-10); }
+.attach-item .size { color:var(--ink-40);font-size:10px; }
+.attach-item .remove { background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0 4px; }
+.attach-item a { color:var(--gold);text-decoration:none;font-weight:600; }
+.attach-item a:hover { text-decoration:underline; }
+.attach-progress { height:3px;background:var(--ink-60);border-radius:2px;margin-top:4px;overflow:hidden; }
+.attach-progress-fill { height:100%;background:var(--gold);border-radius:2px;transition:width .3s; }
+
+/* ── Auth gate ── */
+.auth-gate { position:fixed;inset:0;z-index:9999;background:var(--ink);display:flex;align-items:center;
+  justify-content:center;flex-direction:column;gap:20px; }
+.auth-gate-box { background:var(--ink-90);border:1px solid var(--ink-60);border-radius:var(--r-lg);
+  padding:32px;max-width:360px;width:90%;text-align:center; }
+.auth-gate-logo { font-family:var(--font-serif);font-size:20px;color:#fff;margin-bottom:4px; }
+.auth-gate-sub { font-size:10px;color:var(--gold);letter-spacing:.15em;text-transform:uppercase;margin-bottom:20px; }
+.auth-gate input { width:100%;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;
+  color:#fff;font-family:var(--font-body);font-size:14px;padding:10px 14px;text-align:center;margin-bottom:12px; }
+.auth-gate input:focus { outline:none;border-color:var(--gold); }
+.auth-gate button { width:100%;background:var(--gold);color:#000;border:none;border-radius:8px;
+  padding:10px;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--font-body); }
+.auth-gate button:hover { background:var(--gold-lt); }
+.auth-gate-error { color:var(--red);font-size:12px;margin-top:8px;display:none; }
+.auth-gate-skip { color:var(--ink-40);font-size:11px;margin-top:12px;cursor:pointer;background:none;border:none;
+  font-family:var(--font-body);text-decoration:underline; }
+.auth-gate-skip:hover { color:var(--ink-20); }
+
 /* ── Calendar view ── */
 .cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:2px; }
 .cal-hdr { text-align:center;font-size:10px;font-weight:700;color:var(--ink-40);padding:6px 0;
@@ -835,6 +869,20 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 </style>
 </head>
 <body>
+
+<!-- Auth Gate (optional — skippable) -->
+<div class="auth-gate" id="authGate" style="display:none">
+  <div class="auth-gate-box">
+    <svg width="48" height="48" viewBox="0 0 36 36" style="margin-bottom:12px"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">EA</text></svg>
+    <div class="auth-gate-logo">Ethan Allen</div>
+    <div class="auth-gate-sub">Sales Intelligence</div>
+    <input id="authPassword" type="password" placeholder="Enter password" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')checkAuthGate()">
+    <button onclick="checkAuthGate()">Unlock</button>
+    <div class="auth-gate-error" id="authError">Incorrect password</div>
+    <button class="auth-gate-skip" onclick="skipAuthGate()">Continue without password</button>
+  </div>
+</div>
 
 <!-- Config Screen (hidden — auto-connect on load) -->
 <div id="configScreen">
@@ -962,7 +1010,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       onmouseout="this.style.borderColor='var(--ink-60)';this.style.color='var(--ink-20)'">🇧🇷 PT</button>
     <span id="connBadge" class="conn-badge demo"><span class="dot"></span>Demo</span>
     <span class="nav-badge" id="overdueCount" title="Overdue follow-ups">0</span>
-    <div class="nav-avatar" title="Carolina Medrado">CM</div>
+    <div class="nav-avatar" id="navAvatar" title="Carolina Medrado" onclick="navigate('settings')" style="cursor:pointer">CM</div>
   </div>
 </nav>
 
@@ -1191,6 +1239,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 
 <div class="page" id="page-analytics"></div>
 <div class="page" id="page-calendar"></div>
+<div class="page" id="page-settings"></div>
 <div class="page" id="page-tests">
   <div class="test-container">
     <div class="test-hero">
@@ -1415,6 +1464,24 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <div class="form-section">
         <div class="form-section-title">📝 Notes</div>
         <div class="field"><label for="f-notes" class="sr-only">Notes</label><textarea id="f-notes" placeholder="Context about this opportunity…"></textarea></div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">📎 Attachments <span class="field-tip" data-tip="Upload proposals, contracts, photos (max 5MB each)">?</span></div>
+        <div class="attach-list" id="attachList"></div>
+        <div class="attach-zone" id="attachZone"
+          ondragover="event.preventDefault();this.classList.add('drag-hover')"
+          ondragleave="this.classList.remove('drag-hover')"
+          ondrop="event.preventDefault();this.classList.remove('drag-hover');handleAttachDrop(event)"
+          onclick="document.getElementById('attachInput').click()">
+          <div style="color:var(--ink-40);font-size:12px">📂 Drop files here or click to upload</div>
+          <div style="color:var(--ink-60);font-size:10px;margin-top:4px">PDF, images, documents — max 5MB each</div>
+          <input type="file" id="attachInput" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+            onchange="handleAttachSelect(event)">
+        </div>
+        <div class="attach-progress" id="attachProgress" style="display:none">
+          <div class="attach-progress-fill" id="attachProgressFill" style="width:0%"></div>
+        </div>
       </div>
 
       <div class="audit-trail" id="auditTrailSection" style="display:none">
@@ -2883,6 +2950,7 @@ async function renderPage(page) {
       case 'sales': window._currentPage='sales'; await renderSales(); break;
       case 'mileage':    await renderMileage();    break;
       case 'calendar':  await renderCalendar();  break;
+      case 'settings':  renderSettings();        break;
       case 'analytics': await renderAnalytics(); break;
       case 'tests': break;
     }
@@ -4771,6 +4839,7 @@ async function editLead(id) {
   updateAutoFields();
   _updateCancelSection();
   _showAuditTrail(id);
+  _renderAttachList(id);
   document.getElementById('leadModal').classList.add('open');
   _trapFocus(document.getElementById('leadModal'));
   setTimeout(() => { window._formSnapshot = _getFormSnapshot(); }, 50);
@@ -7447,6 +7516,265 @@ async function _updateTasksWidget(opps) {
    Visual calendar for follow-ups, deliveries, home calls
 ══════════════════════════════════════════════════ */
 let _calYear, _calMonth;
+/* ══════════════════════════════════════════════════
+   FILE ATTACHMENTS (localStorage-based)
+   Uses localStorage for metadata; files stored as base64
+   for GitHub Pages compatibility (no server-side storage)
+══════════════════════════════════════════════════ */
+const ATTACH_KEY = 'ea_attachments';
+const ATTACH_MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+function _getAttachments(oppId) {
+  const all = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
+  return all[oppId] || [];
+}
+function _saveAttachments(oppId, files) {
+  const all = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
+  all[oppId] = files;
+  localStorage.setItem(ATTACH_KEY, JSON.stringify(all));
+}
+function _renderAttachList(oppId) {
+  const el = document.getElementById('attachList');
+  if (!el) return;
+  const files = _getAttachments(oppId);
+  if (!files.length) { el.innerHTML = ''; return; }
+  el.innerHTML = files.map((f, i) => `
+    <div class="attach-item">
+      <span style="font-size:16px">${f.type.includes('pdf')?'📄':f.type.includes('image')?'🖼️':'📎'}</span>
+      <span class="name" title="${esc(f.name)}">${esc(f.name)}</span>
+      <span class="size">${(f.size/1024).toFixed(0)}KB</span>
+      <a href="${f.data}" download="${esc(f.name)}" onclick="event.stopPropagation()" title="Download">⬇</a>
+      <button class="remove" onclick="removeAttachment('${oppId}',${i})" title="Remove">×</button>
+    </div>`).join('');
+}
+function removeAttachment(oppId, idx) {
+  const files = _getAttachments(oppId);
+  files.splice(idx, 1);
+  _saveAttachments(oppId, files);
+  _renderAttachList(oppId);
+}
+async function _processFiles(fileList, oppId) {
+  const existing = _getAttachments(oppId);
+  const progress = document.getElementById('attachProgress');
+  const fill = document.getElementById('attachProgressFill');
+  if (progress) progress.style.display = '';
+
+  for (let i = 0; i < fileList.length; i++) {
+    const file = fileList[i];
+    if (file.size > ATTACH_MAX_SIZE) { toast(`${file.name} exceeds 5MB limit`, 'error'); continue; }
+    if (existing.length >= 10) { toast('Maximum 10 attachments per lead', 'error'); break; }
+    if (fill) fill.style.width = Math.round((i+1)/fileList.length*100) + '%';
+    const data = await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+    existing.push({ name: file.name, type: file.type, size: file.size, data, date: new Date().toISOString().slice(0,10) });
+  }
+  _saveAttachments(oppId, existing);
+  _renderAttachList(oppId);
+  if (progress) { setTimeout(() => { progress.style.display = 'none'; if(fill) fill.style.width = '0%'; }, 500); }
+  _logActivity(oppId, 'edit', `${fileList.length} file(s) attached`);
+}
+function handleAttachSelect(e) {
+  const oppId = document.getElementById('leadId')?.value;
+  if (!oppId || !e.target.files.length) return;
+  _processFiles(e.target.files, oppId);
+  e.target.value = '';
+}
+function handleAttachDrop(e) {
+  const oppId = document.getElementById('leadId')?.value;
+  if (!oppId || !e.dataTransfer.files.length) return;
+  _processFiles(e.dataTransfer.files, oppId);
+}
+
+/* ══════════════════════════════════════════════════
+   AUTH GATE (optional password protection)
+   Password hash stored in localStorage. Skippable.
+══════════════════════════════════════════════════ */
+const AUTH_KEY = 'ea_auth_hash';
+const AUTH_SESSION = 'ea_auth_session';
+
+async function _hashPassword(pw) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pw + 'ea-sales-salt-2026');
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function checkAuthGate() {
+  const pw = document.getElementById('authPassword')?.value;
+  if (!pw) return;
+  const hash = await _hashPassword(pw);
+  const stored = localStorage.getItem(AUTH_KEY);
+  if (hash === stored) {
+    sessionStorage.setItem(AUTH_SESSION, '1');
+    document.getElementById('authGate').style.display = 'none';
+  } else {
+    const err = document.getElementById('authError');
+    if (err) err.style.display = 'block';
+    document.getElementById('authPassword').value = '';
+  }
+}
+function skipAuthGate() {
+  sessionStorage.setItem(AUTH_SESSION, 'skip');
+  document.getElementById('authGate').style.display = 'none';
+}
+function initAuthGate() {
+  const stored = localStorage.getItem(AUTH_KEY);
+  if (!stored) return; // no password set — don't show gate
+  if (sessionStorage.getItem(AUTH_SESSION)) return; // already authenticated this session
+  document.getElementById('authGate').style.display = 'flex';
+}
+
+/* ══════════════════════════════════════════════════
+   SETTINGS PAGE
+══════════════════════════════════════════════════ */
+const SETTINGS_KEY = 'ea_settings';
+function _getSettings() {
+  return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{"userName":"Carolina Medrado","initials":"CM","avatar":""}');
+}
+function _saveSettings(s) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+function renderSettings() {
+  const el = document.getElementById('page-settings');
+  if (!el) return;
+  const s = _getSettings();
+  const hasPassword = !!localStorage.getItem(AUTH_KEY);
+
+  el.innerHTML = `
+    <div class="container" style="padding-top:28px;padding-bottom:40px;max-width:640px">
+      <span class="label" style="display:block;margin-bottom:6px">Personalization</span>
+      <h2 class="display" style="margin-bottom:24px">SETTINGS</h2>
+
+      <div class="tab-section">
+        <h3>👤 Profile</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label for="set-name">Display Name</label>
+            <input id="set-name" type="text" value="${esc(s.userName)}" maxlength="40" placeholder="Your name">
+          </div>
+          <div class="field">
+            <label for="set-initials">Avatar Initials</label>
+            <input id="set-initials" type="text" value="${esc(s.initials)}" maxlength="3" placeholder="CM"
+              style="text-transform:uppercase;font-weight:700;font-size:16px;text-align:center;width:60px">
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label for="set-avatar-input" style="font-size:11px;font-weight:600;color:var(--ink-20);text-transform:uppercase;letter-spacing:.06em">Profile Picture</label>
+          <div style="display:flex;align-items:center;gap:14px;margin-top:8px">
+            <div id="set-avatar-preview" style="width:48px;height:48px;border-radius:50%;background:var(--gold);
+              color:#000;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:16px;
+              overflow:hidden;border:2px solid var(--ink-60)">${s.avatar ? '<img src="'+esc(s.avatar)+'" style="width:100%;height:100%;object-fit:cover">' : esc(s.initials)}</div>
+            <button onclick="document.getElementById('set-avatar-input').click()" class="btn btn-ghost btn-sm">Upload Photo</button>
+            ${s.avatar ? '<button onclick="clearAvatar()" class="btn btn-ghost btn-sm" style="color:var(--red)">Remove</button>' : ''}
+            <input type="file" id="set-avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(event)">
+          </div>
+        </div>
+        <button onclick="saveProfile()" class="btn btn-primary" style="margin-top:16px">Save Profile</button>
+      </div>
+
+      <div class="tab-section" style="margin-top:20px">
+        <h3>🔒 Password Protection</h3>
+        <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">
+          ${hasPassword ? 'Password is set. The app will ask for it on each new session.' : 'No password set. Anyone with the URL can access the app.'}
+        </p>
+        <div class="form-grid">
+          <div class="field">
+            <label for="set-pw-new">New Password</label>
+            <input id="set-pw-new" type="password" placeholder="Enter new password" autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label for="set-pw-confirm">Confirm Password</label>
+            <input id="set-pw-confirm" type="password" placeholder="Confirm password" autocomplete="new-password">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button onclick="setPassword()" class="btn btn-primary btn-sm">${hasPassword ? 'Update Password' : 'Set Password'}</button>
+          ${hasPassword ? '<button onclick="removePassword()" class="btn btn-danger btn-sm">Remove Password</button>' : ''}
+        </div>
+      </div>
+
+      <div class="tab-section" style="margin-top:20px">
+        <h3>💾 Data Management</h3>
+        <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">Export or clear local data. Supabase data is not affected.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="exportLocalData()" class="btn btn-ghost btn-sm">📦 Export Local Backup</button>
+          <button onclick="if(confirm('Clear all local data? Supabase data will remain.'))localStorage.clear()" class="btn btn-danger btn-sm">🗑 Clear Local Data</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function uploadAvatar(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 500 * 1024) { toast('Image must be under 500KB', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const s = _getSettings();
+    s.avatar = reader.result;
+    _saveSettings(s);
+    _applyProfile();
+    renderSettings();
+  };
+  reader.readAsDataURL(file);
+}
+function clearAvatar() {
+  const s = _getSettings();
+  s.avatar = '';
+  _saveSettings(s);
+  _applyProfile();
+  renderSettings();
+}
+function saveProfile() {
+  const s = _getSettings();
+  s.userName = document.getElementById('set-name')?.value?.trim() || 'User';
+  s.initials = (document.getElementById('set-initials')?.value?.trim() || 'U').toUpperCase();
+  _saveSettings(s);
+  _applyProfile();
+  toast('Profile saved', 'success');
+}
+async function setPassword() {
+  const pw = document.getElementById('set-pw-new')?.value;
+  const confirm = document.getElementById('set-pw-confirm')?.value;
+  if (!pw || pw.length < 4) { toast('Password must be at least 4 characters', 'error'); return; }
+  if (pw !== confirm) { toast('Passwords do not match', 'error'); return; }
+  const hash = await _hashPassword(pw);
+  localStorage.setItem(AUTH_KEY, hash);
+  sessionStorage.setItem(AUTH_SESSION, '1');
+  toast('Password set successfully', 'success');
+  renderSettings();
+}
+function removePassword() {
+  if (!window.confirm('Remove password protection?')) return;
+  localStorage.removeItem(AUTH_KEY);
+  sessionStorage.removeItem(AUTH_SESSION);
+  toast('Password removed', 'info');
+  renderSettings();
+}
+function exportLocalData() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k.startsWith('ea_')) data[k] = localStorage.getItem(k);
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ea_sales_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  toast('Backup exported', 'success');
+}
+function _applyProfile() {
+  const s = _getSettings();
+  const av = document.getElementById('navAvatar');
+  if (av) {
+    av.title = s.userName;
+    av.innerHTML = s.avatar ? '<img src="'+esc(s.avatar)+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">' : esc(s.initials);
+  }
+}
+
 async function renderCalendar() {
   const today = new Date();
   if (!_calYear) { _calYear = today.getFullYear(); _calMonth = today.getMonth(); }
@@ -8387,6 +8715,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const SB_URL = "https://rsoukgpaqsgsdfvwrceu.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzb3VrZ3BhcXNnc2RmdndyY2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDYzMTIsImV4cCI6MjA4ODU4MjMxMn0.akKmWJfNncLA-Fxq38gDCXvSuIk_L95zdj1p0_ylqAY";
 
+  initAuthGate();
+  _applyProfile();
   initDropdowns();
   document.getElementById('configScreen').style.display = 'flex'; // show loading state
 
