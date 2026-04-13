@@ -551,6 +551,135 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   thead { display:table-header-group; }
   tfoot { display:table-footer-group; }
 }
+
+/* ══════════════════════════════════════════════════
+   UX IMPROVEMENTS: Extracted inline styles, mobile,
+   accessibility, global search, column sorting
+══════════════════════════════════════════════════ */
+
+/* ── PHASE 1: Extracted inline styles ── */
+.ac-table { width:100%;border-collapse:collapse;min-width:1400px;font-size:12px; }
+.ac-table th { padding:8px 10px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.07em;
+  text-transform:uppercase;white-space:nowrap;border-bottom:2px solid var(--gold-dk);
+  border-right:1px solid var(--ink-60);position:sticky;top:0;color:var(--ink-10); }
+.ac-table th.red { color:#fff;background:rgba(180,50,50,.55);border-right:1px solid rgba(255,255,255,.15); }
+.ac-table td { padding:7px 10px;font-size:12px;vertical-align:middle;border-right:1px solid var(--ink-70);
+  border-bottom:1px solid var(--ink-70); }
+.ac-table td.red-bg { background:rgba(180,50,50,.08); }
+.ac-table tr { cursor:pointer; }
+.ac-table tr:hover td { background:rgba(196,147,63,.07)!important; }
+.ac-name { font-weight:600;color:var(--ink-10); }
+.ac-cust { color:var(--gold);font-weight:700;font-size:11px; }
+.ac-gc-yes { background:rgba(196,147,63,.18);color:var(--gold);font-weight:700;font-size:10px;padding:2px 7px;border-radius:4px; }
+.ac-val { color:var(--green);font-weight:700; }
+.ac-val-gold { color:var(--gold);font-weight:700; }
+.ac-issue-badge { font-weight:700;font-size:10px;padding:2px 8px;border-radius:4px; }
+.ac-action-btn { display:block;width:100%;border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px; }
+.ac-btn-edit { background:none;border:1px solid var(--ink-60);color:var(--gold); }
+.ac-btn-done { background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.4);color:var(--green); }
+.ac-btn-del { background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);color:var(--red); }
+.ac-kpi-chip { background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:8px 16px;display:flex;gap:10px;align-items:center; }
+.ac-kpi-label { font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40); }
+.ac-kpi-val { font-size:18px;font-weight:700; }
+.ac-alert-pill { font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px; }
+.sales-row td { padding:9px 12px; }
+.sales-row:hover { background:rgba(196,147,63,.07); }
+.sales-th { padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap; }
+.sales-section-hdr { display:flex;align-items:center;justify-content:space-between;padding:10px 16px;
+  background:var(--ink-80);border:1px solid var(--ink-60);border-radius:var(--r) var(--r) 0 0;border-bottom:none;cursor:pointer; }
+.sales-section-body { overflow-x:auto;border:1px solid var(--ink-60);border-top:2px solid var(--gold-dk);border-radius:0 0 var(--r) var(--r); }
+.sales-chev { font-size:12px;color:var(--ink-40);transition:transform .2s; }
+.sales-month-label { font-family:var(--font-display);font-size:18px;color:var(--gold-lt); }
+.sales-q-badge { margin-left:8px;font-size:11px;font-weight:700;background:rgba(196,147,63,.15);color:var(--gold);
+  border:1px solid var(--gold-dk);border-radius:4px;padding:2px 8px; }
+.sales-month-total { font-weight:700;font-size:16px;color:var(--green); }
+.sales-deal-count { font-size:11px;font-weight:400;color:var(--ink-40);margin-left:6px; }
+.sales-client-badge { font-size:10px;font-weight:700;letter-spacing:.08em;background:rgba(76,175,125,.12);
+  color:var(--green);border:1px solid rgba(76,175,125,.3);border-radius:4px;padding:2px 7px; }
+.sales-edit-btn { background:var(--ink-70);border:1px solid var(--ink-60);color:var(--gold);
+  border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer; }
+
+/* ── PHASE 2: Mobile responsiveness ── */
+.nav-hamburger { display:none;background:none;border:none;color:var(--ink-20);cursor:pointer;padding:4px; }
+.nav-hamburger:hover { color:var(--gold); }
+.nav-hamburger svg { width:24px;height:24px; }
+.global-search { display:flex;align-items:center;gap:6px;background:var(--ink-80);border:1px solid var(--ink-60);
+  border-radius:8px;padding:5px 10px;margin-left:auto;min-width:180px;max-width:240px; }
+.global-search input { background:none;border:none;color:#fff;font-size:12px;font-family:var(--font-body);
+  outline:none;width:100%; }
+.global-search-results { position:absolute;top:100%;left:0;right:0;background:var(--ink-90);border:1px solid var(--ink-60);
+  border-radius:0 0 var(--r) var(--r);max-height:320px;overflow-y:auto;z-index:200;box-shadow:var(--shadow); }
+.gsr-item { padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--ink-70);display:flex;align-items:center;gap:10px; }
+.gsr-item:hover { background:var(--ink-80); }
+.gsr-item:last-child { border-bottom:none; }
+.gsr-name { font-weight:600;font-size:13px; }
+.gsr-detail { font-size:11px;color:var(--ink-40); }
+.gsr-badge { font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.06em; }
+.gsr-empty { padding:20px;text-align:center;color:var(--ink-40);font-size:12px; }
+
+/* Card view for tables on mobile */
+.card-view { display:none; }
+.data-card { background:var(--ink-80);border:1px solid var(--ink-60);border-radius:var(--r);padding:14px;margin-bottom:10px; }
+.data-card-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:8px; }
+.data-card-name { font-weight:600;font-size:14px; }
+.data-card-row { display:flex;justify-content:space-between;padding:3px 0;font-size:12px; }
+.data-card-label { color:var(--ink-40); }
+.data-card-val { color:var(--ink-10);font-weight:500; }
+.data-card-actions { display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--ink-70); }
+.data-card-actions button { flex:1;padding:6px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer; }
+
+@media(max-width:768px) {
+  nav { flex-wrap:wrap;height:auto;padding:10px 16px;gap:8px; }
+  .nav-hamburger { display:block; }
+  .nav-tabs { display:none;width:100%;flex-wrap:wrap;gap:4px;padding-top:8px; }
+  .nav-tabs.open { display:flex; }
+  .nav-tab { font-size:12px;padding:6px 10px; }
+  .nav-right { gap:6px; }
+  .global-search { min-width:120px;max-width:160px; }
+  .nav-logo-text { font-size:13px; }
+  .nav-logo-sub { font-size:8px; }
+  h1.display { font-size:32px; }
+  h2.display { font-size:28px; }
+  .kpi-grid { grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px; }
+  .kpi-card { padding:12px 10px; }
+  .kpi-value { font-size:22px; }
+  .insights-grid { grid-template-columns:1fr;padding:0 12px; }
+  .insight-card.priority-1 { grid-column:1; flex-direction:column; }
+  .dash-grid { grid-template-columns:1fr;padding:0 12px; }
+  .dash-hero { padding:20px 12px 12px; }
+  .filter-row { padding:0 12px; }
+  .pipeline-header { padding:16px 12px; }
+  .table-wrap { padding:0 12px; }
+  .container { padding:0 12px; }
+  .modal-panel { max-width:100%;padding:20px 16px;border-radius:14px; }
+  .form-grid { grid-template-columns:1fr; }
+  .field.span-2 { grid-column:1; }
+  .mailing-grid { grid-template-columns:1fr;padding:0 12px; }
+  .section-header { padding:20px 12px 12px; }
+  .delivery-hero { padding:16px;gap:16px; }
+  .delivery-table { font-size:11px; }
+  .delivery-table th, .delivery-table td { padding:6px 8px; }
+  .add-btn { width:48px;height:48px;bottom:16px;right:16px;font-size:24px; }
+  /* Mobile table → card view swap */
+  .table-desktop { display:none!important; }
+  .card-view { display:block; }
+  .ac-table { min-width:unset; }
+}
+@media(min-width:769px) {
+  .card-view { display:none!important; }
+}
+
+/* ── PHASE 3: Accessibility ── */
+.sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0; }
+*:focus-visible { outline:2px solid var(--gold);outline-offset:2px; }
+.modal-overlay:focus { outline:none; }
+
+/* ── PHASE 5: Column sorting ── */
+.sortable { cursor:pointer;user-select:none;position:relative; }
+.sortable:hover { color:var(--gold)!important; }
+.sort-icon { display:inline-block;margin-left:4px;font-size:8px;opacity:.5;vertical-align:middle; }
+.sort-icon.active { opacity:1;color:var(--gold); }
+
 </style>
 </head>
 <body>
@@ -601,12 +730,15 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- NAV -->
-<nav>
-  <a class="nav-logo" href="#" onclick="navigate('dashboard');return false;">
-    <svg width="30" height="30" viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">EA</text></svg>
+<nav role="navigation" aria-label="Main navigation">
+  <a class="nav-logo" href="#" onclick="navigate('dashboard');return false;" aria-label="Dashboard home">
+    <svg width="30" height="30" viewBox="0 0 36 36" aria-hidden="true"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">EA</text></svg>
     <div><span class="nav-logo-text">Ethan Allen</span><span class="nav-logo-sub">Sales Intelligence</span></div>
   </a>
-  <div class="nav-tabs">
+  <button class="nav-hamburger" onclick="document.querySelector('.nav-tabs').classList.toggle('open')" aria-label="Toggle navigation menu" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+  <div class="nav-tabs" role="tablist">
     <button class="nav-tab active" onclick="navigate('dashboard')" data-page="dashboard">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
       <span data-i18n="nav_dashboard">Dashboard</span>
@@ -658,6 +790,13 @@ tbody td { padding: 11px 12px; font-size: 13px; }
     </button>
   </div>
   <div class="nav-right">
+    <div class="global-search" style="position:relative">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="6.5" cy="6.5" r="5"/><path d="M10.5 10.5L15 15"/></svg>
+      <input id="globalSearchInput" type="text" placeholder="Search all..." maxlength="60"
+        oninput="globalSearch(this.value)" onfocus="globalSearch(this.value)"
+        aria-label="Search all opportunities, clients, and records">
+      <div id="globalSearchResults" class="global-search-results" style="display:none"></div>
+    </div>
     <button id="langToggleBtn" onclick="setLang(getLang()==='en'?'pt':'en')"
       style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-20);
              border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;
@@ -779,12 +918,21 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   </div>
   <div class="filter-row" id="stageFilters"></div>
   <div class="table-wrap">
-    <table id="pipelineTable">
+    <table id="pipelineTable" class="table-desktop">
       <thead><tr>
-        <th>Client</th><th>Project Type</th><th>Lead Source</th>
-        <th>Stage</th><th class="tc">Prob</th><th>Estimate</th><th>Weighted</th>
-        <th>Close Date</th><th class="tc">Q</th>
-        <th>Follow-Up</th><th>Win Tier</th><th>Score</th><th></th>
+        <th class="sortable" onclick="sortTable('pipelineTable',0,'str')">Client <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('pipelineTable',1,'str')">Project Type <span class="sort-icon">⇅</span></th>
+        <th>Lead Source</th>
+        <th class="sortable" onclick="sortTable('pipelineTable',3,'str')">Stage <span class="sort-icon">⇅</span></th>
+        <th class="tc sortable" onclick="sortTable('pipelineTable',4,'num')">Prob <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('pipelineTable',5,'num')">Estimate <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('pipelineTable',6,'num')">Weighted <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('pipelineTable',7,'date')">Close Date <span class="sort-icon">⇅</span></th>
+        <th class="tc">Q</th>
+        <th class="sortable" onclick="sortTable('pipelineTable',9,'date')">Follow-Up <span class="sort-icon">⇅</span></th>
+        <th>Win Tier</th>
+        <th class="sortable" onclick="sortTable('pipelineTable',11,'num')">Score <span class="sort-icon">⇅</span></th>
+        <th></th>
       </tr></thead>
       <tbody id="pipelineBody"></tbody>
     </table>
@@ -817,18 +965,18 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   </div>
 
   <div class="priority-table-wrap">
-    <table>
+    <table id="priorityTable" class="table-desktop">
       <thead><tr>
-        <th data-i18n="prio_th_client">Client</th>
+        <th class="sortable" onclick="sortTable('priorityTable',0,'str')" data-i18n="prio_th_client">Client <span class="sort-icon">⇅</span></th>
         <th data-i18n="prio_th_project">Project Type</th>
         <th data-i18n="prio_th_stage">Stage</th>
         <th data-i18n="prio_th_next">Next Step</th>
-        <th data-i18n="prio_th_prob">Prob</th>
-        <th data-i18n="prio_th_est">Estimate</th>
-        <th data-i18n="prio_th_date">Follow-Up</th>
-        <th data-i18n="prio_th_days">Days Overdue</th>
+        <th class="sortable" onclick="sortTable('priorityTable',4,'num')" data-i18n="prio_th_prob">Prob <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('priorityTable',5,'num')" data-i18n="prio_th_est">Estimate <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('priorityTable',6,'date')" data-i18n="prio_th_date">Follow-Up <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('priorityTable',7,'num')" data-i18n="prio_th_days">Days Overdue <span class="sort-icon">⇅</span></th>
         <th data-i18n="prio_th_tier">Win Tier</th>
-        <th data-i18n="prio_th_score">Urgency Score</th>
+        <th class="sortable" onclick="sortTable('priorityTable',9,'num')" data-i18n="prio_th_score">Urgency Score <span class="sort-icon">⇅</span></th>
         <th></th>
       </tr></thead>
       <tbody id="priorityBody"></tbody>
@@ -935,7 +1083,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   </div>
 </div>
 
-<div class="modal-overlay" id="leadModal" onclick="if(event.target===this)closeModal()">
+<div class="modal-overlay" id="leadModal" onclick="if(event.target===this)closeModal()" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal-panel">
     <div class="modal-handle"></div>
     <div class="modal-title" id="modalTitle">NEW LEAD</div>
@@ -4134,6 +4282,7 @@ function openNewLead() {
 }
 
 async function editLead(id) {
+  window._modalTrigger = document.activeElement;
   const opps = await DB.getAll();
   const o = opps.find(x => x.id === id);
   if (!o) { toast('Lead not found', 'error'); return; }
@@ -4182,7 +4331,109 @@ async function editLead(id) {
 function closeModal() {
   document.getElementById('leadModal').classList.remove('open');
   state.editingId = null;
+  // Restore focus to trigger element
+  if (window._modalTrigger) { window._modalTrigger.focus(); window._modalTrigger = null; }
 }
+
+/* ══════════════════════════════════════════════════
+   GLOBAL SEARCH
+══════════════════════════════════════════════════ */
+let _gsDebounce = null;
+function globalSearch(q) {
+  clearTimeout(_gsDebounce);
+  const el = document.getElementById('globalSearchResults');
+  if (!el) return;
+  q = (q||'').trim().toLowerCase();
+  if (!q || q.length < 2) { el.style.display='none'; return; }
+  _gsDebounce = setTimeout(async () => {
+    const opps = await DB.getAll();
+    const matches = opps.filter(o =>
+      (o.firstName||'').toLowerCase().includes(q) ||
+      (o.lastName||'').toLowerCase().includes(q) ||
+      (o.email||'').toLowerCase().includes(q) ||
+      (o.phone||'').toLowerCase().includes(q) ||
+      (o.customerNumber||'').toLowerCase().includes(q) ||
+      (o.saleOrderNumber||'').toLowerCase().includes(q) ||
+      (o.projectType||'').toLowerCase().includes(q) ||
+      (o.address||'').toLowerCase().includes(q) ||
+      (o.notes||'').toLowerCase().includes(q)
+    ).slice(0, 8);
+    if (!matches.length) {
+      el.innerHTML = '<div class="gsr-empty">No results for "'+esc(q)+'"</div>';
+    } else {
+      el.innerHTML = matches.map(o => {
+        const stage = o.saleMade==='Yes'?'Sold':(o.stage||'Lead');
+        const cls = o.saleMade==='Yes'?'background:rgba(76,175,125,.15);color:var(--green)':
+                    o.stage==='Canceled'?'background:rgba(224,82,82,.12);color:var(--red)':
+                    'background:rgba(196,147,63,.12);color:var(--gold)';
+        return '<div class="gsr-item" onclick="globalSearchSelect(\''+o.id+'\')">'
+          +'<div style="flex:1;min-width:0">'
+          +'<div class="gsr-name">'+esc(o.firstName)+' '+esc(o.lastName)+'</div>'
+          +'<div class="gsr-detail">'+esc(o.projectType||'')+(o.email?' · '+esc(o.email):'')+'</div>'
+          +'</div>'
+          +'<span class="gsr-badge" style="'+cls+'">'+stage+'</span>'
+          +'</div>';
+      }).join('');
+    }
+    el.style.display = '';
+  }, 200);
+}
+function globalSearchSelect(id) {
+  document.getElementById('globalSearchInput').value = '';
+  document.getElementById('globalSearchResults').style.display = 'none';
+  editLead(id);
+}
+// Close search results on outside click
+document.addEventListener('click', e => {
+  const gs = document.querySelector('.global-search');
+  if (gs && !gs.contains(e.target)) {
+    const r = document.getElementById('globalSearchResults');
+    if (r) r.style.display = 'none';
+  }
+});
+
+/* ══════════════════════════════════════════════════
+   COLUMN SORTING
+══════════════════════════════════════════════════ */
+let _sortState = {};
+function sortTable(tableId, colIdx, type) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const tbody = table.querySelector('tbody');
+  if (!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const key = tableId + '-' + colIdx;
+  const dir = _sortState[key] === 'asc' ? 'desc' : 'asc';
+  _sortState[key] = dir;
+  rows.sort((a, b) => {
+    let va = (a.children[colIdx]?.textContent||'').trim();
+    let vb = (b.children[colIdx]?.textContent||'').trim();
+    if (type === 'num') {
+      va = parseFloat(va.replace(/[$,%]/g, '')) || 0;
+      vb = parseFloat(vb.replace(/[$,%]/g, '')) || 0;
+    } else if (type === 'date') {
+      va = new Date(va) || 0; vb = new Date(vb) || 0;
+    }
+    if (va < vb) return dir === 'asc' ? -1 : 1;
+    if (va > vb) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  rows.forEach(r => tbody.appendChild(r));
+  // Update sort icons
+  table.querySelectorAll('.sort-icon').forEach(s => { s.textContent = '⇅'; s.classList.remove('active'); });
+  const th = table.querySelectorAll('th')[colIdx];
+  const icon = th?.querySelector('.sort-icon');
+  if (icon) { icon.textContent = dir === 'asc' ? '▲' : '▼'; icon.classList.add('active'); }
+}
+
+/* ── Hamburger: close menu on navigate ── */
+const _origNavigate = navigate;
+navigate = async function(page) {
+  document.querySelector('.nav-tabs')?.classList.remove('open');
+  const hb = document.querySelector('.nav-hamburger');
+  if (hb) hb.setAttribute('aria-expanded', 'false');
+  return _origNavigate(page);
+};
 
 function onFieldChange() {
   updateAutoFields();
