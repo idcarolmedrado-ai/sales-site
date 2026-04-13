@@ -12,7 +12,8 @@
 /* ── TOKENS ── */
 :root {
   --ink: #0a0a0a; --ink-90: #111; --ink-80: #1a1a1a; --ink-70: #252525;
-  --ink-60: #333; --ink-40: #666; --ink-20: #aaa; --ink-10: #ddd;
+  --ink-60: #333; --ink-50: #555; --ink-40: #666; --ink-20: #aaa; --ink-10: #ddd;
+  --ink-85: #151515; --ink-75: #1f1f1f; --ink-65: #2d2d2d;
   --gold: #C4933F; --gold-lt: #e8b86d; --gold-dk: #9a7030;
   --red: #E05252; --green: #4CAF7D; --blue: #4472CA; --purple: #A088E0;
   --font-display: 'Bebas Neue', sans-serif;
@@ -706,6 +707,46 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 .trend-down { color:var(--red);font-size:11px;font-weight:700; }
 .trend-flat { color:var(--ink-40);font-size:11px; }
 
+/* ── Offline banner ── */
+.offline-banner { display:none;position:fixed;top:58px;left:0;right:0;z-index:99;
+  background:rgba(224,82,82,.95);color:#fff;text-align:center;padding:8px;font-size:12px;font-weight:600; }
+.offline-banner.show { display:block; }
+
+/* ── Tooltips ── */
+.field-tip { display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--ink-60);color:var(--ink-20);
+  font-size:9px;font-weight:700;text-align:center;line-height:14px;cursor:help;margin-left:4px;vertical-align:middle;position:relative; }
+.field-tip:hover::after { content:attr(data-tip);position:absolute;bottom:120%;left:50%;transform:translateX(-50%);
+  background:var(--ink-60);color:var(--ink-10);padding:6px 10px;border-radius:6px;font-size:11px;font-weight:400;
+  white-space:nowrap;z-index:10;border:1px solid var(--ink-40);box-shadow:0 4px 12px rgba(0,0,0,.4); }
+
+/* ── Audit trail ── */
+.audit-trail { margin-top:12px;padding:12px;background:var(--ink-80);border:1px solid var(--ink-70);border-radius:8px;max-height:120px;overflow-y:auto; }
+.audit-entry { font-size:11px;color:var(--ink-40);padding:3px 0;border-bottom:1px solid var(--ink-70); }
+.audit-entry:last-child { border-bottom:none; }
+.audit-date { color:var(--ink-20);font-weight:600;margin-right:6px; }
+
+/* ── Mobile pipeline cards ── */
+.pipe-card { background:var(--ink-80);border:1px solid var(--ink-60);border-radius:var(--r);padding:14px;margin-bottom:10px;cursor:pointer;
+  transition:border-color .15s; }
+.pipe-card:hover { border-color:var(--gold); }
+.pipe-card-top { display:flex;justify-content:space-between;align-items:center;margin-bottom:8px; }
+.pipe-card-name { font-weight:600;font-size:14px; }
+.pipe-card-grid { display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px; }
+.pipe-card-lbl { color:var(--ink-40);font-size:10px;text-transform:uppercase;letter-spacing:.06em; }
+.pipe-card-val { color:var(--ink-10); }
+
+/* ── Print improvements ── */
+@media print {
+  .pipe-card, .data-card { break-inside:avoid; }
+  .toast-container, .add-btn, .offline-banner, .global-search,
+  .nav-hamburger, .form-actions button, .btn-icon { display:none!important; }
+  .modal-overlay { position:static!important;display:block!important;background:transparent!important; }
+  .modal-panel { max-width:100%!important;box-shadow:none!important;border:none!important; }
+  body { background:#fff!important;color:#000!important; }
+  .kpi-card { background:#f9f9f9!important;border:1px solid #ccc!important; }
+  .kpi-value { color:#000!important; }
+}
+
 </style>
 </head>
 <body>
@@ -753,7 +794,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   </div>
 </div>
 
-<div class="toast-container" id="toastContainer"></div>
+<div class="toast-container" id="toastContainer" role="status" aria-live="polite"></div>
+<div class="offline-banner" id="offlineBanner">⚠️ You are offline — changes will be saved locally until connection is restored</div>
 
 <!-- NAV -->
 <nav role="navigation" aria-label="Main navigation">
@@ -946,10 +988,10 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   <div class="table-wrap">
     <table id="pipelineTable" class="table-desktop">
       <thead><tr>
-        <th class="sortable" onclick="sortTable('pipelineTable',0,'str')">Client <span class="sort-icon">⇅</span></th>
-        <th class="sortable" onclick="sortTable('pipelineTable',1,'str')">Project Type <span class="sort-icon">⇅</span></th>
-        <th>Lead Source</th>
-        <th class="sortable" onclick="sortTable('pipelineTable',3,'str')">Stage <span class="sort-icon">⇅</span></th>
+        <th scope="col" class="sortable" onclick="sortTable('pipelineTable',0,'str')">Client <span class="sort-icon">⇅</span></th>
+        <th scope="col" class="sortable" onclick="sortTable('pipelineTable',1,'str')">Project Type <span class="sort-icon">⇅</span></th>
+        <th scope="col">Lead Source</th>
+        <th scope="col" class="sortable" onclick="sortTable('pipelineTable',3,'str')">Stage <span class="sort-icon">⇅</span></th>
         <th class="tc sortable" onclick="sortTable('pipelineTable',4,'num')">Prob <span class="sort-icon">⇅</span></th>
         <th class="sortable" onclick="sortTable('pipelineTable',5,'num')">Estimate <span class="sort-icon">⇅</span></th>
         <th class="sortable" onclick="sortTable('pipelineTable',6,'num')">Weighted <span class="sort-icon">⇅</span></th>
@@ -1143,7 +1185,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
                 oninput="document.getElementById('probVal').textContent=this.value+'%';document.getElementById('probVal').style.color=this.value>=70?'var(--green)':this.value>=40?'var(--gold)':'var(--red)';onFieldChange()">
               <span id="probVal" class="prob-val" style="color:var(--red)">0%</span>
             </div></div>
-          <div class="field"><label data-i18n="lbl_est">Estimate ($)</label>
+          <div class="field"><label data-i18n="lbl_est">Estimate ($) <span class="field-tip" data-tip="Expected project value before sale">?</span></label>
             <input id="f-estimate" type="number" min="0" step="100" placeholder="15000" oninput="onFieldChange();updateTotalSaleDisplay()">
             <div id="totalSaleDisplay" style="display:none;font-size:11px;color:var(--gold);margin-top:4px;font-weight:700"></div></div>
           <div class="field"><label data-i18n="lbl_followup">Follow-Up Date</label>
@@ -1208,11 +1250,11 @@ tbody td { padding: 11px 12px; font-size: 13px; }
               style="color:var(--gold);font-family:var(--font-display);font-weight:700">
           </div>
           <div class="field">
-            <label>Sale Order #</label>
+            <label>Sale Order # <span class="field-tip" data-tip="Internal sale order reference number">?</span></label>
             <input id="f-saleOrderNumber" type="text" placeholder="e.g. SO-12345" maxlength="30">
           </div>
           <div class="field">
-            <label>Sale Amount ($)</label>
+            <label>Sale Amount ($) <span class="field-tip" data-tip="Actual sale price (may differ from estimate)">?</span></label>
             <input id="f-saleAmount" type="number" placeholder="0.00" min="0" step="0.01">
           </div>
           <div class="field">
@@ -1262,6 +1304,11 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <div class="form-section">
         <div class="form-section-title">📝 Notes</div>
         <div class="field"><textarea id="f-notes" placeholder="Context about this opportunity…"></textarea></div>
+      </div>
+
+      <div class="audit-trail" id="auditTrailSection" style="display:none">
+        <div style="font-size:10px;font-weight:700;color:var(--ink-40);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Stage History</div>
+        <div id="auditTrailEntries"></div>
       </div>
 
       <div class="cancel-reason-section" id="cancelReasonSection">
@@ -3340,9 +3387,15 @@ async function renderPipeline() {
       <td style="${ovr?'color:var(--red);font-weight:600':''}">${fmtDate(o.followUpDate)}${ovr?` <span style="font-size:10px">(${BL.getDaysOverdue(o)}d)</span>`:''}</td>
       <td><span class="badge ${wt.cls}">${wt.label}</span></td>
       <td style="font-size:11px;color:var(--ink-40)">${urg}</td>
-      <td><button class="btn-icon" onclick="event.stopPropagation();editLead('${o.id}')">✏️</button></td>
+      <td><button class="btn-icon" onclick="event.stopPropagation();editLead('${o.id}')" aria-label="Edit ${esc(o.firstName)} ${esc(o.lastName)}">✏️</button></td>
     </tr>`;
   }).join('');
+
+  // Mobile card view
+  const existingCards = document.getElementById('pipelineCards');
+  if (existingCards) existingCards.remove();
+  const wrap = document.getElementById('pipelineTable')?.parentElement;
+  if (wrap) wrap.insertAdjacentHTML('afterend', _renderPipelineCards(list));
 }
 
 function setStageFilter(s) { state.stageFilter = s; renderPipeline(); }
@@ -4413,7 +4466,9 @@ async function editLead(id) {
   document.getElementById('deleteBtn').style.display = 'inline-flex';
   updateAutoFields();
   _updateCancelSection();
+  _showAuditTrail(id);
   document.getElementById('leadModal').classList.add('open');
+  _trapFocus(document.getElementById('leadModal'));
   setTimeout(() => { window._formSnapshot = _getFormSnapshot(); }, 50);
 }
 
@@ -4421,7 +4476,9 @@ function closeModal(force) {
   if (!force && _hasUnsavedChanges()) {
     if (!confirm('You have unsaved changes. Close without saving?')) return;
   }
-  document.getElementById('leadModal').classList.remove('open');
+  const modal = document.getElementById('leadModal');
+  _releaseFocus(modal);
+  modal.classList.remove('open');
   state.editingId = null;
   window._formSnapshot = null;
   if (window._modalTrigger) { window._modalTrigger.focus(); window._modalTrigger = null; }
@@ -4562,6 +4619,93 @@ navigate = async function(page) {
   if (hb) hb.setAttribute('aria-expanded', 'false');
   return _origNavigate(page);
 };
+
+/* ══════════════════════════════════════════════════
+   FOCUS TRAP IN MODALS
+══════════════════════════════════════════════════ */
+function _trapFocus(modal) {
+  const focusable = modal.querySelectorAll('input,select,textarea,button,[tabindex]:not([tabindex="-1"])');
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length-1];
+  modal._trapHandler = function(e) {
+    if (e.key !== 'Tab') return;
+    if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+    else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+  };
+  modal.addEventListener('keydown', modal._trapHandler);
+  setTimeout(() => first.focus(), 50);
+}
+function _releaseFocus(modal) {
+  if (modal._trapHandler) modal.removeEventListener('keydown', modal._trapHandler);
+}
+// Patch modal open/close
+const _origOpenNewLead = openNewLead;
+openNewLead = function() { _origOpenNewLead(); const m=document.getElementById('leadModal'); if(m) _trapFocus(m); };
+
+/* ══════════════════════════════════════════════════
+   OFFLINE DETECTION
+══════════════════════════════════════════════════ */
+window.addEventListener('online', () => {
+  document.getElementById('offlineBanner')?.classList.remove('show');
+  toast('Back online — syncing data', 'success');
+});
+window.addEventListener('offline', () => {
+  document.getElementById('offlineBanner')?.classList.add('show');
+});
+// Check on load
+if (!navigator.onLine) document.getElementById('offlineBanner')?.classList.add('show');
+
+/* ══════════════════════════════════════════════════
+   STAGE CHANGE AUDIT TRAIL
+══════════════════════════════════════════════════ */
+function _logStageChange(oppId, oldStage, newStage) {
+  const key = 'ea_audit_trail';
+  const log = JSON.parse(localStorage.getItem(key) || '{}');
+  if (!log[oppId]) log[oppId] = [];
+  log[oppId].push({ from: oldStage||'(new)', to: newStage, date: new Date().toISOString().slice(0,16).replace('T',' ') });
+  if (log[oppId].length > 20) log[oppId] = log[oppId].slice(-20);
+  localStorage.setItem(key, JSON.stringify(log));
+}
+function _getAuditTrail(oppId) {
+  const log = JSON.parse(localStorage.getItem('ea_audit_trail') || '{}');
+  return (log[oppId] || []).reverse();
+}
+function _showAuditTrail(oppId) {
+  const entries = _getAuditTrail(oppId);
+  const sec = document.getElementById('auditTrailSection');
+  const el = document.getElementById('auditTrailEntries');
+  if (!sec || !el) return;
+  if (!entries.length) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  el.innerHTML = entries.map(e =>
+    '<div class="audit-entry"><span class="audit-date">'+esc(e.date)+'</span>'+esc(e.from)+' → <strong>'+esc(e.to)+'</strong></div>'
+  ).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   MOBILE PIPELINE CARD VIEW
+══════════════════════════════════════════════════ */
+function _renderPipelineCards(list) {
+  return '<div class="card-view" id="pipelineCards">' + list.map(o => {
+    const wt = BL.getWinTier(o);
+    const urg = BL.getUrgencyScore(o);
+    const ovr = BL.isOverdue(o);
+    return `<div class="pipe-card" onclick="editLead('${o.id}')" style="${ovr?'border-left:3px solid var(--red)':''}">
+      <div class="pipe-card-top">
+        <div class="pipe-card-name">${esc(o.firstName)} ${esc(o.lastName)}</div>
+        <span class="badge ${wt.cls}" style="font-size:9px">${wt.label}</span>
+      </div>
+      <div class="pipe-card-grid">
+        <div><div class="pipe-card-lbl">Project</div><div class="pipe-card-val">${esc(o.projectType||'—')}</div></div>
+        <div><div class="pipe-card-lbl">Estimate</div><div class="pipe-card-val">${o.estimate?fmt$(Number(o.estimate)):'—'}</div></div>
+        <div><div class="pipe-card-lbl">Stage</div><div class="pipe-card-val"><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||''}" style="font-size:9px">${stageLabel(o.stage)||'—'}</span></div></div>
+        <div><div class="pipe-card-lbl">Follow-up</div><div class="pipe-card-val" style="${ovr?'color:var(--red);font-weight:600':''}">${fmtDate(o.followUpDate)||'—'}</div></div>
+        <div><div class="pipe-card-lbl">Score</div><div class="pipe-card-val">${urg}</div></div>
+        <div><div class="pipe-card-lbl">Prob</div><div class="pipe-card-val" style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':'—'}</div></div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
 
 function onFieldChange() {
   updateAutoFields();
@@ -4806,6 +4950,9 @@ async function saveLead() {
   const _prevOpp = _prevAllOpps.find(x=>x.id===opp.id);
   await DB.save(opp);
   syncTimeline(opp, _prevOpp);
+  // Audit trail: log stage change
+  if (_prevOpp && _prevOpp.stage !== opp.stage) _logStageChange(opp.id, _prevOpp.stage, opp.stage);
+  if (!_prevOpp && opp.stage) _logStageChange(opp.id, null, opp.stage);
     // Auto-create link review mailing task if new delivery date set
     if (linkReviewDate && linkReviewDate !== (existingRec?.linkReviewDate || '')) {
       _scheduleReviewTask(opp, linkReviewDate);
