@@ -680,6 +680,32 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 .sort-icon { display:inline-block;margin-left:4px;font-size:8px;opacity:.5;vertical-align:middle; }
 .sort-icon.active { opacity:1;color:var(--gold); }
 
+/* ── Inline validation ── */
+.field.has-error input, .field.has-error select { border-color:var(--red)!important; }
+.field-error { font-size:10px;color:var(--red);margin-top:2px;display:none; }
+.field.has-error .field-error { display:block; }
+.field.valid input, .field.valid select { border-color:var(--green)!important; }
+
+/* ── Probability slider ── */
+.prob-slider-wrap { display:flex;align-items:center;gap:10px; }
+.prob-slider { flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;
+  background:var(--ink-60);outline:none;transition:background .2s; }
+.prob-slider::-webkit-slider-thumb { -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:var(--gold);cursor:pointer;border:2px solid var(--ink-90); }
+.prob-slider::-moz-range-thumb { width:18px;height:18px;border-radius:50%;
+  background:var(--gold);cursor:pointer;border:2px solid var(--ink-90); }
+.prob-val { font-family:var(--font-display);font-size:20px;min-width:48px;text-align:right; }
+
+/* ── Cancellation reason ── */
+.cancel-reason-section { display:none;margin-top:12px;padding:12px;background:rgba(224,82,82,.06);
+  border:1px solid rgba(224,82,82,.2);border-radius:8px; }
+.cancel-reason-section.show { display:block; }
+
+/* ── Trend indicators ── */
+.trend-up { color:var(--green);font-size:11px;font-weight:700; }
+.trend-down { color:var(--red);font-size:11px;font-weight:700; }
+.trend-flat { color:var(--ink-40);font-size:11px; }
+
 </style>
 </head>
 <body>
@@ -784,7 +810,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="1,11 5,6 9,8 15,2"/><rect x="1" y="12" width="2" height="3"/><rect x="5" y="9" width="2" height="6"/><rect x="9" y="7" width="2" height="8"/><rect x="13" y="4" width="2" height="11"/></svg>
       <span>Analytics</span>
     </button>
-    <button class="nav-tab" onclick="navigate('tests')" data-page="tests">
+    <button class="nav-tab" onclick="navigate('tests')" data-page="tests" style="display:none" id="navTestsTab">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="7"/><path d="M5 8l2 2 4-4"/></svg>
       <span data-i18n="nav_tests">Tests</span>
     </button>
@@ -1096,8 +1122,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
         <div class="form-grid">
           <div class="field"><label data-i18n="lbl_first">First Name *</label><input id="f-firstName" type="text" required placeholder="Maria"></div>
           <div class="field"><label data-i18n="lbl_last">Last Name *</label><input id="f-lastName" type="text" required placeholder="Alvarez"></div>
-          <div class="field"><label data-i18n="lbl_email">Email</label><input id="f-email" type="email" placeholder="maria@email.com"></div>
-          <div class="field"><label data-i18n="lbl_phone">Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000"></div>
+          <div class="field" id="field-email"><label data-i18n="lbl_email">Email</label><input id="f-email" type="email" placeholder="maria@email.com" oninput="validateFieldLive('email')"><div class="field-error">Please enter a valid email address</div></div>
+          <div class="field" id="field-phone"><label data-i18n="lbl_phone">Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000"></div>
           <div class="field span-2"><label data-i18n="lbl_address">Address</label><input id="f-address" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
         </div>
       </div>
@@ -1112,7 +1138,11 @@ tbody td { padding: 11px 12px; font-size: 13px; }
           <div class="field"><label data-i18n="lbl_stage">Stage</label>
             <select id="f-stage" onchange="onFieldChange()"><option value="">Select…</option></select></div>
           <div class="field"><label data-i18n="lbl_prob">Probability (%)</label>
-            <select id="f-probability" onchange="onFieldChange()"><option value="">Select…</option></select></div>
+            <div class="prob-slider-wrap">
+              <input id="f-probability" type="range" min="0" max="100" step="5" value="0" class="prob-slider"
+                oninput="document.getElementById('probVal').textContent=this.value+'%';document.getElementById('probVal').style.color=this.value>=70?'var(--green)':this.value>=40?'var(--gold)':'var(--red)';onFieldChange()">
+              <span id="probVal" class="prob-val" style="color:var(--red)">0%</span>
+            </div></div>
           <div class="field"><label data-i18n="lbl_est">Estimate ($)</label>
             <input id="f-estimate" type="number" min="0" step="100" placeholder="15000" oninput="onFieldChange();updateTotalSaleDisplay()">
             <div id="totalSaleDisplay" style="display:none;font-size:11px;color:var(--gold);margin-top:4px;font-weight:700"></div></div>
@@ -1232,6 +1262,28 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <div class="form-section">
         <div class="form-section-title">📝 Notes</div>
         <div class="field"><textarea id="f-notes" placeholder="Context about this opportunity…"></textarea></div>
+      </div>
+
+      <div class="cancel-reason-section" id="cancelReasonSection">
+        <div style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">⚠️ Cancellation Details</div>
+        <div class="field">
+          <label>Reason for Cancellation</label>
+          <select id="f-cancelReason">
+            <option value="">Select reason…</option>
+            <option>Budget constraints</option>
+            <option>Chose competitor</option>
+            <option>Project postponed</option>
+            <option>No longer interested</option>
+            <option>Unable to reach client</option>
+            <option>Design/style mismatch</option>
+            <option>Timing not right</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field" style="margin-top:8px">
+          <label>Additional Notes</label>
+          <input id="f-cancelNotes" type="text" placeholder="Any details about why this deal was lost…">
+        </div>
       </div>
 
       <div class="form-actions">
@@ -2639,12 +2691,21 @@ let state = {
 ══════════════════════════════════════════════════ */
 async function navigate(page) {
   state.page = page;
+  // Update URL hash for deep linking
+  if (window.location.hash !== '#' + page) {
+    history.replaceState(null, '', '#' + page);
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.page === page));
   const el = document.getElementById(`page-${page}`);
   if (el) el.classList.add('active');
   await renderPage(page);
 }
+// Handle browser back/forward and direct URL access
+window.addEventListener('hashchange', () => {
+  const page = location.hash.replace('#','') || 'dashboard';
+  if (page !== state.page) navigate(page);
+});
 
 async function renderPage(page) {
   try {
@@ -3075,6 +3136,21 @@ async function renderDashboard() {
 
   const kpis = BL.calcKPIs(opps, state.monthFilter);
 
+  // Trend analysis: compare current month vs previous month
+  const curMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  const prevDate = new Date(today.getFullYear(), today.getMonth()-1, 1);
+  const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+  const curKpis = BL.calcKPIs(opps, curMonth);
+  const prevKpis = BL.calcKPIs(opps, prevMonth);
+  function trendHTML(cur, prev, prefix) {
+    if (!prev || prev === 0) return '<span class="trend-flat">—</span>';
+    const diff = cur - prev;
+    const pct = Math.round(Math.abs(diff) / prev * 100);
+    if (diff > 0) return `<span class="trend-up">${prefix||''}↑ ${pct}%</span>`;
+    if (diff < 0) return `<span class="trend-down">${prefix||''}↓ ${pct}%</span>`;
+    return '<span class="trend-flat">→ 0%</span>';
+  }
+
   // Goal progress
   const goal = getGoalForMonth(today.getMonth());
   const pct  = goal ? Math.min(Math.round(kpis.totalSales / goal * 100), 100) : 0;
@@ -3098,13 +3174,13 @@ async function renderDashboard() {
     fyButtons +
     months.map(m=>`<button class="filter-chip ${state.monthFilter===m?'active':''}" onclick="setMonthFilter('${m}')">${localMonthLabel(m)}</button>`).join('');
 
-  // KPI values
+  // KPI values with trend indicators
   document.getElementById('k-opps').textContent    = kpis.opps;
-  document.getElementById('k-opps-d').textContent  = T('sold_active')(kpis.sold, kpis.active);
+  document.getElementById('k-opps-d').innerHTML    = T('sold_active')(kpis.sold, kpis.active) + ' ' + trendHTML(curKpis.opps, prevKpis.opps);
   document.getElementById('k-sales').textContent   = fmt$(kpis.totalSales);
-  document.getElementById('k-sales-d').textContent = T('closed_deals')(kpis.sold);
+  document.getElementById('k-sales-d').innerHTML   = T('closed_deals')(kpis.sold) + ' ' + trendHTML(curKpis.totalSales, prevKpis.totalSales);
   document.getElementById('k-pipe').textContent    = fmt$(kpis.weightedPipe);
-  document.getElementById('k-pipe-d').textContent  = T('active_opps')(kpis.active);
+  document.getElementById('k-pipe-d').innerHTML    = T('active_opps')(kpis.active) + ' ' + trendHTML(curKpis.weightedPipe, prevKpis.weightedPipe);
   document.getElementById('k-overdue').textContent = kpis.overdue;
   document.getElementById('k-conv').textContent    = Math.round(kpis.convRate) + '%';
   document.getElementById('k-hc').textContent      = kpis.homeCalls;
@@ -4277,8 +4353,16 @@ function openNewLead() {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('deleteBtn').style.display = 'none';
+  // Reset probability slider
+  const _ps = document.getElementById('f-probability'); if (_ps) _ps.value = '0';
+  const _pv = document.getElementById('probVal'); if (_pv) { _pv.textContent = '0%'; _pv.style.color = 'var(--red)'; }
+  // Reset cancel section
+  const _cr = document.getElementById('f-cancelReason'); if (_cr) _cr.value = '';
+  const _cn = document.getElementById('f-cancelNotes'); if (_cn) _cn.value = '';
+  _updateCancelSection();
   updateAutoFields();
   document.getElementById('leadModal').classList.add('open');
+  setTimeout(() => { window._formSnapshot = _getFormSnapshot(); }, 50);
 }
 
 async function editLead(id) {
@@ -4298,7 +4382,8 @@ async function editLead(id) {
   document.getElementById('f-projectType').value  = o.projectType || '';
   document.getElementById('f-leadSource').value   = o.leadSource  || '';
   document.getElementById('f-stage').value        = o.stage       || '';
-  document.getElementById('f-probability').value  = String(o.probability || '');
+  document.getElementById('f-probability').value  = String(o.probability || 0);
+  const _epv = document.getElementById('probVal'); if (_epv) { _epv.textContent = (o.probability||0)+'%'; _epv.style.color = (o.probability||0)>=70?'var(--green)':(o.probability||0)>=40?'var(--gold)':'var(--red)'; }
   document.getElementById('f-estimate').value     = o.estimate    || '';
   document.getElementById('f-nextStep').value     = o.nextStep    || '';
   document.getElementById('f-followUpDate').value = o.followUpDate || '';
@@ -4321,18 +4406,61 @@ async function editLead(id) {
   _sf('f-issueFlag',      o.issueFlag);
   _sf('f-issueType',      o.issueType);
   _sf('f-issueResult',    o.issueResult);
+  _sf('f-cancelReason',   o.cancelReason);
+  _sf('f-cancelNotes',    o.cancelNotes);
   const _acs = document.getElementById('activeClientSection');
   if (_acs) _acs.style.display = (o.saleMade === 'Yes' || o.stage === 'Sale Made') ? '' : 'none';
   document.getElementById('deleteBtn').style.display = 'inline-flex';
   updateAutoFields();
+  _updateCancelSection();
   document.getElementById('leadModal').classList.add('open');
+  setTimeout(() => { window._formSnapshot = _getFormSnapshot(); }, 50);
 }
 
-function closeModal() {
+function closeModal(force) {
+  if (!force && _hasUnsavedChanges()) {
+    if (!confirm('You have unsaved changes. Close without saving?')) return;
+  }
   document.getElementById('leadModal').classList.remove('open');
   state.editingId = null;
-  // Restore focus to trigger element
+  window._formSnapshot = null;
   if (window._modalTrigger) { window._modalTrigger.focus(); window._modalTrigger = null; }
+}
+
+/* ── Unsaved changes detection ── */
+function _getFormSnapshot() {
+  const fields = ['f-firstName','f-lastName','f-email','f-phone','f-address','f-projectType',
+    'f-leadSource','f-stage','f-probability','f-estimate','f-nextStep','f-followUpDate',
+    'f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-notes',
+    'f-customerNumber','f-saleOrderNumber','f-saleAmount'];
+  return fields.map(id => (document.getElementById(id)?.value||'')).join('|');
+}
+function _hasUnsavedChanges() {
+  if (!window._formSnapshot) return false;
+  return window._formSnapshot !== _getFormSnapshot();
+}
+
+/* ── Inline validation ── */
+function validateFieldLive(field) {
+  if (field === 'email') {
+    const el = document.getElementById('f-email');
+    const wrap = document.getElementById('field-email');
+    if (!wrap || !el) return;
+    const v = el.value.trim();
+    if (!v) { wrap.classList.remove('has-error','valid'); return; }
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+      wrap.classList.remove('has-error'); wrap.classList.add('valid');
+    } else {
+      wrap.classList.add('has-error'); wrap.classList.remove('valid');
+    }
+  }
+}
+
+/* ── Show/hide cancellation reason based on stage ── */
+function _updateCancelSection() {
+  const stage = document.getElementById('f-stage')?.value;
+  const sec = document.getElementById('cancelReasonSection');
+  if (sec) sec.classList.toggle('show', stage === 'Canceled');
 }
 
 /* ══════════════════════════════════════════════════
@@ -4441,6 +4569,11 @@ function onFieldChange() {
   const st  = document.getElementById('f-stage')?.value   || '';
   const acs = document.getElementById('activeClientSection');
   if (acs) acs.style.display = (sm === 'Yes' || st === 'Sale Made') ? '' : 'none';
+  _updateCancelSection();
+  // Update probability slider display
+  const pv = document.getElementById('probVal');
+  const ps = document.getElementById('f-probability');
+  if (pv && ps) { pv.textContent = ps.value+'%'; pv.style.color = ps.value>=70?'var(--green)':ps.value>=40?'var(--gold)':'var(--red)'; }
 }
 
 function onDeliveryDateChange() {
@@ -4658,6 +4791,8 @@ async function saveLead() {
     issueType:      document.getElementById('f-issueType')?.value     || '',
     issueResult:    document.getElementById('f-issueResult')?.value   || '',
     saleOrderNumber: document.getElementById('f-saleOrderNumber')?.value?.trim() || '',
+    cancelReason:   document.getElementById('f-cancelReason')?.value   || '',
+    cancelNotes:    document.getElementById('f-cancelNotes')?.value?.trim() || '',
     saleAmount:     Number(document.getElementById('f-saleAmount')?.value) || 0,
     createdAt:      existingRec?.createdAt || todayStr(),
   };
@@ -4675,7 +4810,7 @@ async function saveLead() {
     if (linkReviewDate && linkReviewDate !== (existingRec?.linkReviewDate || '')) {
       _scheduleReviewTask(opp, linkReviewDate);
     }
-    closeModal();
+    closeModal(true);
     const msg = existingId ? 'Updated ' + firstName + ' ' + lastName : 'Added ' + firstName + ' ' + lastName;
     toast('✅ ' + msg, 'success');
     // ── Route to correct tab ──
@@ -4712,7 +4847,7 @@ async function deleteLead() {
   if (!confirm(`Delete ${opp.firstName} ${opp.lastName}? This cannot be undone.`)) return;
 
   await DB.delete(state.editingId);
-  closeModal();
+  closeModal(true);
   toast(`Deleted ${opp.firstName} ${opp.lastName}`, 'info');
   await renderPage(state.page);
 }
@@ -7649,7 +7784,8 @@ async function launchApp(fromSupabase) {
   document.getElementById('configScreen').style.display = 'none';
   initDropdowns();
   if (!fromSupabase) DB.seedDemo();
-  await navigate('dashboard');
+  const _startPage = (location.hash||'').replace('#','') || 'dashboard';
+  await navigate(_startPage);
   applyI18n();
 }
 // Apply i18n on load
@@ -7885,7 +8021,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 <script>
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
-    if (document.getElementById('leadModal')?.classList.contains('open')) closeModal();
+    if (document.getElementById('leadModal')?.classList.contains('open')) closeModal(false);
     if (document.getElementById('monthDetailModal')?.style.display !== 'none') closeMonthDetail();
     if (document.getElementById('kpiModal')?.style.display !== 'none') closeKPIModal();
     if (document.getElementById('emailPreviewModal')?.style.display !== 'none') closeEmailPreview();
