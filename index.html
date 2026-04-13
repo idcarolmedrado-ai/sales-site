@@ -4545,7 +4545,7 @@ function copyEmailToClipboard() {
 function initDropdowns() {
   const sel = (id, items) => {
     const el = document.getElementById(id);
-    if (!el) return;
+    if (!el || !el.options) return;  // skip if element missing or not a <select>
     const first = el.options[0];
     el.innerHTML = '';
     if (first) el.appendChild(first);
