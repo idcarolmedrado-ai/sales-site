@@ -707,6 +707,41 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 .trend-down { color:var(--red);font-size:11px;font-weight:700; }
 .trend-flat { color:var(--ink-40);font-size:11px; }
 
+/* ── Kanban view ── */
+.kanban-board { display:flex;gap:10px;overflow-x:auto;padding-bottom:12px;min-height:300px; }
+.kanban-col { min-width:220px;max-width:260px;flex:1;background:var(--ink-80);border:1px solid var(--ink-70);
+  border-radius:var(--r);display:flex;flex-direction:column; }
+.kanban-col-header { padding:10px 12px;border-bottom:2px solid;font-size:10px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center; }
+.kanban-col-count { background:var(--ink-60);color:var(--ink-10);font-size:9px;padding:2px 6px;border-radius:10px; }
+.kanban-col-body { flex:1;padding:8px;overflow-y:auto;max-height:480px; }
+.kanban-card { background:var(--ink-90);border:1px solid var(--ink-60);border-radius:8px;padding:10px 12px;
+  margin-bottom:8px;cursor:pointer;transition:border-color .15s,transform .1s;font-size:12px; }
+.kanban-card:hover { border-color:var(--gold);transform:translateY(-1px); }
+.kanban-card-name { font-weight:600;font-size:13px;margin-bottom:4px; }
+.kanban-card-meta { color:var(--ink-40);font-size:11px;margin-bottom:6px; }
+.kanban-card-footer { display:flex;justify-content:space-between;align-items:center; }
+.kanban-card-val { color:var(--green);font-weight:700;font-size:12px; }
+.kanban-card-prob { font-size:10px;font-weight:600; }
+.kanban-toggle { display:flex;gap:4px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:2px; }
+.kanban-toggle button { padding:4px 10px;border:none;border-radius:4px;font-size:11px;font-weight:600;
+  cursor:pointer;background:transparent;color:var(--ink-40);font-family:var(--font-body); }
+.kanban-toggle button.active { background:var(--gold);color:#000; }
+
+/* ── Bulk operations ── */
+.bulk-bar { display:none;align-items:center;gap:12px;padding:10px 16px;background:var(--gold-dk);
+  border-radius:var(--r);margin-bottom:12px;flex-wrap:wrap; }
+.bulk-bar.show { display:flex; }
+.bulk-bar-count { font-weight:700;color:#fff;font-size:13px; }
+.bulk-bar select, .bulk-bar button { font-size:12px;font-family:var(--font-body); }
+.bulk-check { width:16px;height:16px;accent-color:var(--gold);cursor:pointer; }
+
+@media(max-width:768px) {
+  .kanban-board { flex-direction:column; }
+  .kanban-col { min-width:unset;max-width:unset; }
+  .kanban-toggle { align-self:flex-start; }
+}
+
 /* ── Offline banner ── */
 .offline-banner { display:none;position:fixed;top:58px;left:0;right:0;z-index:99;
   background:rgba(224,82,82,.95);color:#fff;text-align:center;padding:8px;font-size:12px;font-weight:600; }
@@ -977,7 +1012,11 @@ tbody td { padding: 11px 12px; font-size: 13px; }
       <span style="color:var(--ink-40)">🔍</span>
       <input id="searchInput" type="text" placeholder="Search name, project, stage…" oninput="renderPipeline()">
     </div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;align-items:center">
+    <div class="kanban-toggle" id="viewToggle">
+      <button class="active" onclick="setPipeView('table')">☰ Table</button>
+      <button onclick="setPipeView('kanban')">▦ Kanban</button>
+    </div>
     <button onclick="printPage('page-pipeline')" class="print-btn" title="Print or Save as PDF">
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg><span data-i18n="btn_print">Print / PDF</span>
     </button>
@@ -985,21 +1024,35 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   </div>
   </div>
   <div class="filter-row" id="stageFilters"></div>
-  <div class="table-wrap">
+  <div class="container bulk-bar" id="bulkBar">
+    <span class="bulk-bar-count" id="bulkCount">0 selected</span>
+    <select id="bulkStageSelect" style="background:var(--ink-80);border:1px solid var(--ink-60);color:#fff;border-radius:6px;padding:4px 8px">
+      <option value="">Move to stage…</option>
+      <option>New Lead</option><option>Home Call</option><option>Design in Progress</option>
+      <option>Quote Sent</option><option>Follow-up</option><option>Pending Decision</option>
+      <option>Sale Made</option><option>Postponed</option><option>Canceled</option>
+    </select>
+    <button onclick="bulkUpdateStage()" class="btn btn-sm btn-primary">Apply</button>
+    <button onclick="bulkDelete()" class="btn btn-sm btn-danger">Delete Selected</button>
+    <button onclick="clearBulkSelection()" class="btn btn-sm btn-ghost">Cancel</button>
+  </div>
+  <div id="kanbanContainer" class="container" style="display:none"></div>
+  <div class="table-wrap" id="pipelineTableWrap">
     <table id="pipelineTable" class="table-desktop">
       <thead><tr>
-        <th scope="col" class="sortable" onclick="sortTable('pipelineTable',0,'str')">Client <span class="sort-icon">⇅</span></th>
-        <th scope="col" class="sortable" onclick="sortTable('pipelineTable',1,'str')">Project Type <span class="sort-icon">⇅</span></th>
+        <th scope="col" style="width:30px"><input type="checkbox" class="bulk-check-all" onchange="toggleBulkAll(this.checked)" title="Select all"></th>
+        <th scope="col" class="sortable" onclick="sortTable('pipelineTable',1,'str')">Client <span class="sort-icon">⇅</span></th>
+        <th scope="col" class="sortable" onclick="sortTable('pipelineTable',2,'str')">Project Type <span class="sort-icon">⇅</span></th>
         <th scope="col">Lead Source</th>
-        <th scope="col" class="sortable" onclick="sortTable('pipelineTable',3,'str')">Stage <span class="sort-icon">⇅</span></th>
-        <th class="tc sortable" onclick="sortTable('pipelineTable',4,'num')">Prob <span class="sort-icon">⇅</span></th>
-        <th class="sortable" onclick="sortTable('pipelineTable',5,'num')">Estimate <span class="sort-icon">⇅</span></th>
-        <th class="sortable" onclick="sortTable('pipelineTable',6,'num')">Weighted <span class="sort-icon">⇅</span></th>
-        <th class="sortable" onclick="sortTable('pipelineTable',7,'date')">Close Date <span class="sort-icon">⇅</span></th>
+        <th scope="col" class="sortable" onclick="sortTable('pipelineTable',4,'str')">Stage <span class="sort-icon">⇅</span></th>
+        <th class="tc sortable" onclick="sortTable('pipelineTable',5,'num')">Prob <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('pipelineTable',6,'num')">Estimate <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('pipelineTable',7,'num')">Weighted <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('pipelineTable',8,'date')">Close Date <span class="sort-icon">⇅</span></th>
         <th class="tc">Q</th>
-        <th class="sortable" onclick="sortTable('pipelineTable',9,'date')">Follow-Up <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('pipelineTable',10,'date')">Follow-Up <span class="sort-icon">⇅</span></th>
         <th>Win Tier</th>
-        <th class="sortable" onclick="sortTable('pipelineTable',11,'num')">Score <span class="sort-icon">⇅</span></th>
+        <th class="sortable" onclick="sortTable('pipelineTable',12,'num')">Score <span class="sort-icon">⇅</span></th>
         <th></th>
       </tr></thead>
       <tbody id="pipelineBody"></tbody>
@@ -2635,6 +2688,8 @@ const DB = {
       goldCompValue: Number(row.goldCompValue) || 0,
       saleOrderNumber: row.saleOrderNumber || '',
       saleAmount: Number(row.saleAmount) || 0,
+      cancelReason: row.cancelReason || '',
+      cancelNotes: row.cancelNotes || '',
     };
   },
 
@@ -2670,6 +2725,8 @@ const DB = {
       goldCompValue:  Number(o.goldCompValue) || 0,
       saleOrderNumber: o.saleOrderNumber || null,
       saleAmount: Number(o.saleAmount) || 0,
+      cancelReason: o.cancelReason || null,
+      cancelNotes: o.cancelNotes || null,
     };
   },
 
@@ -3372,6 +3429,7 @@ async function renderPipeline() {
     const w   = BL.getWeighted(o);
     const trCls = ovr?'overdue':(o.saleMade==='Yes'?'sold':(Number(o.probability)>=75?'hot':''));
     return `<tr class="${trCls}" onclick="editLead('${o.id}')">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="bulk-check" data-id="${o.id}" onchange="toggleBulk('${o.id}',this.checked)" ${_bulkSelected.has(o.id)?'checked':''}></td>
       <td>
         <div style="font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</div>
         <div style="font-size:11px;color:var(--ink-40)">${esc(o.email||'')}</div>
@@ -3400,6 +3458,104 @@ async function renderPipeline() {
 
 function setStageFilter(s) { state.stageFilter = s; renderPipeline(); }
 function probColor(p) { return p>=90?'var(--green)':p>=75?'var(--gold)':p>=50?'#FFA500':'var(--ink-40)'; }
+
+/* ══════════════════════════════════════════════════
+   KANBAN VIEW
+══════════════════════════════════════════════════ */
+let _pipeView = 'table';
+function setPipeView(view) {
+  _pipeView = view;
+  document.querySelectorAll('#viewToggle button').forEach(b => b.classList.toggle('active', b.textContent.includes(view==='table'?'Table':'Kanban')));
+  document.getElementById('pipelineTableWrap').style.display = view==='table'?'':'none';
+  document.getElementById('kanbanContainer').style.display = view==='kanban'?'':'none';
+  const cards = document.getElementById('pipelineCards');
+  if (cards) cards.style.display = view==='table'?'':'none';
+  if (view==='kanban') _renderKanban();
+}
+
+async function _renderKanban() {
+  const opps = await DB.getAll();
+  const search = (document.getElementById('searchInput')?.value||'').toLowerCase().trim();
+  let list = opps.filter(o => o.saleMade !== 'Yes');
+  if (state.stageFilter) list = list.filter(o=>o.stage===state.stageFilter);
+  if (search) list = list.filter(o=>`${o.firstName} ${o.lastName} ${o.projectType} ${o.stage}`.toLowerCase().includes(search));
+
+  const kanbanStages = LOOKUP.stages.filter(s => s !== 'Sale Made' && s !== 'Canceled');
+  const el = document.getElementById('kanbanContainer');
+  el.innerHTML = '<div class="kanban-board">' + kanbanStages.map(stage => {
+    const color = LOOKUP.stageColors[stage] || '#888';
+    const cards = list.filter(o => (o.stage||'New Lead') === stage);
+    const total = cards.reduce((s,o) => s+(Number(o.estimate)||0), 0);
+    return `<div class="kanban-col">
+      <div class="kanban-col-header" style="border-color:${color};color:${color}">
+        ${stage} <span class="kanban-col-count">${cards.length}</span>
+      </div>
+      <div style="padding:4px 8px;font-size:10px;color:var(--ink-40)">${total>0?fmt$(total):''}</div>
+      <div class="kanban-col-body">${cards.length ? cards.map(o => {
+        const urg = BL.getUrgencyScore(o);
+        const ovr = BL.isOverdue(o);
+        return `<div class="kanban-card" onclick="editLead('${o.id}')" style="${ovr?'border-left:3px solid var(--red)':''}">
+          <div class="kanban-card-name">${esc(o.firstName)} ${esc(o.lastName)}</div>
+          <div class="kanban-card-meta">${esc(o.projectType||'')}${o.followUpDate?' · '+fmtDate(o.followUpDate):''}</div>
+          <div class="kanban-card-footer">
+            <span class="kanban-card-val">${o.estimate?fmt$(Number(o.estimate)):''}</span>
+            <span class="kanban-card-prob" style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':''}</span>
+          </div>
+        </div>`;
+      }).join('') : '<div style="text-align:center;padding:20px;color:var(--ink-60);font-size:11px">No leads</div>'}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+/* ══════════════════════════════════════════════════
+   BULK OPERATIONS
+══════════════════════════════════════════════════ */
+let _bulkSelected = new Set();
+function toggleBulk(id, checked) {
+  if (checked) _bulkSelected.add(id); else _bulkSelected.delete(id);
+  _updateBulkBar();
+}
+function toggleBulkAll(checked) {
+  document.querySelectorAll('.bulk-check').forEach(cb => { cb.checked = checked; if (checked) _bulkSelected.add(cb.dataset.id); else _bulkSelected.delete(cb.dataset.id); });
+  _updateBulkBar();
+}
+function _updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  const cnt = document.getElementById('bulkCount');
+  if (bar) bar.classList.toggle('show', _bulkSelected.size > 0);
+  if (cnt) cnt.textContent = _bulkSelected.size + ' selected';
+}
+function clearBulkSelection() {
+  _bulkSelected.clear();
+  document.querySelectorAll('.bulk-check').forEach(cb => cb.checked = false);
+  _updateBulkBar();
+}
+async function bulkUpdateStage() {
+  const newStage = document.getElementById('bulkStageSelect')?.value;
+  if (!newStage) { toast('Select a stage first', 'error'); return; }
+  if (!confirm(`Move ${_bulkSelected.size} lead(s) to "${newStage}"?`)) return;
+  const opps = await DB.getAll();
+  for (const id of _bulkSelected) {
+    const o = opps.find(x => x.id === id);
+    if (o) {
+      const oldStage = o.stage;
+      o.stage = newStage;
+      if (newStage === 'Sale Made') o.saleMade = 'Yes';
+      await DB.save(o);
+      _logStageChange(id, oldStage, newStage);
+    }
+  }
+  toast(`Moved ${_bulkSelected.size} leads to ${newStage}`, 'success');
+  clearBulkSelection();
+  renderPipeline();
+}
+async function bulkDelete() {
+  if (!confirm(`Delete ${_bulkSelected.size} lead(s)? This cannot be undone.`)) return;
+  for (const id of _bulkSelected) await DB.delete(id);
+  toast(`Deleted ${_bulkSelected.size} leads`, 'info');
+  clearBulkSelection();
+  renderPipeline();
+}
 
 /* ══════════════════════════════════════════════════
    RENDER: PRIORITIES
@@ -4659,11 +4815,14 @@ if (!navigator.onLine) document.getElementById('offlineBanner')?.classList.add('
    STAGE CHANGE AUDIT TRAIL
 ══════════════════════════════════════════════════ */
 function _logStageChange(oppId, oldStage, newStage) {
+  _logActivity(oppId, 'stage', `${oldStage||'(new)'} → ${newStage}`);
+}
+function _logActivity(oppId, type, detail) {
   const key = 'ea_audit_trail';
   const log = JSON.parse(localStorage.getItem(key) || '{}');
   if (!log[oppId]) log[oppId] = [];
-  log[oppId].push({ from: oldStage||'(new)', to: newStage, date: new Date().toISOString().slice(0,16).replace('T',' ') });
-  if (log[oppId].length > 20) log[oppId] = log[oppId].slice(-20);
+  log[oppId].push({ type: type, detail: detail, date: new Date().toISOString().slice(0,16).replace('T',' ') });
+  if (log[oppId].length > 30) log[oppId] = log[oppId].slice(-30);
   localStorage.setItem(key, JSON.stringify(log));
 }
 function _getAuditTrail(oppId) {
@@ -4677,9 +4836,12 @@ function _showAuditTrail(oppId) {
   if (!sec || !el) return;
   if (!entries.length) { sec.style.display = 'none'; return; }
   sec.style.display = '';
-  el.innerHTML = entries.map(e =>
-    '<div class="audit-entry"><span class="audit-date">'+esc(e.date)+'</span>'+esc(e.from)+' → <strong>'+esc(e.to)+'</strong></div>'
-  ).join('');
+  const icons = {stage:'🔄',edit:'✏️',create:'➕',note:'📝',sale:'💰',default:'•'};
+  el.innerHTML = entries.map(e => {
+    const icon = icons[e.type] || icons.default;
+    const detail = e.detail || (e.from ? esc(e.from)+' → <strong>'+esc(e.to)+'</strong>' : '');
+    return '<div class="audit-entry"><span class="audit-date">'+esc(e.date)+'</span>'+icon+' '+detail+'</div>';
+  }).join('');
 }
 
 /* ══════════════════════════════════════════════════
@@ -4950,9 +5112,15 @@ async function saveLead() {
   const _prevOpp = _prevAllOpps.find(x=>x.id===opp.id);
   await DB.save(opp);
   syncTimeline(opp, _prevOpp);
-  // Audit trail: log stage change
-  if (_prevOpp && _prevOpp.stage !== opp.stage) _logStageChange(opp.id, _prevOpp.stage, opp.stage);
-  if (!_prevOpp && opp.stage) _logStageChange(opp.id, null, opp.stage);
+  // Audit trail: log all changes
+  if (!_prevOpp) {
+    _logActivity(opp.id, 'create', 'Lead created: '+opp.firstName+' '+opp.lastName);
+  } else {
+    if (_prevOpp.stage !== opp.stage) _logStageChange(opp.id, _prevOpp.stage, opp.stage);
+    if (_prevOpp.saleMade !== 'Yes' && opp.saleMade === 'Yes') _logActivity(opp.id, 'sale', 'Sale closed'+(opp.saleAmount?' for '+fmt$(opp.saleAmount):''));
+    if (_prevOpp.estimate !== opp.estimate) _logActivity(opp.id, 'edit', 'Estimate: '+fmt$(Number(_prevOpp.estimate))+' → '+fmt$(Number(opp.estimate)));
+    if ((_prevOpp.notes||'') !== (opp.notes||'') && opp.notes) _logActivity(opp.id, 'note', 'Notes updated');
+  }
     // Auto-create link review mailing task if new delivery date set
     if (linkReviewDate && linkReviewDate !== (existingRec?.linkReviewDate || '')) {
       _scheduleReviewTask(opp, linkReviewDate);
