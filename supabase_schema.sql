@@ -514,3 +514,50 @@ CREATE POLICY "Avatars anon delete" ON storage.objects
   FOR DELETE TO anon USING (bucket_id = 'avatars');
 
     ← Remove this line  */
+
+
+-- ══════════════════════════════════════════════════════════════
+--  v5.1 — Audit Trail + User Settings tables (2026-04)
+--
+--  Moves audit_trail (stage changes, edit history) and user_settings
+--  (profile, password hash) from browser localStorage to Supabase.
+--
+--  Run in Supabase SQL Editor:
+-- ══════════════════════════════════════════════════════════════
+
+/*  ← Remove this line
+
+CREATE TABLE IF NOT EXISTS audit_trail (
+  id           BIGSERIAL PRIMARY KEY,
+  opp_id       TEXT NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
+  event_type   TEXT,           -- stage | edit | create | note | sale
+  detail       TEXT,
+  event_at     TEXT            -- user-local date string like "2026-04-15 14:30"
+);
+CREATE INDEX IF NOT EXISTS idx_audit_opp_id ON audit_trail(opp_id, id DESC);
+
+ALTER TABLE audit_trail ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_audit_select" ON audit_trail;
+DROP POLICY IF EXISTS "anon_audit_insert" ON audit_trail;
+DROP POLICY IF EXISTS "anon_audit_delete" ON audit_trail;
+CREATE POLICY "anon_audit_select" ON audit_trail FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_audit_insert" ON audit_trail FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_audit_delete" ON audit_trail FOR DELETE TO anon USING (true);
+
+
+CREATE TABLE IF NOT EXISTS user_settings (
+  key_name     TEXT PRIMARY KEY,    -- 'profile' | 'password_hash' | 'language' | etc
+  value        JSONB,
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_settings_select" ON user_settings;
+DROP POLICY IF EXISTS "anon_settings_upsert" ON user_settings;
+DROP POLICY IF EXISTS "anon_settings_delete" ON user_settings;
+CREATE POLICY "anon_settings_select" ON user_settings FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_settings_upsert" ON user_settings FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_settings_update" ON user_settings FOR UPDATE TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_settings_delete" ON user_settings FOR DELETE TO anon USING (true);
+
+    ← Remove this line  */

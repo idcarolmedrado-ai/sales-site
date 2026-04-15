@@ -5034,29 +5034,52 @@ if (!navigator.onLine) document.getElementById('offlineBanner')?.classList.add('
 function _logStageChange(oppId, oldStage, newStage) {
   _logActivity(oppId, 'stage', `${oldStage||'(new)'} → ${newStage}`);
 }
+
+/* Write to Supabase `audit_trail` table (fire-and-forget) with localStorage fallback */
 function _logActivity(oppId, type, detail) {
-  const key = 'ea_audit_trail';
-  const log = JSON.parse(localStorage.getItem(key) || '{}');
-  if (!log[oppId]) log[oppId] = [];
-  log[oppId].push({ type: type, detail: detail, date: new Date().toISOString().slice(0,16).replace('T',' ') });
-  if (log[oppId].length > 30) log[oppId] = log[oppId].slice(-30);
-  localStorage.setItem(key, JSON.stringify(log));
+  const dateStr = new Date().toISOString().slice(0,16).replace('T',' ');
+  // Mirror to localStorage for offline cache and Demo mode
+  try {
+    const log = JSON.parse(localStorage.getItem('ea_audit_trail') || '{}');
+    if (!log[oppId]) log[oppId] = [];
+    log[oppId].push({ type, detail, date: dateStr });
+    if (log[oppId].length > 30) log[oppId] = log[oppId].slice(-30);
+    localStorage.setItem('ea_audit_trail', JSON.stringify(log));
+  } catch(e) {}
+  // Write to cloud
+  if (_isCloudMode()) {
+    DB.client.from('audit_trail').insert({
+      opp_id: oppId, event_type: type, detail, event_at: dateStr
+    }).then(({error}) => { if (error) console.warn('audit log error:', error.message); });
+  }
 }
-function _getAuditTrail(oppId) {
+
+async function _getAuditTrail(oppId) {
+  if (_isCloudMode()) {
+    try {
+      const { data, error } = await DB.client
+        .from('audit_trail').select('*').eq('opp_id', oppId)
+        .order('id', { ascending: false }).limit(30);
+      if (error) throw error;
+      return (data || []).map(r => ({ type: r.event_type, detail: r.detail, date: r.event_at }));
+    } catch(e) { console.warn('fetch audit error:', e.message); }
+  }
+  // Fallback: localStorage
   const log = JSON.parse(localStorage.getItem('ea_audit_trail') || '{}');
-  return (log[oppId] || []).reverse();
+  return (log[oppId] || []).slice().reverse();
 }
-function _showAuditTrail(oppId) {
-  const entries = _getAuditTrail(oppId);
+
+async function _showAuditTrail(oppId) {
   const sec = document.getElementById('auditTrailSection');
   const el = document.getElementById('auditTrailEntries');
   if (!sec || !el) return;
+  const entries = await _getAuditTrail(oppId);
   if (!entries.length) { sec.style.display = 'none'; return; }
   sec.style.display = '';
   const icons = {stage:'🔄',edit:'✏️',create:'➕',note:'📝',sale:'💰',default:'•'};
   el.innerHTML = entries.map(e => {
     const icon = icons[e.type] || icons.default;
-    const detail = e.detail || (e.from ? esc(e.from)+' → <strong>'+esc(e.to)+'</strong>' : '');
+    const detail = e.detail || '';
     return '<div class="audit-entry"><span class="audit-date">'+esc(e.date)+'</span>'+icon+' '+detail+'</div>';
   }).join('');
 }
@@ -7672,11 +7695,33 @@ async function _hashPassword(pw) {
   const hash = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
+
+/* Fetch a user_settings row from Supabase (with localStorage fallback) */
+async function _getCloudSetting(key) {
+  if (!_isCloudMode()) return null;
+  try {
+    const { data, error } = await DB.client.from('user_settings').select('value').eq('key_name', key).maybeSingle();
+    if (error) throw error;
+    return data?.value || null;
+  } catch(e) { console.warn('get setting error:', e.message); return null; }
+}
+async function _setCloudSetting(key, value) {
+  if (!_isCloudMode()) return;
+  try {
+    await DB.client.from('user_settings').upsert({ key_name: key, value, updated_at: new Date().toISOString() });
+  } catch(e) { console.warn('save setting error:', e.message); }
+}
+
 async function checkAuthGate() {
   const pw = document.getElementById('authPassword')?.value;
   if (!pw) return;
   const hash = await _hashPassword(pw);
-  const stored = localStorage.getItem(AUTH_KEY);
+  // Try cloud first, fallback to localStorage
+  let stored = null;
+  const cloudRow = await _getCloudSetting('password_hash');
+  if (cloudRow && cloudRow.hash) stored = cloudRow.hash;
+  else stored = localStorage.getItem(AUTH_KEY);
+
   if (hash === stored) {
     sessionStorage.setItem(AUTH_SESSION, '1');
     document.getElementById('authGate').style.display = 'none';
@@ -7690,15 +7735,25 @@ function skipAuthGate() {
   sessionStorage.setItem(AUTH_SESSION, 'skip');
   document.getElementById('authGate').style.display = 'none';
 }
-function initAuthGate() {
-  const stored = localStorage.getItem(AUTH_KEY);
-  if (!stored) return; // no password set — don't show gate
-  if (sessionStorage.getItem(AUTH_SESSION)) return; // already authenticated this session
+async function initAuthGate() {
+  if (sessionStorage.getItem(AUTH_SESSION)) return;
+  // Check cloud password first, then localStorage
+  let hasPassword = false;
+  if (_isCloudMode()) {
+    const cloudRow = await _getCloudSetting('password_hash');
+    if (cloudRow && cloudRow.hash) {
+      hasPassword = true;
+      // Mirror to localStorage for offline use
+      localStorage.setItem(AUTH_KEY, cloudRow.hash);
+    }
+  }
+  if (!hasPassword) hasPassword = !!localStorage.getItem(AUTH_KEY);
+  if (!hasPassword) return;
   document.getElementById('authGate').style.display = 'flex';
 }
 
 /* ══════════════════════════════════════════════════
-   SETTINGS PAGE
+   SETTINGS PAGE — cloud-synced via user_settings table
 ══════════════════════════════════════════════════ */
 const SETTINGS_KEY = 'ea_settings';
 function _getSettings() {
@@ -7706,6 +7761,17 @@ function _getSettings() {
 }
 function _saveSettings(s) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  // Fire-and-forget cloud sync
+  _setCloudSetting('profile', s);
+}
+/* Fetch cloud profile on boot and cache locally */
+async function _hydrateSettings() {
+  if (!_isCloudMode()) return;
+  const cloud = await _getCloudSetting('profile');
+  if (cloud && (cloud.userName || cloud.avatar)) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloud));
+    _applyProfile();
+  }
 }
 function renderSettings() {
   const el = document.getElementById('page-settings');
@@ -7932,14 +7998,18 @@ async function setPassword() {
   if (pw !== confirm) { toast('Passwords do not match', 'error'); return; }
   const hash = await _hashPassword(pw);
   localStorage.setItem(AUTH_KEY, hash);
+  await _setCloudSetting('password_hash', { hash });
   sessionStorage.setItem(AUTH_SESSION, '1');
-  toast('Password set successfully', 'success');
+  toast(_isCloudMode() ? 'Password saved to cloud' : 'Password set (local only)', 'success');
   renderSettings();
 }
-function removePassword() {
+async function removePassword() {
   if (!window.confirm('Remove password protection?')) return;
   localStorage.removeItem(AUTH_KEY);
   sessionStorage.removeItem(AUTH_SESSION);
+  if (_isCloudMode()) {
+    try { await DB.client.from('user_settings').delete().eq('key_name', 'password_hash'); } catch(e) {}
+  }
   toast('Password removed', 'info');
   renderSettings();
 }
@@ -8886,6 +8956,7 @@ async function launchApp(fromSupabase) {
   document.getElementById('configScreen').style.display = 'none';
   initDropdowns();
   if (!fromSupabase) DB.seedDemo();
+  if (fromSupabase) { await _hydrateSettings(); }
   const _startPage = (location.hash||'').replace('#','') || 'dashboard';
   await navigate(_startPage);
   applyI18n();
