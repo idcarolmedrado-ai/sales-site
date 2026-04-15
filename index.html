@@ -7517,65 +7517,136 @@ async function _updateTasksWidget(opps) {
 ══════════════════════════════════════════════════ */
 let _calYear, _calMonth;
 /* ══════════════════════════════════════════════════
-   FILE ATTACHMENTS (localStorage-based)
-   Uses localStorage for metadata; files stored as base64
-   for GitHub Pages compatibility (no server-side storage)
+   FILE ATTACHMENTS — Supabase Storage
+   Files stored in 'attachments' bucket.
+   Metadata in 'attachments' table. Links to opportunities.
+   Falls back to localStorage base64 in Demo mode.
 ══════════════════════════════════════════════════ */
-const ATTACH_KEY = 'ea_attachments';
-const ATTACH_MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const ATTACH_KEY = 'ea_attachments';            // localStorage fallback (Demo mode)
+const ATTACH_MAX_SIZE = 10 * 1024 * 1024;       // 10MB — aligned with Supabase bucket limit
+const ATTACH_BUCKET = 'attachments';
 
-function _getAttachments(oppId) {
+function _isCloudMode() { return DB.mode === 'supabase' && DB.client; }
+
+async function _getAttachments(oppId) {
+  if (_isCloudMode()) {
+    try {
+      const { data, error } = await DB.client
+        .from('attachments')
+        .select('*')
+        .eq('opp_id', oppId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(r => ({
+        id: r.id,
+        name: r.file_name,
+        path: r.file_path,
+        size: r.file_size || 0,
+        type: r.file_type || '',
+        url: DB.client.storage.from(ATTACH_BUCKET).getPublicUrl(r.file_path).data.publicUrl,
+        cloud: true,
+      }));
+    } catch(e) {
+      console.error('fetch attachments error:', e);
+      return [];
+    }
+  }
+  // Demo mode fallback
   const all = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
-  return all[oppId] || [];
+  return (all[oppId] || []).map(f => ({ ...f, url: f.data, cloud: false }));
 }
-function _saveAttachments(oppId, files) {
-  const all = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
-  all[oppId] = files;
-  localStorage.setItem(ATTACH_KEY, JSON.stringify(all));
-}
-function _renderAttachList(oppId) {
+
+async function _renderAttachList(oppId) {
   const el = document.getElementById('attachList');
   if (!el) return;
-  const files = _getAttachments(oppId);
+  el.innerHTML = '<div style="padding:8px;color:var(--ink-40);font-size:11px">Loading…</div>';
+  const files = await _getAttachments(oppId);
   if (!files.length) { el.innerHTML = ''; return; }
   el.innerHTML = files.map((f, i) => `
     <div class="attach-item">
-      <span style="font-size:16px">${f.type.includes('pdf')?'📄':f.type.includes('image')?'🖼️':'📎'}</span>
+      <span style="font-size:16px">${(f.type||'').includes('pdf')?'📄':(f.type||'').includes('image')?'🖼️':'📎'}</span>
       <span class="name" title="${esc(f.name)}">${esc(f.name)}</span>
-      <span class="size">${(f.size/1024).toFixed(0)}KB</span>
-      <a href="${f.data}" download="${esc(f.name)}" onclick="event.stopPropagation()" title="Download">⬇</a>
-      <button class="remove" onclick="removeAttachment('${oppId}',${i})" title="Remove">×</button>
+      <span class="size">${((f.size||0)/1024).toFixed(0)}KB</span>
+      ${f.cloud ? '<span style="color:var(--green);font-size:9px" title="Stored in cloud">☁</span>' : '<span style="color:var(--gold);font-size:9px" title="Local only">⚠</span>'}
+      <a href="${esc(f.url)}" download="${esc(f.name)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Download">⬇</a>
+      <button class="remove" onclick="removeAttachment('${oppId}','${f.cloud ? f.id : i}',${f.cloud})" title="Remove">×</button>
     </div>`).join('');
 }
-function removeAttachment(oppId, idx) {
-  const files = _getAttachments(oppId);
-  files.splice(idx, 1);
-  _saveAttachments(oppId, files);
+
+async function removeAttachment(oppId, idOrIdx, isCloud) {
+  if (isCloud) {
+    try {
+      // Fetch record to get file_path
+      const { data: rec } = await DB.client.from('attachments').select('file_path').eq('id', idOrIdx).single();
+      if (rec?.file_path) await DB.client.storage.from(ATTACH_BUCKET).remove([rec.file_path]);
+      await DB.client.from('attachments').delete().eq('id', idOrIdx);
+    } catch(e) { toast('Failed to remove: '+e.message, 'error'); return; }
+  } else {
+    const all = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
+    if (all[oppId]) { all[oppId].splice(parseInt(idOrIdx), 1); localStorage.setItem(ATTACH_KEY, JSON.stringify(all)); }
+  }
   _renderAttachList(oppId);
+  _logActivity(oppId, 'edit', 'Attachment removed');
 }
+
+async function _uploadFileToSupabase(file, oppId) {
+  // Sanitize filename: strip special chars, keep extension
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const timestamp = Date.now();
+  const path = `${oppId}/${timestamp}-${safeName}`;
+  const { error: upErr } = await DB.client.storage
+    .from(ATTACH_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (upErr) throw upErr;
+  const { error: insErr } = await DB.client.from('attachments').insert({
+    opp_id: oppId,
+    file_name: file.name,
+    file_path: path,
+    file_size: file.size,
+    file_type: file.type,
+  });
+  if (insErr) throw insErr;
+}
+
 async function _processFiles(fileList, oppId) {
-  const existing = _getAttachments(oppId);
   const progress = document.getElementById('attachProgress');
   const fill = document.getElementById('attachProgressFill');
   if (progress) progress.style.display = '';
 
+  const existing = await _getAttachments(oppId);
+  let uploaded = 0;
+
   for (let i = 0; i < fileList.length; i++) {
     const file = fileList[i];
-    if (file.size > ATTACH_MAX_SIZE) { toast(`${file.name} exceeds 5MB limit`, 'error'); continue; }
-    if (existing.length >= 10) { toast('Maximum 10 attachments per lead', 'error'); break; }
+    if (file.size > ATTACH_MAX_SIZE) { toast(`${file.name} exceeds 10MB limit`, 'error'); continue; }
+    if (existing.length + uploaded >= 20) { toast('Maximum 20 attachments per lead', 'error'); break; }
     if (fill) fill.style.width = Math.round((i+1)/fileList.length*100) + '%';
-    const data = await new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
-    existing.push({ name: file.name, type: file.type, size: file.size, data, date: new Date().toISOString().slice(0,10) });
+
+    try {
+      if (_isCloudMode()) {
+        await _uploadFileToSupabase(file, oppId);
+      } else {
+        // Demo mode: base64 localStorage
+        const data = await new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+        const all = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
+        if (!all[oppId]) all[oppId] = [];
+        all[oppId].push({ name: file.name, type: file.type, size: file.size, data, date: new Date().toISOString().slice(0,10) });
+        localStorage.setItem(ATTACH_KEY, JSON.stringify(all));
+      }
+      uploaded++;
+    } catch(e) {
+      toast(`Failed to upload ${file.name}: ${e.message}`, 'error');
+    }
   }
-  _saveAttachments(oppId, existing);
-  _renderAttachList(oppId);
+  await _renderAttachList(oppId);
   if (progress) { setTimeout(() => { progress.style.display = 'none'; if(fill) fill.style.width = '0%'; }, 500); }
-  _logActivity(oppId, 'edit', `${fileList.length} file(s) attached`);
+  if (uploaded > 0) _logActivity(oppId, 'edit', `${uploaded} file(s) attached`);
 }
+
 function handleAttachSelect(e) {
   const oppId = document.getElementById('leadId')?.value;
   if (!oppId || !e.target.files.length) return;
@@ -7696,6 +7767,20 @@ function renderSettings() {
       </div>
 
       <div class="tab-section" style="margin-top:20px">
+        <h3>☁ Cloud Migration</h3>
+        <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">
+          Upload existing local attachments and profile pictures to Supabase Storage so they persist across devices.
+          ${_isCloudMode() ? '<span style="color:var(--green)">✓ Cloud mode active</span>' : '<span style="color:var(--red)">✗ Not connected to cloud (Demo mode)</span>'}
+        </p>
+        <div style="font-size:11px;color:var(--ink-40);margin-bottom:12px" id="migrationStatus">
+          ${_countLocalAttachments()} local attachments detected
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="migrateLocalToCloud()" class="btn btn-primary btn-sm" ${!_isCloudMode()?'disabled':''}>☁ Migrate to Cloud</button>
+        </div>
+      </div>
+
+      <div class="tab-section" style="margin-top:20px">
         <h3>💾 Data Management</h3>
         <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">Export or clear local data. Supabase data is not affected.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -7706,23 +7791,128 @@ function renderSettings() {
     </div>`;
 }
 
-function uploadAvatar(e) {
+/* Count how many local attachments exist for migration prompt */
+function _countLocalAttachments() {
+  const all = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
+  let count = 0;
+  Object.values(all).forEach(arr => { count += (arr||[]).length; });
+  const s = _getSettings();
+  if (s.avatar && s.avatar.startsWith('data:')) count += 1;
+  return count;
+}
+
+/* Migrate all localStorage attachments and avatar to Supabase Storage */
+async function migrateLocalToCloud() {
+  if (!_isCloudMode()) { toast('Not connected to cloud', 'error'); return; }
+  const all = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
+  const entries = Object.entries(all);
+  const total = entries.reduce((sum, [,arr]) => sum + (arr||[]).length, 0);
+  if (total === 0 && !(_getSettings().avatar||'').startsWith('data:')) {
+    toast('Nothing to migrate', 'info'); return;
+  }
+  if (!confirm(`Migrate ${total} attachment(s) + profile picture to Supabase Storage?`)) return;
+
+  const status = document.getElementById('migrationStatus');
+  let done = 0, failed = 0;
+
+  // Migrate attachments
+  for (const [oppId, files] of entries) {
+    for (const f of (files || [])) {
+      try {
+        // Convert base64 data URL back to File
+        const res = await fetch(f.data);
+        const blob = await res.blob();
+        const file = new File([blob], f.name, { type: f.type });
+        await _uploadFileToSupabase(file, oppId);
+        done++;
+        if (status) status.textContent = `Migrating... ${done}/${total}`;
+      } catch(e) { console.error('migration error:', e); failed++; }
+    }
+  }
+
+  // Migrate avatar
+  const s = _getSettings();
+  if (s.avatar && s.avatar.startsWith('data:')) {
+    try {
+      const res = await fetch(s.avatar);
+      const blob = await res.blob();
+      const ext = (blob.type.split('/')[1] || 'png').split('+')[0];
+      const path = `user-${Date.now()}.${ext}`;
+      const { error } = await DB.client.storage.from('avatars').upload(path, blob, { contentType: blob.type, upsert: true });
+      if (!error) {
+        const { data: urlData } = DB.client.storage.from('avatars').getPublicUrl(path);
+        s.avatar = urlData.publicUrl;
+        s.avatarPath = path;
+        _saveSettings(s);
+        _applyProfile();
+      }
+    } catch(e) { console.error('avatar migration error:', e); }
+  }
+
+  // Clear localStorage attachments after successful migration
+  if (failed === 0) {
+    localStorage.removeItem(ATTACH_KEY);
+    toast(`Migrated ${done} file(s) to cloud`, 'success');
+  } else {
+    toast(`Migrated ${done}/${total} — ${failed} failed`, 'error');
+  }
+  renderSettings();
+}
+
+async function uploadAvatar(e) {
   const file = e.target.files[0];
   if (!file) return;
-  if (file.size > 500 * 1024) { toast('Image must be under 500KB', 'error'); return; }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const s = _getSettings();
-    s.avatar = reader.result;
-    _saveSettings(s);
-    _applyProfile();
-    renderSettings();
-  };
-  reader.readAsDataURL(file);
-}
-function clearAvatar() {
+  if (file.size > 1024 * 1024) { toast('Image must be under 1MB', 'error'); return; }
+
   const s = _getSettings();
+
+  if (_isCloudMode()) {
+    try {
+      // Delete old avatar if exists
+      if (s.avatarPath) {
+        await DB.client.storage.from('avatars').remove([s.avatarPath]).catch(()=>{});
+      }
+      const ext = file.name.split('.').pop().toLowerCase();
+      const path = `user-${Date.now()}.${ext}`;
+      const { error } = await DB.client.storage.from('avatars').upload(path, file, {
+        contentType: file.type, upsert: true
+      });
+      if (error) throw error;
+      const { data: urlData } = DB.client.storage.from('avatars').getPublicUrl(path);
+      s.avatar = urlData.publicUrl + '?t=' + Date.now();  // cache-bust
+      s.avatarPath = path;
+      _saveSettings(s);
+      _applyProfile();
+      renderSettings();
+      toast('Profile picture saved to cloud', 'success');
+    } catch(err) {
+      toast('Upload failed: ' + err.message + ' — saved locally instead', 'error');
+      // Fallback to base64 localStorage
+      const reader = new FileReader();
+      reader.onload = () => {
+        s.avatar = reader.result; s.avatarPath = '';
+        _saveSettings(s); _applyProfile(); renderSettings();
+      };
+      reader.readAsDataURL(file);
+    }
+  } else {
+    // Demo mode: base64 localStorage
+    const reader = new FileReader();
+    reader.onload = () => {
+      s.avatar = reader.result; s.avatarPath = '';
+      _saveSettings(s); _applyProfile(); renderSettings();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+async function clearAvatar() {
+  const s = _getSettings();
+  if (_isCloudMode() && s.avatarPath) {
+    await DB.client.storage.from('avatars').remove([s.avatarPath]).catch(()=>{});
+  }
   s.avatar = '';
+  s.avatarPath = '';
   _saveSettings(s);
   _applyProfile();
   renderSettings();
