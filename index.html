@@ -3840,12 +3840,56 @@ const Store = {
     if (idx >= 0) arr[idx] = { ...arr[idx], ...record };
     else arr.push(record);
     this.save(name, arr);
+    _cloudSync(name, record);  // fire-and-forget cloud sync
   },
   remove(name, id, idField='id') {
     const arr = this.load(name).filter(r => r[idField] !== id);
     this.save(name, arr);
+    _cloudDelete(name, id, idField);  // fire-and-forget cloud delete
   },
 };
+
+/* ═══ Cloud sync layer for Store — write-through cache ═══
+   Maps localStorage namespaces to Supabase tables:
+     mileage → mileage_records
+     post30  → post_delivery_records (Phase 4)
+*/
+const _CLOUD_TABLES = {
+  mileage: 'mileage_records',
+};
+function _cloudSync(name, record) {
+  const table = _CLOUD_TABLES[name];
+  if (!table || !_isCloudMode()) return;
+  DB.client.from(table).upsert(record).then(({error}) => {
+    if (error) console.warn(`[cloud sync ${name}]:`, error.message);
+  });
+}
+function _cloudDelete(name, id, idField='id') {
+  const table = _CLOUD_TABLES[name];
+  if (!table || !_isCloudMode()) return;
+  DB.client.from(table).delete().eq(idField, id).then(({error}) => {
+    if (error) console.warn(`[cloud delete ${name}]:`, error.message);
+  });
+}
+/* Pull cloud records into localStorage on app boot — runs once after connect */
+async function _hydrateStore(name) {
+  const table = _CLOUD_TABLES[name];
+  if (!table || !_isCloudMode()) return;
+  try {
+    const { data, error } = await DB.client.from(table).select('*');
+    if (error) throw error;
+    if (data && data.length >= 0) {
+      // Merge cloud data with local (cloud wins on conflict)
+      const local = Store.load(name);
+      const merged = [...data];
+      // Add local-only records (not yet synced to cloud)
+      local.forEach(lr => {
+        if (!merged.find(cr => cr.id === lr.id)) merged.push(lr);
+      });
+      Store.save(name, merged);
+    }
+  } catch(e) { console.warn(`[hydrate ${name}]:`, e.message); }
+}
 
 /* ═══ POST30 helpers ═══ */
 function getPost30Records() { return Store.load('post30'); }
@@ -8956,7 +9000,7 @@ async function launchApp(fromSupabase) {
   document.getElementById('configScreen').style.display = 'none';
   initDropdowns();
   if (!fromSupabase) DB.seedDemo();
-  if (fromSupabase) { await _hydrateSettings(); }
+  if (fromSupabase) { await _hydrateSettings(); await _hydrateStore('mileage'); }
   const _startPage = (location.hash||'').replace('#','') || 'dashboard';
   await navigate(_startPage);
   applyI18n();
