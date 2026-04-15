@@ -7900,17 +7900,18 @@ function renderSettings() {
       </div>
 
       <div class="tab-section" style="margin-top:20px">
-        <h3>☁ Cloud Migration</h3>
+        <h3>☁ Cloud Sync Status</h3>
         <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">
-          Upload existing local attachments and profile pictures to Supabase Storage so they persist across devices.
-          ${_isCloudMode() ? '<span style="color:var(--green)">✓ Cloud mode active</span>' : '<span style="color:var(--red)">✗ Not connected to cloud (Demo mode)</span>'}
+          ${_isCloudMode() ? '<span style="color:var(--green)">✓ Cloud mode active — all data syncs to Supabase automatically</span>' : '<span style="color:var(--red)">✗ Demo mode — data only saved locally in this browser</span>'}
         </p>
-        <div style="font-size:11px;color:var(--ink-40);margin-bottom:12px" id="migrationStatus">
-          ${_countLocalAttachments()} local attachments detected
+        <div id="cloudSyncSummary" style="font-size:11px;color:var(--ink-20);margin-bottom:12px;line-height:1.8">
+          ${_renderSyncSummary()}
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button onclick="migrateLocalToCloud()" class="btn btn-primary btn-sm" ${!_isCloudMode()?'disabled':''}>☁ Migrate to Cloud</button>
+          <button onclick="migrateAllToCloud()" class="btn btn-primary btn-sm" ${!_isCloudMode()?'disabled':''}>☁ Sync Everything to Cloud</button>
+          <button onclick="renderSettings()" class="btn btn-ghost btn-sm">🔄 Refresh Status</button>
         </div>
+        <div id="migrationStatus" style="font-size:11px;color:var(--gold);margin-top:10px;display:none"></div>
       </div>
 
       <div class="tab-section" style="margin-top:20px">
@@ -7924,46 +7925,88 @@ function renderSettings() {
     </div>`;
 }
 
-/* Count how many local attachments exist for migration prompt */
-function _countLocalAttachments() {
-  const all = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
-  let count = 0;
-  Object.values(all).forEach(arr => { count += (arr||[]).length; });
+/* ══════════════════════════════════════════════════
+   MASTER MIGRATION TOOL
+   Inventories and syncs ALL localStorage data to Supabase.
+══════════════════════════════════════════════════ */
+function _inventoryLocalData() {
+  const inv = {};
+  // Attachments (base64 files)
+  const atts = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
+  inv.attachments = Object.values(atts).reduce((sum, arr) => sum + (arr||[]).length, 0);
+  // Avatar (base64 image)
   const s = _getSettings();
-  if (s.avatar && s.avatar.startsWith('data:')) count += 1;
-  return count;
+  inv.avatar = (s.avatar && s.avatar.startsWith('data:')) ? 1 : 0;
+  // Mileage records
+  inv.mileage = Store.load('mileage').length;
+  // Post-30/60 records
+  inv.post30 = Store.load('post30').length;
+  // Goals
+  try { inv.monthlyGoals = Object.keys(JSON.parse(localStorage.getItem('ea_monthly_goals') || '{}')).length; } catch(e) { inv.monthlyGoals = 0; }
+  inv.annualGoal = localStorage.getItem('ea_annual_goal') ? 1 : 0;
+  // Completed tasks/actives
+  try { inv.completedTasks = JSON.parse(localStorage.getItem('ea_completed_tasks') || '[]').length; } catch(e) { inv.completedTasks = 0; }
+  try { inv.completedActives = JSON.parse(localStorage.getItem('ea_completed_actives') || '[]').length; } catch(e) { inv.completedActives = 0; }
+  // Sent mailings
+  try { inv.sentMails = JSON.parse(localStorage.getItem('ea_mail_sent') || '[]').length; } catch(e) { inv.sentMails = 0; }
+  // Audit trail entries
+  try {
+    const log = JSON.parse(localStorage.getItem('ea_audit_trail') || '{}');
+    inv.auditEntries = Object.values(log).reduce((sum, arr) => sum + (arr||[]).length, 0);
+  } catch(e) { inv.auditEntries = 0; }
+  // Password
+  inv.password = localStorage.getItem(AUTH_KEY) ? 1 : 0;
+  return inv;
 }
 
-/* Migrate all localStorage attachments and avatar to Supabase Storage */
-async function migrateLocalToCloud() {
+function _renderSyncSummary() {
+  const i = _inventoryLocalData();
+  const row = (label, count, icon) =>
+    `<div>${icon} <strong>${count}</strong> ${label}</div>`;
+  return (
+    row('Attachment(s)', i.attachments, '📎') +
+    row('Profile picture', i.avatar ? 'pending' : 'already synced', '🖼️') +
+    row('Mileage record(s)', i.mileage, '🚗') +
+    row('Post-30/60 record(s)', i.post30, '📦') +
+    row('Monthly goal(s)', i.monthlyGoals, '🎯') +
+    row('Annual goal', i.annualGoal ? 'set' : 'none', '📅') +
+    row('Completed task(s)', i.completedTasks, '✅') +
+    row('Completed active(s)', i.completedActives, '✔️') +
+    row('Sent mailing log', i.sentMails, '✉️') +
+    row('Audit trail entries', i.auditEntries, '📝') +
+    row('App password', i.password ? 'set' : 'none', '🔒')
+  );
+}
+
+async function migrateAllToCloud() {
   if (!_isCloudMode()) { toast('Not connected to cloud', 'error'); return; }
-  const all = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
-  const entries = Object.entries(all);
-  const total = entries.reduce((sum, [,arr]) => sum + (arr||[]).length, 0);
-  if (total === 0 && !(_getSettings().avatar||'').startsWith('data:')) {
-    toast('Nothing to migrate', 'info'); return;
-  }
-  if (!confirm(`Migrate ${total} attachment(s) + profile picture to Supabase Storage?`)) return;
+  if (!confirm('Sync ALL local data to Supabase cloud? This includes attachments, profile picture, mileage, goals, tasks, and audit trail. Safe to run multiple times.')) return;
 
   const status = document.getElementById('migrationStatus');
+  const show = (msg) => { if (status) { status.style.display=''; status.textContent = msg; } };
   let done = 0, failed = 0;
 
-  // Migrate attachments
+  // 1. Attachments
+  const atts = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
+  const entries = Object.entries(atts);
+  const totalAtt = entries.reduce((sum, [,arr]) => sum + (arr||[]).length, 0);
+  let attDone = 0;
   for (const [oppId, files] of entries) {
     for (const f of (files || [])) {
       try {
-        // Convert base64 data URL back to File
         const res = await fetch(f.data);
         const blob = await res.blob();
         const file = new File([blob], f.name, { type: f.type });
         await _uploadFileToSupabase(file, oppId);
-        done++;
-        if (status) status.textContent = `Migrating... ${done}/${total}`;
-      } catch(e) { console.error('migration error:', e); failed++; }
+        attDone++; done++;
+        show(`Uploading attachments... ${attDone}/${totalAtt}`);
+      } catch(e) { console.error('attachment migration:', e); failed++; }
     }
   }
+  if (totalAtt > 0 && attDone === totalAtt) localStorage.removeItem(ATTACH_KEY);
 
-  // Migrate avatar
+  // 2. Avatar
+  show('Syncing profile picture...');
   const s = _getSettings();
   if (s.avatar && s.avatar.startsWith('data:')) {
     try {
@@ -7978,17 +8021,63 @@ async function migrateLocalToCloud() {
         s.avatarPath = path;
         _saveSettings(s);
         _applyProfile();
-      }
-    } catch(e) { console.error('avatar migration error:', e); }
+        done++;
+      } else throw error;
+    } catch(e) { console.error('avatar migration:', e); failed++; }
   }
 
-  // Clear localStorage attachments after successful migration
-  if (failed === 0) {
-    localStorage.removeItem(ATTACH_KEY);
-    toast(`Migrated ${done} file(s) to cloud`, 'success');
-  } else {
-    toast(`Migrated ${done}/${total} — ${failed} failed`, 'error');
-  }
+  // 3. Mileage records (bulk upsert via _cloudSync)
+  show('Syncing mileage records...');
+  const mileage = Store.load('mileage');
+  for (const rec of mileage) { _cloudSync('mileage', rec); done++; }
+
+  // 4. Post-30/60 records
+  show('Syncing delivery records...');
+  const post30 = Store.load('post30');
+  for (const rec of post30) { _cloudSync('post30', rec); done++; }
+
+  // 5. Goals + completed + sent + password via user_settings
+  show('Syncing goals and settings...');
+  try {
+    const monthlyGoals = JSON.parse(localStorage.getItem('ea_monthly_goals') || '{}');
+    if (Object.keys(monthlyGoals).length) { await _setCloudSetting('monthly_goals', monthlyGoals); done++; }
+    const annual = localStorage.getItem('ea_annual_goal');
+    if (annual) { await _setCloudSetting('annual_goal', Number(annual)); done++; }
+    const completedTasks = JSON.parse(localStorage.getItem('ea_completed_tasks') || '[]');
+    if (completedTasks.length) { await _setCloudSetting('completed_tasks', completedTasks); done++; }
+    const completedActives = JSON.parse(localStorage.getItem('ea_completed_actives') || '[]');
+    if (completedActives.length) { await _setCloudSetting('completed_actives', completedActives); done++; }
+    const sentMails = JSON.parse(localStorage.getItem('ea_mail_sent') || '[]');
+    if (sentMails.length) { await _setCloudSetting('sent_mails', sentMails); done++; }
+    const pwHash = localStorage.getItem(AUTH_KEY);
+    if (pwHash) { await _setCloudSetting('password_hash', { hash: pwHash }); done++; }
+    // Profile too (in case changes pending)
+    await _setCloudSetting('profile', s); done++;
+  } catch(e) { console.error('settings migration:', e); failed++; }
+
+  // 6. Audit trail (bulk insert into audit_trail table)
+  show('Syncing audit trail...');
+  try {
+    const log = JSON.parse(localStorage.getItem('ea_audit_trail') || '{}');
+    const rows = [];
+    for (const [oppId, entries] of Object.entries(log)) {
+      for (const e of (entries || [])) {
+        rows.push({ opp_id: oppId, event_type: e.type || 'edit', detail: e.detail || '', event_at: e.date || '' });
+      }
+    }
+    if (rows.length > 0) {
+      // Insert in batches of 100 to avoid payload limits
+      for (let i = 0; i < rows.length; i += 100) {
+        await DB.client.from('audit_trail').insert(rows.slice(i, i + 100));
+        done += Math.min(100, rows.length - i);
+      }
+    }
+  } catch(e) { console.error('audit migration:', e); failed++; }
+
+  show('');
+  if (status) status.style.display = 'none';
+  if (failed === 0) toast(`✓ Synced ${done} item(s) to cloud`, 'success');
+  else toast(`Synced ${done} item(s), ${failed} failed — check console`, 'error');
   renderSettings();
 }
 
