@@ -3024,18 +3024,19 @@ function renderClientTimeline(query) {
 /* ══════════════════════════════════════════════════
    HELPERS: TASK / ACTIVE / MAIL COMPLETION
 ══════════════════════════════════════════════════ */
+/* Sync these JSON blobs to Supabase user_settings table via _setCloudSetting */
 function getCompletedTasks()    { try{return JSON.parse(localStorage.getItem('ea_completed_tasks')||'[]');}catch(e){return[];} }
-function saveCompletedTasks(a)  { localStorage.setItem('ea_completed_tasks',JSON.stringify(a)); }
+function saveCompletedTasks(a)  { localStorage.setItem('ea_completed_tasks',JSON.stringify(a)); _setCloudSetting && _setCloudSetting('completed_tasks', a); }
 function markTaskComplete(id)   { var d=getCompletedTasks(); if(!d.includes(id)){d.push(id);saveCompletedTasks(d);} renderDashboard(); }
-function clearCompletedTasks()  { localStorage.removeItem('ea_completed_tasks'); renderDashboard(); }
+function clearCompletedTasks()  { localStorage.removeItem('ea_completed_tasks'); _setCloudSetting && _setCloudSetting('completed_tasks', []); renderDashboard(); }
 function getCompletedActives()  { try{return JSON.parse(localStorage.getItem('ea_completed_actives')||'[]');}catch(e){return[];} }
-function saveCompletedActives(a){ localStorage.setItem('ea_completed_actives',JSON.stringify(a)); }
+function saveCompletedActives(a){ localStorage.setItem('ea_completed_actives',JSON.stringify(a)); _setCloudSetting && _setCloudSetting('completed_actives', a); }
 function markActiveComplete(id) { var d=getCompletedActives(); if(!d.includes(id)){d.push(id);saveCompletedActives(d);} toast('Marked complete','success'); renderActive(); }
 async function deleteActive(id) { if(!confirm('Delete this record?')) return; await DB.delete(id); toast('Deleted','success'); renderActive(); }
 function restoreActive(id)      { var d=getCompletedActives(); saveCompletedActives(d.filter(function(x){return x!==id;})); renderActive(); }
 function getSentMails()         { try{return JSON.parse(localStorage.getItem('ea_mail_sent')||'[]');}catch(e){return[];} }
-function saveSentMails(a)       { localStorage.setItem('ea_mail_sent',JSON.stringify(a)); }
-function clearSentMails()       { if(!confirm('Clear sent list?')) return; localStorage.removeItem('ea_mail_sent'); renderMailing(); }
+function saveSentMails(a)       { localStorage.setItem('ea_mail_sent',JSON.stringify(a)); _setCloudSetting && _setCloudSetting('sent_mails', a); }
+function clearSentMails()       { if(!confirm('Clear sent list?')) return; localStorage.removeItem('ea_mail_sent'); _setCloudSetting && _setCloudSetting('sent_mails', []); renderMailing(); }
 async function markMailSent(oppId) {
   var opps=await DB.getAll(), o=opps.find(function(x){return x.id===oppId;});
   if (!o) { toast('Contact not found','error'); return; }
@@ -3199,6 +3200,7 @@ function saveGoalForMonth(monthIdx, value, year) {
   // Also keep legacy key for current year compatibility
   if (yr === new Date().getFullYear()) goals[monthIdx] = Number(value) || 0;
   localStorage.setItem('ea_monthly_goals', JSON.stringify(goals));
+  if (typeof _setCloudSetting === 'function') _setCloudSetting('monthly_goals', goals);
 }
 
 function _insToggle(i) {
@@ -6838,6 +6840,7 @@ async function saveAnnualGoalEdit() {
   const val = Number(document.getElementById('annualGoalInput')?.value) || 0;
   if (!val) { toast('Enter a valid annual goal', 'error'); return; }
   localStorage.setItem('ea_annual_goal', String(val));
+  if (typeof _setCloudSetting === 'function') _setCloudSetting('annual_goal', val);
   closeAnnualGoalModal();
   toast('✅ Annual goal updated: ' + fmt$(val), 'success');
   await renderYear();
@@ -7817,10 +7820,24 @@ function _saveSettings(s) {
 /* Fetch cloud profile on boot and cache locally */
 async function _hydrateSettings() {
   if (!_isCloudMode()) return;
-  const cloud = await _getCloudSetting('profile');
-  if (cloud && (cloud.userName || cloud.avatar)) {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloud));
+  const profile = await _getCloudSetting('profile');
+  if (profile && (profile.userName || profile.avatar)) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(profile));
     _applyProfile();
+  }
+  // Hydrate other JSON blobs from cloud → localStorage cache
+  const mapping = [
+    ['monthly_goals',    'ea_monthly_goals',    true],   // object/JSON
+    ['annual_goal',      'ea_annual_goal',      false],  // number as string
+    ['completed_tasks',  'ea_completed_tasks',  true],
+    ['completed_actives','ea_completed_actives',true],
+    ['sent_mails',       'ea_mail_sent',        true],
+  ];
+  for (const [cloudKey, localKey, isJson] of mapping) {
+    const val = await _getCloudSetting(cloudKey);
+    if (val !== null && val !== undefined) {
+      localStorage.setItem(localKey, isJson ? JSON.stringify(val) : String(val));
+    }
   }
 }
 function renderSettings() {
