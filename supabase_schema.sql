@@ -561,3 +561,49 @@ CREATE POLICY "anon_settings_update" ON user_settings FOR UPDATE TO anon USING (
 CREATE POLICY "anon_settings_delete" ON user_settings FOR DELETE TO anon USING (true);
 
     ← Remove this line  */
+
+
+-- ══════════════════════════════════════════════════════════════
+--  v5.2 — Mileage Records table (2026-04)
+--
+--  Moves mileage tracking (IRS reimbursement data) from browser
+--  localStorage to Supabase for cross-device and loss-proof storage.
+-- ══════════════════════════════════════════════════════════════
+
+/*  ← Remove this line
+
+CREATE TABLE IF NOT EXISTS mileage_records (
+  id              TEXT PRIMARY KEY,
+  date            TEXT,
+  "clientName"    TEXT,
+  address         TEXT,
+  "stopHome1"     NUMERIC(10,2) DEFAULT 0,
+  "stopDC1"       NUMERIC(10,2) DEFAULT 0,
+  "stopClient"    NUMERIC(10,2) DEFAULT 0,
+  "stopHome2"     NUMERIC(10,2) DEFAULT 0,
+  "stopDC2"       NUMERIC(10,2) DEFAULT 0,
+  "totalMiles"    NUMERIC(10,2) DEFAULT 0,
+  "commuteDeduct" NUMERIC(10,2) DEFAULT 0,
+  "netMiles"      NUMERIC(10,2) DEFAULT 0,
+  "tollsParking"  NUMERIC(10,2) DEFAULT 0,
+  "totalReimbursement" NUMERIC(10,2) DEFAULT 0,
+  "designPartner" TEXT,
+  purpose         TEXT,
+  "sourceOppId"   TEXT,
+  "isManual"      BOOLEAN DEFAULT FALSE,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE mileage_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_mile_select" ON mileage_records;
+DROP POLICY IF EXISTS "anon_mile_insert" ON mileage_records;
+DROP POLICY IF EXISTS "anon_mile_update" ON mileage_records;
+DROP POLICY IF EXISTS "anon_mile_delete" ON mileage_records;
+CREATE POLICY "anon_mile_select" ON mileage_records FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_mile_insert" ON mileage_records FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_mile_update" ON mileage_records FOR UPDATE TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_mile_delete" ON mileage_records FOR DELETE TO anon USING (true);
+
+    ← Remove this line  */
