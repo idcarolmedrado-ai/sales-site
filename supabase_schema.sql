@@ -607,3 +607,38 @@ CREATE POLICY "anon_mile_update" ON mileage_records FOR UPDATE TO anon USING (tr
 CREATE POLICY "anon_mile_delete" ON mileage_records FOR DELETE TO anon USING (true);
 
     ← Remove this line  */
+
+
+-- ══════════════════════════════════════════════════════════════
+--  v5.3 — Post Delivery tracking (Post-30/60) (2026-04)
+--
+--  Moves delivery follow-up tracking from browser localStorage to
+--  Supabase. One row per sold opportunity tracks both 30-day and
+--  60-day check-ins.
+-- ══════════════════════════════════════════════════════════════
+
+/*  ← Remove this line
+
+CREATE TABLE IF NOT EXISTS post_delivery_records (
+  "oppId"             TEXT PRIMARY KEY REFERENCES opportunities(id) ON DELETE CASCADE,
+  "deliveryDate"      TEXT,
+  "contactReason"     TEXT,
+  "newOpportunity"    TEXT,         -- Yes | No | ''
+  notes               TEXT,
+  "p60_contactReason" TEXT,
+  "p60_newOpportunity" TEXT,
+  "p60_notes"         TEXT,
+  updated_at          TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE post_delivery_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_post_select" ON post_delivery_records;
+DROP POLICY IF EXISTS "anon_post_insert" ON post_delivery_records;
+DROP POLICY IF EXISTS "anon_post_update" ON post_delivery_records;
+DROP POLICY IF EXISTS "anon_post_delete" ON post_delivery_records;
+CREATE POLICY "anon_post_select" ON post_delivery_records FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_post_insert" ON post_delivery_records FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_post_update" ON post_delivery_records FOR UPDATE TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_post_delete" ON post_delivery_records FOR DELETE TO anon USING (true);
+
+    ← Remove this line  */

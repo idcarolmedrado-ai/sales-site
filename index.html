@@ -3856,17 +3856,24 @@ const Store = {
 */
 const _CLOUD_TABLES = {
   mileage: 'mileage_records',
+  post30:  'post_delivery_records',
+};
+/* Per-table identifier field (default 'id') */
+const _CLOUD_ID_FIELDS = {
+  post30: 'oppId',
 };
 function _cloudSync(name, record) {
   const table = _CLOUD_TABLES[name];
   if (!table || !_isCloudMode()) return;
-  DB.client.from(table).upsert(record).then(({error}) => {
+  const idField = _CLOUD_ID_FIELDS[name] || 'id';
+  DB.client.from(table).upsert(record, { onConflict: idField }).then(({error}) => {
     if (error) console.warn(`[cloud sync ${name}]:`, error.message);
   });
 }
-function _cloudDelete(name, id, idField='id') {
+function _cloudDelete(name, id, idField) {
   const table = _CLOUD_TABLES[name];
   if (!table || !_isCloudMode()) return;
+  idField = idField || _CLOUD_ID_FIELDS[name] || 'id';
   DB.client.from(table).delete().eq(idField, id).then(({error}) => {
     if (error) console.warn(`[cloud delete ${name}]:`, error.message);
   });
@@ -3875,16 +3882,15 @@ function _cloudDelete(name, id, idField='id') {
 async function _hydrateStore(name) {
   const table = _CLOUD_TABLES[name];
   if (!table || !_isCloudMode()) return;
+  const idField = _CLOUD_ID_FIELDS[name] || 'id';
   try {
     const { data, error } = await DB.client.from(table).select('*');
     if (error) throw error;
-    if (data && data.length >= 0) {
-      // Merge cloud data with local (cloud wins on conflict)
+    if (data) {
       const local = Store.load(name);
       const merged = [...data];
-      // Add local-only records (not yet synced to cloud)
       local.forEach(lr => {
-        if (!merged.find(cr => cr.id === lr.id)) merged.push(lr);
+        if (!merged.find(cr => cr[idField] === lr[idField])) merged.push(lr);
       });
       Store.save(name, merged);
     }
@@ -9000,7 +9006,11 @@ async function launchApp(fromSupabase) {
   document.getElementById('configScreen').style.display = 'none';
   initDropdowns();
   if (!fromSupabase) DB.seedDemo();
-  if (fromSupabase) { await _hydrateSettings(); await _hydrateStore('mileage'); }
+  if (fromSupabase) {
+    await _hydrateSettings();
+    await _hydrateStore('mileage');
+    await _hydrateStore('post30');
+  }
   const _startPage = (location.hash||'').replace('#','') || 'dashboard';
   await navigate(_startPage);
   applyI18n();
