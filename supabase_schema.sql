@@ -419,3 +419,98 @@ $$;
 --    ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "cancelReason" TEXT;
 --    ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS "cancelNotes" TEXT;
 -- ══════════════════════════════════════════════════════════════
+
+
+-- ══════════════════════════════════════════════════════════════
+--  v5.0 — Cloud Storage for Files (2026-04)
+--
+--  Moves file attachments (contracts, proposals, POs, photos)
+--  and profile pictures from browser localStorage to Supabase
+--  Storage. Adds attachments table to track file metadata.
+--
+--  Run the following in Supabase SQL Editor:
+-- ══════════════════════════════════════════════════════════════
+
+/*  ← Remove this line
+
+-- ── Create attachments table for file metadata ────────────────
+CREATE TABLE IF NOT EXISTS attachments (
+  id           BIGSERIAL PRIMARY KEY,
+  opp_id       TEXT NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
+  file_name    TEXT NOT NULL,
+  file_path    TEXT NOT NULL UNIQUE,   -- path in Supabase Storage bucket
+  file_size    INTEGER,
+  file_type    TEXT,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_attachments_opp_id ON attachments(opp_id);
+
+-- Enable RLS and allow anon access (matches opportunities policy)
+ALTER TABLE attachments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "anon_att_select" ON attachments;
+DROP POLICY IF EXISTS "anon_att_insert" ON attachments;
+DROP POLICY IF EXISTS "anon_att_delete" ON attachments;
+
+CREATE POLICY "anon_att_select" ON attachments FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_att_insert" ON attachments FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_att_delete" ON attachments FOR DELETE TO anon USING (true);
+
+
+-- ── Create Storage buckets ────────────────────────────────────
+-- attachments: private bucket for lead files (contracts, PDFs)
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'attachments',
+  'attachments',
+  true,                                       -- public for easier downloads (signed URLs)
+  10485760,                                   -- 10MB limit
+  ARRAY['application/pdf','image/jpeg','image/png','image/gif',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/msword','application/vnd.ms-excel','text/plain']
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = EXCLUDED.public,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+-- avatars: public bucket for profile pictures
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'avatars',
+  'avatars',
+  true,                                       -- public for display in nav
+  1048576,                                    -- 1MB limit
+  ARRAY['image/jpeg','image/png','image/gif','image/webp']
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = EXCLUDED.public,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+
+-- ── Storage policies (allow anon read/write) ──────────────────
+DROP POLICY IF EXISTS "Attachments anon upload" ON storage.objects;
+DROP POLICY IF EXISTS "Attachments anon read"   ON storage.objects;
+DROP POLICY IF EXISTS "Attachments anon delete" ON storage.objects;
+DROP POLICY IF EXISTS "Avatars anon upload"     ON storage.objects;
+DROP POLICY IF EXISTS "Avatars anon read"       ON storage.objects;
+DROP POLICY IF EXISTS "Avatars anon delete"     ON storage.objects;
+
+CREATE POLICY "Attachments anon upload" ON storage.objects
+  FOR INSERT TO anon WITH CHECK (bucket_id = 'attachments');
+CREATE POLICY "Attachments anon read" ON storage.objects
+  FOR SELECT TO anon USING (bucket_id = 'attachments');
+CREATE POLICY "Attachments anon delete" ON storage.objects
+  FOR DELETE TO anon USING (bucket_id = 'attachments');
+
+CREATE POLICY "Avatars anon upload" ON storage.objects
+  FOR INSERT TO anon WITH CHECK (bucket_id = 'avatars');
+CREATE POLICY "Avatars anon read" ON storage.objects
+  FOR SELECT TO anon USING (bucket_id = 'avatars');
+CREATE POLICY "Avatars anon delete" ON storage.objects
+  FOR DELETE TO anon USING (bucket_id = 'avatars');
+
+    ← Remove this line  */
