@@ -36,7 +36,7 @@ if (!window.supabase) {
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; }
-body { background: var(--ink); color: #2A2622; font-family: var(--font-body);
+body { background: var(--ink); color: #2A2622; font-family: var(--font-body); font-weight: 400;
   min-height: 100vh; overflow-x: hidden; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 
 /* ── SCROLLBAR ── */
@@ -62,7 +62,7 @@ nav {
 .nav-tab {
   padding: 5px 10px; border-radius: 8px; border: none;
   background: transparent; color: var(--ink-40);
-  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
   cursor: pointer; transition: all .15s; white-space: nowrap;
   display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
 }
@@ -168,7 +168,7 @@ h2.display { font-size: 40px; }
 .kpi-value.gold { color: var(--gold); }
 .kpi-value.red  { color: var(--red); }
 .kpi-value.green{ color: var(--green); }
-.kpi-delta { font-size: 12px; color: var(--ink-40); }
+.kpi-delta { font-size: 12px; color: var(--ink-40); font-weight: 500; }
 
 /* ── DASH CARDS ── */
 .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
@@ -179,7 +179,7 @@ h2.display { font-size: 40px; }
 }
 .dash-card.full { grid-column: 1/-1; }
 .dash-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
-.dash-card-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.dash-card-title { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
 .dash-card-sub { font-size: 11px; color: var(--ink-40); }
 
 /* ── INSIGHT CARD ── */
@@ -204,8 +204,8 @@ h2.display { font-size: 40px; }
   letter-spacing: .08em; margin-top: 8px; }
 .insight-icon { font-size: 20px; margin-bottom: 8px; }
 .insight-icon-text { font-family:var(--font-display);font-size:22px;color:var(--gold);margin-bottom:8px;letter-spacing:.05em; }
-.insight-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-.insight-body { font-size: 13px; color: var(--ink-20); line-height: 1.6; }
+.insight-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.insight-body { font-size: 13px; color: var(--ink-20); line-height: 1.6; font-weight: 400; }
 
 /* ── BAR CHART ── */
 .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -274,8 +274,8 @@ h2.display { font-size: 40px; }
 .table-wrap { overflow-x: auto; padding: 0 24px; max-width: 1320px; margin: 0 auto; }
 table { width: 100%; border-collapse: collapse; }
 thead th {
-  padding: 10px 14px; font-size: 11px; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--ink-40); border-bottom: 2px solid var(--ink-60);
+  padding: 10px 14px; font-size: 11px; font-weight: 800; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-20); border-bottom: 2px solid var(--ink-60);
   text-align: left; white-space: nowrap;
 }
 tbody tr {
@@ -286,7 +286,7 @@ tbody tr { color: #2A2622; }
 tbody tr.overdue { background: rgba(224,82,82,.06); }
 tbody tr.sold { background: rgba(76,175,125,.05); }
 tbody tr.hot { background: rgba(196,147,63,.05); }
-tbody td { padding: 12px 14px; font-size: 14px; }
+tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
 
 /* ── BADGES ── */
 .badge {
@@ -413,10 +413,10 @@ tbody td { padding: 12px 14px; font-size: 14px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field.span-2 { grid-column: span 2; }
-.field label { font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--ink-20); text-transform: uppercase; }
+.field label { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--ink-20); text-transform: uppercase; }
 .field input, .field select, .field textarea {
   background: #fff; border: 1px solid var(--ink-60); border-radius: 8px;
-  color: #2A2622; font-family: var(--font-body); font-size: 14px; padding: 10px 14px; outline: none;
+  color: #2A2622; font-family: var(--font-body); font-size: 14px; font-weight: 500; padding: 10px 14px; outline: none;
   transition: border-color .15s;
 }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--gold); }
@@ -3100,9 +3100,8 @@ async function exportMileageExcel() {
   if (!allRecs.length) { toast('No mileage records','error'); return; }
   const RATE = 0.725;
 
-  const hdr = ['Date','Client Name','Address','Home→DC','DC→Client',
-    'Client→Home','Home→DC2','DC→Home','Total Miles','Commute Deduct',
-    'Net Miles','Tolls/Parking','Reimbursement ($)','Design Partner','Purpose'];
+  const hdr = ['Date','Client Name','Address','Home','DC','Client','Home 2','DC 2',
+    'Total Miles','Commute Deduct','Net Miles','Tolls/Parking','Reimbursement ($)','Design Partner','Purpose'];
   const dataRows = allRecs.map(r => {
     const total = parseFloat(r.totalMiles) || 0;
     const commute = parseFloat(r.commuteDeduct) || 0;
@@ -3110,15 +3109,15 @@ async function exportMileageExcel() {
     const tolls = parseFloat(r.tollsParking) || 0;
     const reimb = net > 0 ? +(net * RATE + tolls).toFixed(2) : 0;
     return [r.date||'', r.clientName||'', r.address||'',
-      parseFloat(r.stopHome1)||0, parseFloat(r.stopDC1)||0,
-      parseFloat(r.stopClient)||0, parseFloat(r.stopHome2)||0, parseFloat(r.stopDC2)||0,
+      r.stopHome1 ? '✓' : '', r.stopDC1 ? '✓' : '',
+      r.stopClient ? '✓' : '', r.stopHome2 ? '✓' : '', r.stopDC2 ? '✓' : '',
       total, commute, +net.toFixed(1), tolls, reimb,
       r.designPartner||'', r.isManual ? 'Manual Trip' : 'Home Call'];
   });
 
   // Subtotals row
   const totals = ['','','SUBTOTALS','','','','','',0,0,0,0,0,'',''];
-  dataRows.forEach(r => { for (let i=3;i<=12;i++) totals[i] = (totals[i]||0) + (Number(r[i])||0); });
+  dataRows.forEach(r => { for (let i=8;i<=12;i++) totals[i] = (totals[i]||0) + (Number(r[i])||0); });
   totals[12] = +totals[12].toFixed(2);
 
   const aoa = [hdr, ...dataRows, totals,
@@ -3131,6 +3130,88 @@ async function exportMileageExcel() {
   XLSX.utils.book_append_sheet(wb, ws, 'Mileage Log');
   XLSX.writeFile(wb, 'EA_Mileage_'+new Date().toISOString().slice(0,7)+'.xlsx');
   toast('Mileage exported to Excel','success');
+}
+
+function exportMileagePDF() {
+  const allRecs = getMileageRecords();
+  if (!allRecs.length) { toast('No mileage records', 'error'); return; }
+  const RATE = 0.725;
+  const now = new Date();
+  const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  let totalMiles = 0, totalNet = 0, totalReimb = 0, totalTolls = 0;
+  const rowsHTML = allRecs.map((r, i) => {
+    const total = parseFloat(r.totalMiles) || 0;
+    const commute = parseFloat(r.commuteDeduct) || 0;
+    const net = Math.max(total - commute, 0);
+    const tolls = parseFloat(r.tollsParking) || 0;
+    const reimb = net > 0 ? net * RATE + tolls : 0;
+    totalMiles += total; totalNet += net; totalReimb += reimb; totalTolls += tolls;
+    const bg = i % 2 === 0 ? '#fff' : '#f8f6f3';
+    return `<tr style="background:${bg}">
+      <td style="padding:6px 8px;border:1px solid #ddd;font-size:11px">${r.date||''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;font-size:11px">${esc(r.clientName||'')}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;font-size:10px">${esc(r.address||'')}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:13px">${r.stopHome1?'✓':''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:13px">${r.stopDC1?'✓':''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:13px">${r.stopClient?'✓':''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:13px">${r.stopHome2?'✓':''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:13px">${r.stopDC2?'✓':''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:600">${total>0?total.toFixed(1):''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right">${commute>0?commute.toFixed(1):''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:600">${net>0?net.toFixed(1):''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right">${tolls>0?'$'+tolls.toFixed(2):''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:700;color:#3D9E6B">${reimb>0?'$'+reimb.toFixed(2):''}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;font-size:10px">${esc(r.designPartner||'')}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><title>Mileage Report — ${monthLabel}</title>
+    <style>body{font-family:'DM Sans',Arial,sans-serif;margin:0;padding:24px;color:#2A2622;font-size:12px}
+    @page{size:landscape;margin:12mm}
+    h1{font-size:22px;margin:0 0 4px;color:#B8872F}
+    .sub{color:#7A756E;font-size:12px;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px}
+    th{background:#B8872F;color:#fff;padding:7px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;border:1px solid #B8872F;text-align:left}
+    .totals td{background:#f0ece6;font-weight:700;border-top:2px solid #B8872F}
+    .sig{margin-top:40px;display:flex;gap:60px}
+    .sig-line{border-top:1px solid #999;width:250px;padding-top:4px;font-size:11px;color:#666}
+    </style></head><body>
+    <h1>Mileage Report</h1>
+    <div class="sub">Carol Medrado — ${monthLabel} &nbsp;|&nbsp; IRS Rate: $${RATE}/mile</div>
+    <table>
+      <thead><tr>
+        <th>Date</th><th>Client</th><th>Address</th>
+        <th style="text-align:center">Home</th><th style="text-align:center">DC</th>
+        <th style="text-align:center">Client</th><th style="text-align:center">Home 2</th>
+        <th style="text-align:center">DC 2</th><th style="text-align:right">Total Mi</th>
+        <th style="text-align:right">Commute</th><th style="text-align:right">Net Mi</th>
+        <th style="text-align:right">Tolls</th><th style="text-align:right">Reimb.</th>
+        <th>Partner</th>
+      </tr></thead>
+      <tbody>${rowsHTML}
+        <tr class="totals"><td colspan="8" style="padding:8px;border:1px solid #ddd;text-align:right">TOTALS</td>
+          <td style="padding:8px;border:1px solid #ddd;text-align:right">${totalMiles.toFixed(1)}</td>
+          <td style="padding:8px;border:1px solid #ddd"></td>
+          <td style="padding:8px;border:1px solid #ddd;text-align:right">${totalNet.toFixed(1)}</td>
+          <td style="padding:8px;border:1px solid #ddd;text-align:right">$${totalTolls.toFixed(2)}</td>
+          <td style="padding:8px;border:1px solid #ddd;text-align:right;color:#3D9E6B">$${totalReimb.toFixed(2)}</td>
+          <td style="border:1px solid #ddd"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="sig">
+      <div><div class="sig-line">Employee Signature</div></div>
+      <div><div class="sig-line">Date</div></div>
+      <div><div class="sig-line">Supervisor Signature</div></div>
+      <div><div class="sig-line">Date</div></div>
+    </div>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.print(); }, 400);
 }
 
 async function exportContactsCSV(){
@@ -4230,10 +4311,9 @@ async function renderMileage() {
       placeholder="${ph}" style="width:${w};background:var(--ink-80);border:1px solid var(--ink-60);
       color:var(--ink-10);border-radius:5px;padding:3px 5px;font-size:12px;
       font-family:var(--font-body)">`;
-  const legInp = (id,f,v,w) =>
-    `<input oninput="updateMileage('${id}','${f}',this.value);recalcLegSum('${id}');recalcMileRow('${id}')" value="${esc(String(v||''))}" type="number"
-      min="0" step="0.1" style="width:${w};background:var(--ink-80);border:1px solid var(--ink-60);
-      color:var(--gold);border-radius:5px;padding:3px 5px;font-size:12px;font-family:var(--font-body)">`;
+  const legChk = (id,f,v) =>
+    `<div style="text-align:center"><input type="checkbox" ${v?'checked':''} onchange="updateMileage('${id}','${f}',this.checked?'X':'');recalcMileRow('${id}')"
+      style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer"></div>`;
   const numInp = (id,f,v,w) =>
     `<input oninput="updateMileage('${id}','${f}',this.value);recalcMileRow('${id}')" value="${esc(String(v||''))}" type="number"
       min="0" step="0.1" style="width:${w};background:var(--ink-80);border:1px solid var(--ink-60);
@@ -4268,14 +4348,12 @@ async function renderMileage() {
       <td style="padding:3px 6px;min-width:128px">${inp(r.id,'date',r.date,'118px','date')}</td>
       <td style="padding:3px 6px;min-width:130px">${inp(r.id,'clientName',r.clientName,'118px','text','')}</td>
       <td style="padding:3px 6px;min-width:160px">${inp(r.id,'address',r.address,'148px','text','')}</td>
-      <td style="padding:3px 5px;min-width:56px">${legInp(r.id,'stopHome1',r.stopHome1||'','48px')}</td>
-      <td style="padding:3px 5px;min-width:48px">${legInp(r.id,'stopDC1',r.stopDC1||'','40px')}</td>
-      <td style="padding:3px 5px;min-width:56px">${legInp(r.id,'stopClient',r.stopClient||'','48px')}</td>
-      <td style="padding:3px 5px;min-width:48px">${legInp(r.id,'stopHome2',r.stopHome2||'','40px')}</td>
-      <td style="padding:3px 5px;min-width:48px">${legInp(r.id,'stopDC2',r.stopDC2||'','40px')}</td>
-      <td style="padding:3px 5px;min-width:72px;text-align:right">
-        <span id="totmi-${r.id}" style="font-weight:700;font-size:12px;color:${(parseFloat(r.totalMiles)||0)>0?'var(--gold)':'var(--ink-60)'}">${(parseFloat(r.totalMiles)||0)>0?(parseFloat(r.totalMiles)).toFixed(1):'—'}</span>
-      </td>
+      <td style="padding:3px 5px;min-width:40px">${legChk(r.id,'stopHome1',r.stopHome1)}</td>
+      <td style="padding:3px 5px;min-width:40px">${legChk(r.id,'stopDC1',r.stopDC1)}</td>
+      <td style="padding:3px 5px;min-width:40px">${legChk(r.id,'stopClient',r.stopClient)}</td>
+      <td style="padding:3px 5px;min-width:40px">${legChk(r.id,'stopHome2',r.stopHome2)}</td>
+      <td style="padding:3px 5px;min-width:40px">${legChk(r.id,'stopDC2',r.stopDC2)}</td>
+      <td style="padding:3px 5px;min-width:72px">${numInp(r.id,'totalMiles',r.totalMiles,'64px')}</td>
       <td style="padding:3px 5px;min-width:72px">${numInp(r.id,'commuteDeduct',r.commuteDeduct,'64px')}</td>
       <td style="padding:3px 10px 3px 5px;text-align:right;font-weight:600;font-size:12px;min-width:72px">
         <span id="net-${r.id}" style="color:${net>0?'var(--gold)':'var(--ink-60)'}">${net>0 ? net.toFixed(1) : '—'}</span>
@@ -4378,6 +4456,10 @@ async function renderMileage() {
             <button onclick="exportMileageExcel()" class="export-btn" title="Export to Excel" style="background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.4);color:var(--green)">
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v1a1 1 0 001 1h10a1 1 0 001-1v-1M12 12l-4-4m0 0l4-4m-4 4h12"/></svg>
               <span>Export Excel</span>
+            </button>
+            <button onclick="exportMileagePDF()" class="export-btn" title="Export PDF Report" style="background:rgba(68,114,202,.12);border:1px solid rgba(68,114,202,.35);color:var(--blue)">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h8l4 4v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z"/><path d="M14 2v4h4M8 12h4M8 16h6"/></svg>
+              <span>Export PDF</span>
             </button>
             <button onclick="addMileageRow()"
               style="background:var(--gold);color:var(--ink);border:none;border-radius:8px;
@@ -4482,20 +4564,7 @@ function updateMileage(id, field, value) {
 }
 
 function recalcLegSum(id) {
-  /* Auto-calculate Total Miles = sum of all 5 leg fields */
-  const recs = getMileageRecords();
-  const r    = recs.find(x => x.id === id);
-  if (!r) return;
-  const legs = ['stopHome1','stopDC1','stopClient','stopHome2','stopDC2'];
-  const total = legs.reduce((sum, f) => sum + (parseFloat(r[f]) || 0), 0);
-  r.totalMiles = total > 0 ? total.toString() : '';
-  Store.save('mileage', recs);
-  // Update the read-only total display cell
-  const el = document.getElementById('totmi-' + id);
-  if (el) {
-    el.textContent = total > 0 ? total.toFixed(1) : '—';
-    el.style.color = total > 0 ? 'var(--gold)' : 'var(--ink-60)';
-  }
+  /* Total Miles is now manual — checkboxes don't affect it */
 }
 
 function recalcMileRow(id) {
@@ -7272,14 +7341,10 @@ function openEditMileage(id) {
                box-sizing:border-box">
     </div>`;
   const legFld = (label, field, val) => `
-    <div>
-      <div style="font-size:11px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;
-                  text-transform:uppercase;margin-bottom:5px">${label}</div>
-      <input id="me-${field}" type="number" min="0" step="0.1" value="${esc(String(val||''))}"
-        oninput="mileEditLegChanged()"
-        style="width:100%;background:var(--ink-70);border:1px solid var(--gold-dk);color:var(--gold);
-               border-radius:7px;padding:8px 10px;font-size:13px;font-family:var(--font-body);
-               box-sizing:border-box">
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+      <input id="me-${field}" type="checkbox" ${val?'checked':''}
+        style="width:20px;height:20px;accent-color:var(--gold);cursor:pointer">
+      <div style="font-size:13px;font-weight:600;color:var(--ink-20)">${label}</div>
     </div>`;
 
   document.getElementById('mileEditFields').innerHTML = `
@@ -7291,14 +7356,7 @@ function openEditMileage(id) {
     ${legFld(T('mile_th_client_stop')+' →', 'stopClient', r.stopClient)}
     ${legFld(T('mile_th_home')+' 2 →', 'stopHome2', r.stopHome2)}
     ${legFld('DC 2 →', 'stopDC2', r.stopDC2)}
-    <div>
-      <div style="font-size:11px;font-weight:700;color:var(--ink-40);letter-spacing:.07em;
-                  text-transform:uppercase;margin-bottom:5px">${T('mile_th_total')} (auto)</div>
-      <div id="me-totalMiles-display" style="background:var(--ink-90);border:1px solid var(--ink-60);
-           color:var(--gold);font-weight:700;border-radius:7px;padding:8px 10px;font-size:15px;
-           font-family:var(--font-body)">—</div>
-      <input id="me-totalMiles" type="hidden" value="${esc(String(r.totalMiles||''))}">
-    </div>
+    ${fld(T('mile_th_total')+' (miles)', 'totalMiles', r.totalMiles, 'number')}
     ${fld(T('mile_th_commute'), 'commuteDeduct', r.commuteDeduct, 'number')}
     ${fld(T('mile_th_tolls'), 'tollsParking', r.tollsParking, 'number')}
     ${fld(T('mile_th_partner'), 'designPartner', r.designPartner)}
@@ -7312,29 +7370,21 @@ function openEditMileage(id) {
 }
 
 function mileEditLegChanged() {
-  /* Live-update the Total Miles display in the edit modal */
-  const legs = ['stopHome1','stopDC1','stopClient','stopHome2','stopDC2'];
-  let total = 0;
-  legs.forEach(f => {
-    const el = document.getElementById('me-' + f);
-    if (el) total += parseFloat(el.value) || 0;
-  });
-  const disp = document.getElementById('me-totalMiles-display');
-  const hidden = document.getElementById('me-totalMiles');
-  if (disp) disp.textContent = total > 0 ? total.toFixed(1) + ' mi' : '—';
-  if (hidden) hidden.value = total > 0 ? total.toString() : '';
+  /* Checkboxes no longer affect total — total is manual */
 }
 
 function saveMileEdit() {
   if (!_editingMileId) return;
-  // Recalculate totalMiles from legs before saving
-  mileEditLegChanged();
-  const fields = ['date','clientName','address','stopHome1','stopDC1','stopClient',
-                  'stopHome2','stopDC2','totalMiles','commuteDeduct','tollsParking','designPartner'];
+  const textFields = ['date','clientName','address','totalMiles','commuteDeduct','tollsParking','designPartner'];
+  const checkFields = ['stopHome1','stopDC1','stopClient','stopHome2','stopDC2'];
   const updates = {};
-  fields.forEach(f => {
+  textFields.forEach(f => {
     const el = document.getElementById('me-'+f);
     if (el) updates[f] = el.value;
+  });
+  checkFields.forEach(f => {
+    const el = document.getElementById('me-'+f);
+    if (el) updates[f] = el.checked ? 'X' : '';
   });
   const recs = getMileageRecords();
   const idx  = recs.findIndex(r => r.id === _editingMileId);
