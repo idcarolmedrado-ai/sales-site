@@ -3094,9 +3094,34 @@ function _buildContactRows(opps,sentIds){
       'Customer #':o.customerNumber||'','Email Sent':sentIds.has(o.id)?'Yes':'No',
       'GoldComp':o.goldComp||'No','GoldComp Value':Number(o.goldCompValue)||0};});
 }
+/* Filter mileage records by the export period selector */
+function _getExportMileageRecords() {
+  const allRecs = getMileageRecords();
+  const period = document.getElementById('mileExportPeriod')?.value || 'month';
+  const MS = window._mileState || { year: new Date().getFullYear(), month: new Date().getMonth() };
+
+  if (period === 'all') return { recs: allRecs, label: 'All Time' };
+
+  if (period === 'year') {
+    const filtered = allRecs.filter(r => {
+      if (!r.date) return false;
+      const d = new Date(r.date + 'T12:00:00');
+      return d.getFullYear() === MS.year;
+    });
+    return { recs: filtered, label: String(MS.year) };
+  }
+
+  // month (default)
+  const mm = String(MS.month + 1).padStart(2, '0');
+  const prefix = `${MS.year}-${mm}`;
+  const monthName = new Date(MS.year, MS.month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const filtered = allRecs.filter(r => r.date && r.date.startsWith(prefix));
+  return { recs: filtered, label: monthName };
+}
+
 async function exportMileageExcel() {
   if (typeof XLSX==='undefined') { toast('Excel library not loaded','error'); return; }
-  const allRecs = getMileageRecords();
+  const { recs: allRecs, label: periodLabel } = _getExportMileageRecords();
   if (!allRecs.length) { toast('No mileage records','error'); return; }
   const RATE = 0.725;
 
@@ -3128,16 +3153,14 @@ async function exportMileageExcel() {
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = [12,16,20,8,8,8,8,8,8,8,8,8,12,14,10].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, ws, 'Mileage Log');
-  XLSX.writeFile(wb, 'EA_Mileage_'+new Date().toISOString().slice(0,7)+'.xlsx');
-  toast('Mileage exported to Excel','success');
+  XLSX.writeFile(wb, 'CM_Mileage_'+periodLabel.replace(/\s+/g,'_')+'.xlsx');
+  toast(`Mileage exported (${periodLabel})`,'success');
 }
 
 function exportMileagePDF() {
-  const allRecs = getMileageRecords();
-  if (!allRecs.length) { toast('No mileage records', 'error'); return; }
+  const { recs: allRecs, label: periodLabel } = _getExportMileageRecords();
+  if (!allRecs.length) { toast('No mileage records for ' + periodLabel, 'error'); return; }
   const RATE = 0.725;
-  const now = new Date();
-  const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   let totalMiles = 0, totalNet = 0, totalReimb = 0, totalTolls = 0;
   const rowsHTML = allRecs.map((r, i) => {
@@ -3148,37 +3171,42 @@ function exportMileagePDF() {
     const reimb = net > 0 ? net * RATE + tolls : 0;
     totalMiles += total; totalNet += net; totalReimb += reimb; totalTolls += tolls;
     const bg = i % 2 === 0 ? '#fff' : '#f8f6f3';
+    const purpose = r.isManual ? 'Manual' : 'Home Call';
     return `<tr style="background:${bg}">
-      <td style="padding:6px 8px;border:1px solid #ddd;font-size:11px">${r.date||''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;font-size:11px">${esc(r.clientName||'')}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;font-size:10px">${esc(r.address||'')}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:13px">${r.stopHome1?'✓':''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:13px">${r.stopDC1?'✓':''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:13px">${r.stopClient?'✓':''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:13px">${r.stopHome2?'✓':''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center;font-size:13px">${r.stopDC2?'✓':''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:600">${total>0?total.toFixed(1):''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right">${commute>0?commute.toFixed(1):''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:600">${net>0?net.toFixed(1):''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right">${tolls>0?'$'+tolls.toFixed(2):''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:700;color:#3D9E6B">${reimb>0?'$'+reimb.toFixed(2):''}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;font-size:10px">${esc(r.designPartner||'')}</td>
+      <td>${r.date||''}</td>
+      <td>${esc(r.clientName||'')}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.address||'')}</td>
+      <td style="text-align:center;font-size:12px">${r.stopHome1?'✓':''}</td>
+      <td style="text-align:center;font-size:12px">${r.stopDC1?'✓':''}</td>
+      <td style="text-align:center;font-size:12px">${r.stopClient?'✓':''}</td>
+      <td style="text-align:center;font-size:12px">${r.stopHome2?'✓':''}</td>
+      <td style="text-align:center;font-size:12px">${r.stopDC2?'✓':''}</td>
+      <td style="text-align:right;font-weight:600">${total>0?total.toFixed(1):''}</td>
+      <td style="text-align:right">${commute>0?commute.toFixed(1):''}</td>
+      <td style="text-align:right;font-weight:600">${net>0?net.toFixed(1):''}</td>
+      <td style="text-align:right">${tolls>0?'$'+tolls.toFixed(2):''}</td>
+      <td style="text-align:right;font-weight:700;color:#3D9E6B">${reimb>0?'$'+reimb.toFixed(2):''}</td>
+      <td>${esc(r.designPartner||'')}</td>
+      <td>${purpose}</td>
     </tr>`;
   }).join('');
 
-  const html = `<!DOCTYPE html><html><head><title>Mileage Report — ${monthLabel}</title>
-    <style>body{font-family:'DM Sans',Arial,sans-serif;margin:0;padding:24px;color:#2A2622;font-size:12px}
-    @page{size:landscape;margin:12mm}
-    h1{font-size:22px;margin:0 0 4px;color:#B8872F}
-    .sub{color:#7A756E;font-size:12px;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse;margin-bottom:20px}
-    th{background:#B8872F;color:#fff;padding:7px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;border:1px solid #B8872F;text-align:left}
+  const html = `<!DOCTYPE html><html><head><title>Mileage Report — ${periodLabel}</title>
+    <style>body{font-family:'DM Sans',Arial,sans-serif;margin:0;padding:20px;color:#2A2622;font-size:11px}
+    @page{size:landscape;margin:10mm}
+    h1{font-size:20px;margin:0 0 4px;color:#B8872F}
+    .sub{color:#7A756E;font-size:11px;margin-bottom:12px}
+    .meta{display:flex;justify-content:space-between;margin-bottom:8px;font-size:10px;color:#999}
+    table{width:100%;border-collapse:collapse;margin-bottom:16px;table-layout:auto}
+    th{background:#B8872F;color:#fff;padding:5px 6px;font-size:9px;text-transform:uppercase;letter-spacing:.04em;border:1px solid #B8872F;text-align:left;white-space:nowrap}
+    td{padding:5px 6px;border:1px solid #ddd;font-size:10px}
     .totals td{background:#f0ece6;font-weight:700;border-top:2px solid #B8872F}
-    .sig{margin-top:40px;display:flex;gap:60px}
-    .sig-line{border-top:1px solid #999;width:250px;padding-top:4px;font-size:11px;color:#666}
+    .sig{margin-top:30px;display:flex;gap:40px}
+    .sig-line{border-top:1px solid #999;width:200px;padding-top:4px;font-size:10px;color:#666}
     </style></head><body>
     <h1>Mileage Report</h1>
-    <div class="sub">Carol Medrado — ${monthLabel} &nbsp;|&nbsp; IRS Rate: $${RATE}/mile</div>
+    <div class="sub">Carol Medrado — ${periodLabel} &nbsp;|&nbsp; IRS Rate: $${RATE}/mile</div>
+    <div class="meta"><span>${allRecs.length} trip(s)</span><span>Generated: ${new Date().toLocaleDateString('en-US')}</span></div>
     <table>
       <thead><tr>
         <th>Date</th><th>Client</th><th>Address</th>
@@ -3187,16 +3215,16 @@ function exportMileagePDF() {
         <th style="text-align:center">DC 2</th><th style="text-align:right">Total Mi</th>
         <th style="text-align:right">Commute</th><th style="text-align:right">Net Mi</th>
         <th style="text-align:right">Tolls</th><th style="text-align:right">Reimb.</th>
-        <th>Partner</th>
+        <th>Partner</th><th>Purpose</th>
       </tr></thead>
       <tbody>${rowsHTML}
-        <tr class="totals"><td colspan="8" style="padding:8px;border:1px solid #ddd;text-align:right">TOTALS</td>
-          <td style="padding:8px;border:1px solid #ddd;text-align:right">${totalMiles.toFixed(1)}</td>
-          <td style="padding:8px;border:1px solid #ddd"></td>
-          <td style="padding:8px;border:1px solid #ddd;text-align:right">${totalNet.toFixed(1)}</td>
-          <td style="padding:8px;border:1px solid #ddd;text-align:right">$${totalTolls.toFixed(2)}</td>
-          <td style="padding:8px;border:1px solid #ddd;text-align:right;color:#3D9E6B">$${totalReimb.toFixed(2)}</td>
-          <td style="border:1px solid #ddd"></td>
+        <tr class="totals"><td colspan="8" style="text-align:right">TOTALS</td>
+          <td style="text-align:right">${totalMiles.toFixed(1)}</td>
+          <td></td>
+          <td style="text-align:right">${totalNet.toFixed(1)}</td>
+          <td style="text-align:right">$${totalTolls.toFixed(2)}</td>
+          <td style="text-align:right;color:#3D9E6B">$${totalReimb.toFixed(2)}</td>
+          <td></td><td></td>
         </tr>
       </tbody>
     </table>
@@ -4452,7 +4480,13 @@ async function renderMileage() {
             <div style="font-weight:700;color:var(--green);font-size:16px;margin-top:2px">$${totalReimb.toFixed(2)}</div>
           </div>
           <div style="flex:1"></div>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="mileExportPeriod" style="background:#fff;border:1px solid var(--ink-60);color:var(--ink-10);
+              border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;font-family:var(--font-body)">
+              <option value="month">Current Month</option>
+              <option value="year">Full Year</option>
+              <option value="all">All Time</option>
+            </select>
             <button onclick="exportMileageExcel()" class="export-btn" title="Export to Excel" style="background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.4);color:var(--green)">
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16v1a1 1 0 001 1h10a1 1 0 001-1v-1M12 12l-4-4m0 0l4-4m-4 4h12"/></svg>
               <span>Export Excel</span>
