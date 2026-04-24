@@ -23,9 +23,9 @@ if (!window.supabase) {
 <style>
 /* ── TOKENS ── */
 :root {
-  --ink: #0a0a0a; --ink-90: #111; --ink-80: #1a1a1a; --ink-70: #252525;
-  --ink-60: #333; --ink-50: #555; --ink-40: #666; --ink-20: #aaa; --ink-10: #ddd;
-  --ink-85: #151515; --ink-75: #1f1f1f; --ink-65: #2d2d2d;
+  --ink: #1a1a2e; --ink-90: #1f1f35; --ink-80: #25253d; --ink-70: #2e2e48;
+  --ink-60: #3d3d58; --ink-50: #5a5a76; --ink-40: #7a7a94; --ink-20: #b5b5c8; --ink-10: #dddde8;
+  --ink-85: #222238; --ink-75: #2a2a44; --ink-65: #353550;
   --gold: #C4933F; --gold-lt: #e8b86d; --gold-dk: #9a7030;
   --red: #E05252; --green: #4CAF7D; --blue: #4472CA; --purple: #A088E0;
   --font-display: 'Bebas Neue', sans-serif;
@@ -36,7 +36,7 @@ if (!window.supabase) {
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 15px; }
-body { background: var(--ink); color: #fff; font-family: var(--font-body);
+body { background: var(--ink); color: #eee; font-family: var(--font-body);
   min-height: 100vh; overflow-x: hidden; }
 
 /* ── SCROLLBAR ── */
@@ -49,24 +49,26 @@ input[type=number] { -moz-appearance: textfield; }
 /* ── NAV ── */
 nav {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(10,10,10,.95); backdrop-filter: blur(12px);
+  background: rgba(26,26,46,.97); backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--ink-70);
-  display: flex; align-items: center; padding: 0 24px; height: 58px; gap: 16px;
+  display: flex; align-items: center; padding: 0 16px; height: 54px; gap: 8px;
 }
-.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0; }
-.nav-logo-text { font-family: var(--font-serif); font-size: 15px; color: #fff; letter-spacing: .04em; }
-.nav-logo-sub { font-size: 9px; color: var(--gold); letter-spacing: .18em; text-transform: uppercase; display: block; }
-.nav-tabs { display: flex; gap: 2px; flex: 1; }
+.nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; flex-shrink: 0; }
+.nav-logo-text { font-family: var(--font-serif); font-size: 14px; color: #fff; letter-spacing: .04em; }
+.nav-logo-sub { font-size: 8px; color: var(--gold); letter-spacing: .18em; text-transform: uppercase; display: block; }
+.nav-tabs { display: flex; gap: 2px; flex: 1; overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none; -ms-overflow-style: none; }
+.nav-tabs::-webkit-scrollbar { display: none; }
 .nav-tab {
-  padding: 6px 14px; border-radius: 8px; border: none;
+  padding: 5px 10px; border-radius: 8px; border: none;
   background: transparent; color: var(--ink-20);
-  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  font-family: var(--font-body); font-size: 12px; font-weight: 500;
   cursor: pointer; transition: all .15s; white-space: nowrap;
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
 }
 .nav-tab:hover { background: var(--ink-70); color: #fff; }
 .nav-tab.active { background: var(--gold); color: #000; font-weight: 600; }
-.nav-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.nav-right { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
 .conn-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px;
   border-radius: 20px; font-weight: 600; letter-spacing: .06em; }
 .conn-badge.live { background: rgba(76,175,125,.15); color: var(--green); border: 1px solid rgba(76,175,125,.3); }
@@ -642,11 +644,12 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 .data-card-actions button { flex:1;padding:6px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer; }
 
 @media(max-width:768px) {
-  nav { flex-wrap:wrap;height:auto;padding:10px 16px;gap:8px; }
+  nav { flex-wrap:wrap;height:auto;padding:8px 12px;gap:6px; }
   .nav-hamburger { display:block; }
-  .nav-tabs { display:none;width:100%;flex-wrap:wrap;gap:4px;padding-top:8px; }
+  .nav-tabs { display:none;width:100%;flex-wrap:wrap;gap:3px;padding-top:6px;overflow:visible; }
   .nav-tabs.open { display:flex; }
-  .nav-tab { font-size:12px;padding:6px 10px; }
+  .nav-tab { font-size:11px;padding:5px 8px; }
+  .nav-tab svg { width:11px;height:11px; }
   .nav-right { gap:6px; }
   .global-search { min-width:120px;max-width:160px; }
   .nav-logo-text { font-size:13px; }
