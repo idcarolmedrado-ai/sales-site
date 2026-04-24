@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EA Sales Intelligence — Carolina Medrado</title>
+<title>Carol Medrado — Sales Intelligence</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script>
@@ -35,9 +35,9 @@ if (!window.supabase) {
   --shadow: 0 2px 16px rgba(0,0,0,.1);
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 15px; }
+html { font-size: 16px; }
 body { background: var(--ink); color: #2A2622; font-family: var(--font-body);
-  min-height: 100vh; overflow-x: hidden; }
+  min-height: 100vh; overflow-x: hidden; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -54,15 +54,15 @@ nav {
   display: flex; align-items: center; padding: 0 16px; height: 54px; gap: 8px;
 }
 .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; flex-shrink: 0; }
-.nav-logo-text { font-family: var(--font-serif); font-size: 14px; color: #2A2622; letter-spacing: .04em; }
-.nav-logo-sub { font-size: 8px; color: var(--gold); letter-spacing: .18em; text-transform: uppercase; display: block; }
+.nav-logo-text { font-family: var(--font-serif); font-size: 15px; color: #2A2622; letter-spacing: .04em; font-weight: 600; }
+.nav-logo-sub { font-size: 9px; color: var(--gold); letter-spacing: .15em; text-transform: uppercase; display: block; }
 .nav-tabs { display: flex; gap: 2px; flex: 1; overflow-x: auto; overflow-y: hidden;
   scrollbar-width: none; -ms-overflow-style: none; }
 .nav-tabs::-webkit-scrollbar { display: none; }
 .nav-tab {
   padding: 5px 10px; border-radius: 8px; border: none;
-  background: transparent; color: var(--ink-20);
-  font-family: var(--font-body); font-size: 12px; font-weight: 500;
+  background: transparent; color: var(--ink-40);
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
   cursor: pointer; transition: all .15s; white-space: nowrap;
   display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
 }
@@ -164,11 +164,11 @@ h2.display { font-size: 40px; }
 .kpi-card[data-kpi]:hover::after { opacity:1; }
 .kpi-ring { position:absolute;right:10px;bottom:10px;opacity:.12; }
 .kpi-icon { width:20px;height:20px;margin-bottom:6px;color:var(--gold);opacity:.8; }
-.kpi-value { font-family: var(--font-display); font-size: 28px; line-height: 1; }
+.kpi-value { font-family: var(--font-display); font-size: 30px; line-height: 1; }
 .kpi-value.gold { color: var(--gold); }
 .kpi-value.red  { color: var(--red); }
 .kpi-value.green{ color: var(--green); }
-.kpi-delta { font-size: 11px; color: var(--ink-40); }
+.kpi-delta { font-size: 12px; color: var(--ink-40); }
 
 /* ── DASH CARDS ── */
 .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
@@ -204,8 +204,8 @@ h2.display { font-size: 40px; }
   letter-spacing: .08em; margin-top: 8px; }
 .insight-icon { font-size: 20px; margin-bottom: 8px; }
 .insight-icon-text { font-family:var(--font-display);font-size:22px;color:var(--gold);margin-bottom:8px;letter-spacing:.05em; }
-.insight-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-.insight-body { font-size: 12px; color: var(--ink-20); line-height: 1.5; }
+.insight-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.insight-body { font-size: 13px; color: var(--ink-20); line-height: 1.6; }
 
 /* ── BAR CHART ── */
 .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -274,8 +274,8 @@ h2.display { font-size: 40px; }
 .table-wrap { overflow-x: auto; padding: 0 24px; max-width: 1320px; margin: 0 auto; }
 table { width: 100%; border-collapse: collapse; }
 thead th {
-  padding: 10px 12px; font-size: 10px; font-weight: 700; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--ink-40); border-bottom: 1px solid var(--ink-60);
+  padding: 10px 14px; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-40); border-bottom: 2px solid var(--ink-60);
   text-align: left; white-space: nowrap;
 }
 tbody tr {
@@ -286,7 +286,7 @@ tbody tr { color: #2A2622; }
 tbody tr.overdue { background: rgba(224,82,82,.06); }
 tbody tr.sold { background: rgba(76,175,125,.05); }
 tbody tr.hot { background: rgba(196,147,63,.05); }
-tbody td { padding: 11px 12px; font-size: 13px; }
+tbody td { padding: 12px 14px; font-size: 14px; }
 
 /* ── BADGES ── */
 .badge {
@@ -365,12 +365,12 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 /* ── BUTTONS ── */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 9px 18px; border-radius: 10px; border: none;
-  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  padding: 10px 20px; border-radius: 10px; border: none;
+  font-family: var(--font-body); font-size: 14px; font-weight: 600;
   cursor: pointer; transition: all .15s; white-space: nowrap;
 }
-.btn-primary { background: var(--gold); color: #000; }
-.btn-primary:hover { background: var(--gold-lt); }
+.btn-primary { background: var(--gold); color: #fff; }
+.btn-primary:hover { background: var(--gold-lt); color: #fff; }
 .btn-secondary { background: var(--ink-70); color: #fff; }
 .btn-secondary:hover { background: var(--ink-60); }
 .btn-danger { background: rgba(224,82,82,.15); color: var(--red); border: 1px solid rgba(224,82,82,.3); }
@@ -413,10 +413,10 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field.span-2 { grid-column: span 2; }
-.field label { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--ink-20); text-transform: uppercase; }
+.field label { font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--ink-20); text-transform: uppercase; }
 .field input, .field select, .field textarea {
   background: #fff; border: 1px solid var(--ink-60); border-radius: 8px;
-  color: #2A2622; font-family: var(--font-body); font-size: 13px; padding: 9px 12px; outline: none;
+  color: #2A2622; font-family: var(--font-body); font-size: 14px; padding: 10px 14px; outline: none;
   transition: border-color .15s;
 }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--gold); }
@@ -655,11 +655,12 @@ tbody td { padding: 11px 12px; font-size: 13px; }
   .global-search { min-width:120px;max-width:160px; }
   .nav-logo-text { font-size:13px; }
   .nav-logo-sub { font-size:8px; }
-  h1.display { font-size:32px; }
+  html { font-size:15px; }
+  h1.display { font-size:34px; }
   h2.display { font-size:28px; }
   .kpi-grid { grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px; }
-  .kpi-card { padding:12px 10px; }
-  .kpi-value { font-size:22px; }
+  .kpi-card { padding:14px 12px; }
+  .kpi-value { font-size:24px; }
   .insights-grid { grid-template-columns:1fr;padding:0 12px; }
   .insight-card.priority-1 { grid-column:1; flex-direction:column; }
   .dash-grid { grid-template-columns:1fr;padding:0 12px; }
@@ -877,8 +878,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <!-- Auth Gate (optional — skippable) -->
 <div class="auth-gate" id="authGate" style="display:none">
   <div class="auth-gate-box">
-    <svg width="48" height="48" viewBox="0 0 36 36" style="margin-bottom:12px"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">EA</text></svg>
-    <div class="auth-gate-logo">Ethan Allen</div>
+    <svg width="48" height="48" viewBox="0 0 36 36" style="margin-bottom:12px"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">CM</text></svg>
+    <div class="auth-gate-logo">Carol Medrado</div>
     <div class="auth-gate-sub">Sales Intelligence</div>
     <input id="authPassword" type="password" placeholder="Enter password" autocomplete="current-password"
       onkeydown="if(event.key==='Enter')checkAuthGate()">
@@ -892,9 +893,9 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <div id="configScreen">
   <div class="config-card" style="max-width:520px">
     <div class="config-logo">
-      <svg width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">EA</text></svg>
+      <svg width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">CM</text></svg>
       <div>
-        <div style="font-family:var(--font-serif);font-size:16px;color:white">Ethan Allen</div>
+        <div style="font-family:var(--font-serif);font-size:16px;color:var(--ink-10)">Carol Medrado</div>
         <div style="font-size:9px;color:var(--gold);letter-spacing:.2em;text-transform:uppercase">Sales Intelligence</div>
       </div>
     </div>
@@ -937,8 +938,8 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <!-- NAV -->
 <nav role="navigation" aria-label="Main navigation">
   <a class="nav-logo" href="#" onclick="navigate('dashboard');return false;" aria-label="Dashboard home">
-    <svg width="30" height="30" viewBox="0 0 36 36" aria-hidden="true"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">EA</text></svg>
-    <div><span class="nav-logo-text">Ethan Allen</span><span class="nav-logo-sub">Sales Intelligence</span></div>
+    <svg width="30" height="30" viewBox="0 0 36 36" aria-hidden="true"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">CM</text></svg>
+    <div><span class="nav-logo-text">Carol Medrado</span><span class="nav-logo-sub">Sales Intelligence</span></div>
   </a>
   <button class="nav-hamburger" onclick="document.querySelector('.nav-tabs').classList.toggle('open')" aria-label="Toggle navigation menu" aria-expanded="false">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
@@ -1024,7 +1025,7 @@ tbody td { padding: 11px 12px; font-size: 13px; }
 <div class="page active" id="page-dashboard">
   <div class="dash-hero container">
     <div class="dash-hero-title">
-      <span class="label" data-i18n="dash_subtitle">Sales Intelligence — 2026</span>
+      <span class="label" data-i18n="dash_subtitle">Carol Medrado — Sales Intelligence</span>
       <h1 class="display" id="dashTitle">PERFORMANCE<br>DASHBOARD</h1>
       <p class="dash-hero-date" id="dashDate"></p>
     </div>
@@ -1540,7 +1541,7 @@ const STRINGS = {
     nav_sub:'Sales Intelligence',
 
     // Dashboard
-    dash_subtitle:'Sales Intelligence — 2026',
+    dash_subtitle:'Carol Medrado — Sales Intelligence',
     dash_title:'PERFORMANCE DASHBOARD',
     dash_goal:'Monthly Goal',
     dash_progress:'Progress',
@@ -7218,7 +7219,7 @@ async function exportToExcel() {
 
   // Save file
   const date = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, `EA_Sales_Carolina_${date}.xlsx`);
+  XLSX.writeFile(wb, `CM_Sales_${date}.xlsx`);
   toast(T('toast_excel'), 'success');
 }
 
