@@ -24,7 +24,7 @@ if (!window.supabase) {
 /* ── TOKENS ── */
 :root {
   --ink: #FAF8F5; --ink-90: #F5F0EB; --ink-80: #EDE8E2; --ink-70: #DDD7CF;
-  --ink-60: #C5BFBA; --ink-50: #9E9890; --ink-40: #7A756E; --ink-20: #4A4541; --ink-10: #2A2622;
+  --ink-60: #C5BFBA; --ink-50: #6A6560; --ink-40: #3D3833; --ink-20: #2A2622; --ink-10: #1A1612;
   --ink-85: #F2EDE8; --ink-75: #E5DFD8; --ink-65: #D5CFC8;
   --gold: #B8872F; --gold-lt: #D4A854; --gold-dk: #8A6820;
   --red: #D64545; --green: #3D9E6B; --blue: #3B63B0; --purple: #8870C8;
@@ -55,7 +55,7 @@ nav {
 }
 .nav-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; flex-shrink: 0; }
 .nav-logo-text { font-family: var(--font-serif); font-size: 15px; color: #2A2622; letter-spacing: .04em; font-weight: 600; }
-.nav-logo-sub { font-size: 9px; color: var(--gold); letter-spacing: .15em; text-transform: uppercase; display: block; }
+.nav-logo-sub { font-size: 9px; color: var(--gold); font-weight: 700; letter-spacing: .15em; text-transform: uppercase; display: block; }
 .nav-tabs { display: flex; gap: 2px; flex: 1; overflow-x: auto; overflow-y: hidden;
   scrollbar-width: none; -ms-overflow-style: none; }
 .nav-tabs::-webkit-scrollbar { display: none; }
@@ -85,11 +85,11 @@ main { padding-bottom: 80px; }
 /* ── Post30/Post60/Mileage shared ── */
 .delivery-hero { background: var(--ink-80); border: 1px solid var(--ink-60); border-radius: var(--r-lg); padding: 24px 28px; margin-bottom: 24px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
 .delivery-stat { text-align: center; min-width: 80px; }
-.delivery-stat .num { font-family: var(--font-display); font-size: 36px; letter-spacing: .05em; color: var(--gold); }
+.delivery-stat .num { font-family: var(--font-display); font-size: 36px; font-weight: 800; letter-spacing: .05em; color: var(--gold); }
 .delivery-stat .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-40); margin-top: 2px; }
 .delivery-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .delivery-table th { text-align: left; padding: 10px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-40); border-bottom: 1px solid var(--ink-60); white-space: nowrap; }
-.delivery-table td { padding: 10px 12px; border-bottom: 1px solid var(--ink-70); vertical-align: middle; }
+.delivery-table td { padding: 10px 12px; border-bottom: 1px solid var(--ink-70); vertical-align: middle; color: #2A2622; }
 .delivery-table tr:last-child td { border-bottom: none; }
 .delivery-table tr:hover td { background: var(--ink-80); }
 .delivery-table input, .delivery-table select { background: #fff; border: 1px solid var(--ink-60); color: #2A2622; border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; font-family: var(--font-body); }
@@ -102,7 +102,7 @@ main { padding-bottom: 80px; }
 .status-done     { background: rgba(76,175,125,.1); color: var(--green); }
 /* Mileage */
 .mile-totals { background: var(--ink-70); border-radius: var(--r); padding: 16px 20px; display: flex; gap: 32px; margin-top: 16px; align-items: center; }
-.mile-total-item .val { font-family: var(--font-display); font-size: 28px; color: var(--gold); letter-spacing:.05em; }
+.mile-total-item .val { font-family: var(--font-display); font-size: 28px; font-weight: 800; color: var(--gold); letter-spacing:.05em; }
 .mile-total-item .key { font-size: 10px; text-transform: uppercase; letter-spacing:.1em; color: var(--ink-40); }
 .mile-add-btn { background: transparent; border: 1px dashed var(--ink-60); color: var(--ink-40); border-radius: var(--r); padding: 10px 16px; font-size: 12px; cursor: pointer; transition: all .2s; }
 .mile-add-btn:hover { border-color: var(--gold); color: var(--gold); }
@@ -114,7 +114,7 @@ main { padding-bottom: 80px; }
 
 /* ── TYPOGRAPHY ── */
 .display { font-family: var(--font-display); letter-spacing: .04em; line-height: 1; }
-.label { font-size: 10px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+.label { font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
 .overline { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-40); font-weight: 600; }
 .text-muted { color: var(--ink-40); }
 
@@ -133,7 +133,7 @@ h2.display { font-size: 40px; }
   display: flex; flex-direction: column; gap: 10px;
 }
 .goal-pill-label { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-40); font-weight: 600; }
-.goal-pill-value { font-family: var(--font-display); font-size: 28px; color: var(--gold); }
+.goal-pill-value { font-family: var(--font-display); font-size: 28px; font-weight: 800; color: var(--gold); }
 .goal-pill-bar { height: 6px; background: var(--ink-60); border-radius: 3px; overflow: hidden; }
 .goal-pill-fill { height: 100%; background: var(--gold); border-radius: 3px; transition: width .6s ease; }
 
@@ -144,7 +144,7 @@ h2.display { font-size: 40px; }
   background: transparent; color: var(--ink-20); font-size: 12px; font-weight: 500;
   cursor: pointer; transition: all .15s;
 }
-.filter-chip:hover { border-color: var(--gold); color: var(--gold); }
+.filter-chip:hover { border-color: var(--gold); color: var(--gold); font-weight: 700; }
 .filter-chip.active { background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600; }
 
 /* ── KPI GRID ── */
@@ -165,7 +165,7 @@ h2.display { font-size: 40px; }
 .kpi-ring { position:absolute;right:10px;bottom:10px;opacity:.12; }
 .kpi-icon { width:20px;height:20px;margin-bottom:6px;color:var(--gold);opacity:.8; }
 .kpi-value { font-family: var(--font-display); font-size: 30px; line-height: 1; }
-.kpi-value.gold { color: var(--gold); }
+.kpi-value.gold { color: var(--gold); font-weight: 800; }
 .kpi-value.red  { color: var(--red); }
 .kpi-value.green{ color: var(--green); }
 .kpi-delta { font-size: 12px; color: var(--ink-40); font-weight: 500; }
@@ -408,7 +408,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
   margin: 0 auto 20px; }
 .modal-title { font-family: var(--font-display); font-size: 28px; letter-spacing: .06em; margin-bottom: 20px; }
 .form-section { margin-bottom: 22px; }
-.form-section-title { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+.form-section-title { font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
   color: var(--gold); margin-bottom: 12px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 5px; }
@@ -832,29 +832,30 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
 
 /* ── Calendar view ── */
 .cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:2px; }
-.cal-hdr { text-align:center;font-size:10px;font-weight:700;color:var(--ink-40);padding:6px 0;
-  letter-spacing:.08em;text-transform:uppercase; }
-.cal-day { min-height:80px;background:var(--ink-80);border:1px solid var(--ink-70);border-radius:4px;
-  padding:4px 6px;font-size:11px;position:relative;transition:border-color .15s; }
-.cal-day:hover { border-color:var(--ink-40); }
-.cal-day.today { border-color:var(--gold);background:rgba(196,147,63,.06); }
-.cal-day.other-month { opacity:.35; }
-.cal-day-num { font-weight:700;font-size:11px;color:var(--ink-20);margin-bottom:2px; }
-.cal-day.today .cal-day-num { color:var(--gold); }
-.cal-event { font-size:9px;padding:2px 4px;border-radius:3px;margin-bottom:2px;cursor:pointer;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block; }
-.cal-event.followup { background:rgba(224,82,82,.15);color:var(--red); }
-.cal-event.delivery { background:rgba(76,175,125,.15);color:var(--green); }
-.cal-event.homecall { background:rgba(196,147,63,.15);color:var(--gold); }
-.cal-event.review { background:rgba(68,114,202,.15);color:var(--blue); }
-.cal-nav { display:flex;align-items:center;gap:12px;margin-bottom:16px; }
-.cal-nav button { background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-20);
-  border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:var(--font-body); }
-.cal-nav button:hover { border-color:var(--gold);color:var(--gold); }
-.cal-month-label { font-family:var(--font-display);font-size:22px;color:var(--gold);min-width:180px;text-align:center; }
+.cal-hdr { text-align:center;font-size:12px;font-weight:800;color:#2A2622;padding:8px 0;
+  letter-spacing:.06em;text-transform:uppercase; }
+.cal-day { min-height:100px;background:var(--ink-80);border:1px solid var(--ink-70);border-radius:6px;
+  padding:6px 8px;font-size:12px;position:relative;transition:border-color .15s; }
+.cal-day:hover { border-color:var(--gold); }
+.cal-day.today { border-color:var(--gold);border-width:2px;background:rgba(196,147,63,.06); }
+.cal-day.other-month { opacity:.3; }
+.cal-day-num { font-weight:800;font-size:14px;color:#2A2622;margin-bottom:4px; }
+.cal-day.today .cal-day-num { color:var(--gold);font-weight:800; }
+.cal-event { font-size:11px;padding:3px 6px;border-radius:4px;margin-bottom:3px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;font-weight:600;color:#2A2622; }
+.cal-event.followup { background:rgba(224,82,82,.18);color:#2A2622; }
+.cal-event.delivery { background:rgba(76,175,125,.18);color:#2A2622; }
+.cal-event.homecall { background:rgba(196,147,63,.18);color:#2A2622; }
+.cal-event.review { background:rgba(68,114,202,.18);color:#2A2622; }
+.cal-nav { display:flex;align-items:center;gap:14px;margin-bottom:20px; }
+.cal-nav button { background:#fff;border:1px solid var(--ink-60);color:#2A2622;
+  border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body); }
+.cal-nav button:hover { border-color:var(--gold);color:var(--gold);font-weight:700; }
+.cal-month-label { font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--gold);min-width:200px;text-align:center; }
 @media(max-width:768px) {
-  .cal-day { min-height:50px;font-size:9px; }
-  .cal-event { font-size:8px;padding:1px 3px; }
+  .cal-day { min-height:60px;font-size:10px; }
+  .cal-event { font-size:9px;padding:2px 4px; }
+  .cal-month-label { font-size:22px; }
 }
 
 /* ── Pagination ── */
@@ -4101,11 +4102,11 @@ async function renderPost30() {
 
     const noNew = rec.newOpportunity === 'No';
     return `<tr style="${noNew ? 'opacity:.55' : ''}">
-      <td><strong style="color:white">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:var(--ink-40);font-size:11px">${opp.projectType||'—'}</span></td>
-      <td><span style="color:var(--gold)">$${(opp.estimate||0).toLocaleString()}</span></td>
+      <td><strong style="color:#2A2622">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:#2A2622;font-size:11px">${opp.projectType||'—'}</span></td>
+      <td><span style="color:var(--gold);font-weight:700">$${(opp.estimate||0).toLocaleString()}</span></td>
       <td><input type="date" value="${delivDate}" style="width:140px"
         onchange="updatePost30('${opp.id}','deliveryDate',this.value)" /></td>
-      <td style="color:var(--ink-20)">${followup30 ? formatDateShort(followup30) : '—'}</td>
+      <td style="color:#2A2622">${followup30 ? formatDateShort(followup30) : '—'}</td>
       <td>${statusBadge}</td>
       <td><input type="text" value="${esc(rec.contactReason||'')}" placeholder="e.g. 3-week check-in"
         onchange="updatePost30('${opp.id}','contactReason',this.value)" style="min-width:160px" /></td>
@@ -4212,10 +4213,10 @@ async function renderPost60() {
 
     const done = rec.p60_newOpportunity === 'Yes' || rec.p60_newOpportunity === 'No';
     return `<tr style="${done&&rec.p60_newOpportunity==='No'?'opacity:.5':''}">
-      <td><strong style="color:white">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:var(--ink-40);font-size:11px">${opp.projectType||'—'}</span></td>
-      <td><span style="color:var(--gold)">$${(opp.estimate||0).toLocaleString()}</span></td>
-      <td style="color:var(--ink-20)">${formatDateShort(rec.deliveryDate)}</td>
-      <td style="color:var(--ink-20)">${formatDateShort(followup60)}</td>
+      <td><strong style="color:#2A2622">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:#2A2622;font-size:11px">${opp.projectType||'—'}</span></td>
+      <td><span style="color:var(--gold);font-weight:700">$${(opp.estimate||0).toLocaleString()}</span></td>
+      <td style="color:#2A2622">${formatDateShort(rec.deliveryDate)}</td>
+      <td style="color:#2A2622">${formatDateShort(followup60)}</td>
       <td>${statusBadge}</td>
       <td><input type="text" value="${esc(rec.p60_contactReason||'')}" placeholder="Final nurture touchpoint"
         onchange="updatePost60('${rec.oppId}','p60_contactReason',this.value)" style="min-width:160px" /></td>
@@ -8367,7 +8368,7 @@ async function renderCalendar() {
     { cls:'delivery', label:'Delivery' },
     { cls:'homecall', label:'Home Call' },
     { cls:'review', label:'Link Review' },
-  ].map(l => `<span class="cal-event ${l.cls}" style="cursor:default;display:inline-flex;padding:3px 8px">${l.label}</span>`).join('');
+  ].map(l => `<span class="cal-event ${l.cls}" style="cursor:default;display:inline-flex;padding:4px 10px;font-size:12px">${l.label}</span>`).join('');
 
   el.innerHTML = `
     <div class="container" style="padding-top:28px;padding-bottom:40px">
