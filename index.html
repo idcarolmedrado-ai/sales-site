@@ -8116,6 +8116,8 @@ function renderSettings() {
 ══════════════════════════════════════════════════ */
 function _inventoryLocalData() {
   const inv = {};
+  // Opportunities — the canonical CRM data
+  try { inv.opportunities = (JSON.parse(localStorage.getItem(DB.LOCAL_KEY) || '{"opportunities":[]}').opportunities || []).length; } catch(e) { inv.opportunities = 0; }
   // Attachments (base64 files)
   const atts = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
   inv.attachments = Object.values(atts).reduce((sum, arr) => sum + (arr||[]).length, 0);
@@ -8149,6 +8151,7 @@ function _renderSyncSummary() {
   const row = (label, count, icon) =>
     `<div>${icon} <strong>${count}</strong> ${label}</div>`;
   return (
+    row('Opportunit(ies)', i.opportunities, '💼') +
     row('Attachment(s)', i.attachments, '📎') +
     row('Profile picture', i.avatar ? 'pending' : 'already synced', '🖼️') +
     row('Mileage record(s)', i.mileage, '🚗') +
@@ -8165,11 +8168,36 @@ function _renderSyncSummary() {
 
 async function migrateAllToCloud() {
   if (!_isCloudMode()) { toast('Not connected to cloud', 'error'); return; }
-  if (!confirm('Sync ALL local data to Supabase cloud? This includes attachments, profile picture, mileage, goals, tasks, and audit trail. Safe to run multiple times.')) return;
+  if (!confirm('Sync ALL local data to Supabase cloud? This includes opportunities, attachments, profile picture, mileage, goals, tasks, and audit trail. Safe to run multiple times — uses upsert so duplicates are merged by id.')) return;
 
   const status = document.getElementById('migrationStatus');
   const show = (msg) => { if (status) { status.style.display=''; status.textContent = msg; } };
   let done = 0, failed = 0;
+
+  // 0. Opportunities — the canonical CRM data
+  // Reads ea_sales_v4 → opportunities array, maps with DB._toDB(),
+  // and upserts in batches of 50. Idempotent — safe to re-run.
+  show('Syncing opportunities...');
+  try {
+    const raw  = JSON.parse(localStorage.getItem(DB.LOCAL_KEY) || '{"opportunities":[]}');
+    const opps = (raw.opportunities || []).filter(o => o && o.id);
+    if (opps.length) {
+      const rows = opps.map(o => DB._toDB(o));
+      // Batch upsert — Supabase has a payload size limit, 50 keeps us safe
+      for (let i = 0; i < rows.length; i += 50) {
+        const slice = rows.slice(i, i + 50);
+        const { error } = await DB.client.from('opportunities').upsert(slice, { onConflict: 'id' });
+        if (error) throw error;
+        done += slice.length;
+        show(`Syncing opportunities... ${Math.min(i+50, rows.length)}/${rows.length}`);
+      }
+      DB._invalidateCache();
+    }
+  } catch(e) {
+    console.error('opportunities migration:', e);
+    toast('Opportunities sync failed: ' + e.message, 'error');
+    failed++;
+  }
 
   // 1. Attachments
   const atts = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
