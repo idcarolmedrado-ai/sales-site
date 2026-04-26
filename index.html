@@ -3086,7 +3086,28 @@ function renderClientTimeline(query) {
 /* Sync these JSON blobs to Supabase user_settings table via _setCloudSetting */
 function getCompletedTasks()    { try{return JSON.parse(localStorage.getItem('ea_completed_tasks')||'[]');}catch(e){return[];} }
 function saveCompletedTasks(a)  { localStorage.setItem('ea_completed_tasks',JSON.stringify(a)); _setCloudSetting && _setCloudSetting('completed_tasks', a); }
-function markTaskComplete(id)   { var d=getCompletedTasks(); if(!d.includes(id)){d.push(id);saveCompletedTasks(d);} toast('Task completed','success'); renderDashboard(); }
+function getTaskHistory()       { try{return JSON.parse(localStorage.getItem('ea_task_history')||'[]');}catch(e){return[];} }
+function saveTaskHistory(a)     { localStorage.setItem('ea_task_history',JSON.stringify(a)); _setCloudSetting && _setCloudSetting('task_history', a); }
+function _appendTaskHistory(entry) {
+  var h = getTaskHistory();
+  h.unshift(entry);
+  if (h.length > 500) h = h.slice(0, 500);
+  saveTaskHistory(h);
+}
+function markTaskComplete(id) {
+  var d = getCompletedTasks();
+  if (!d.includes(id)) { d.push(id); saveCompletedTasks(d); }
+  // Optimistic DOM removal so the row disappears instantly,
+  // before the async renderDashboard() Supabase roundtrip completes.
+  var row = document.querySelector('[data-task-id="'+id.replace(/"/g,'\\"')+'"]');
+  if (row && row.parentNode) row.parentNode.removeChild(row);
+  // Log to history (best-effort: pull label from DOM if available)
+  var label = row ? (row.getAttribute('data-task-label') || '') : '';
+  var who   = row ? (row.getAttribute('data-task-who')   || '') : '';
+  _appendTaskHistory({ id:id, label:label, who:who, completedAt:new Date().toISOString() });
+  toast('Task completed','success');
+  renderDashboard();
+}
 function clearCompletedTasks()  { localStorage.removeItem('ea_completed_tasks'); _setCloudSetting && _setCloudSetting('completed_tasks', []); renderDashboard(); }
 function getCompletedActives()  { try{return JSON.parse(localStorage.getItem('ea_completed_actives')||'[]');}catch(e){return[];} }
 function saveCompletedActives(a){ localStorage.setItem('ea_completed_actives',JSON.stringify(a)); _setCloudSetting && _setCloudSetting('completed_actives', a); }
@@ -7714,7 +7735,8 @@ async function _updateTasksWidget(opps) {
   }
   const sorted = tasks.slice().sort(function(a,b){return (b.priority||0)-(a.priority||0);});
   el.innerHTML = sorted.slice(0,10).map(function(t) {
-    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;'
+    var who = (t.firstName||'') + ' ' + (t.lastName||'');
+    return '<div data-task-id="' + esc(t.id) + '" data-task-label="' + esc(t.label||'') + '" data-task-who="' + esc(who.trim()) + '" style="display:flex;align-items:center;gap:8px;padding:8px 10px;'
       + 'border-left:3px solid ' + t.labelColor + ';background:' + t.labelColor + '12;'
       + 'border-radius:0 8px 8px 0;margin-bottom:4px">'
       + '<span style="font-size:18px;flex-shrink:0">' + t.icon + '</span>'
@@ -9290,6 +9312,433 @@ document.addEventListener("DOMContentLoaded", applyI18n);
 async function launchDemoMode() {
   DB.initLocal();
   await launchApp(false);
+}
+
+/* ══════════════════════════════════════════════════
+   PROSPECTING — data layer
+   Supabase table schema (run once in SQL editor):
+
+     create table if not exists prospects (
+       id text primary key,
+       first_name text, last_name text,
+       email text, phone text, company text,
+       persona text,        -- builders|realtors|sellers|couples|landscaping
+       source text, notes text,
+       cadence_step int default 0,
+       cadence_started_at timestamptz,
+       last_contacted_at timestamptz,
+       status text default 'active',  -- active|replied|converted|unsubscribed
+       created_at timestamptz default now()
+     );
+     alter table prospects enable row level security;
+     create policy "prospects all" on prospects for all using (true) with check (true);
+
+   Falls back to localStorage when Supabase is unavailable.
+══════════════════════════════════════════════════ */
+const PROSPECT_KEY = 'ea_prospects';
+const PERSONAS = [
+  { id:'builders',    label:'Builders / Contractors' },
+  { id:'realtors',    label:'Realtors' },
+  { id:'sellers',     label:'Home Sellers' },
+  { id:'couples',     label:'Couples 40+' },
+  { id:'landscaping', label:'Landscaping Companies' },
+];
+
+const Prospects = {
+  _localLoad() { try { return JSON.parse(localStorage.getItem(PROSPECT_KEY) || '[]'); } catch(e){ return []; } },
+  _localSave(arr) { localStorage.setItem(PROSPECT_KEY, JSON.stringify(arr)); },
+
+  _fromDB(r) {
+    return {
+      id:r.id, firstName:r.first_name||'', lastName:r.last_name||'',
+      email:r.email||'', phone:r.phone||'', company:r.company||'',
+      persona:r.persona||'', source:r.source||'', notes:r.notes||'',
+      cadenceStep:r.cadence_step||0,
+      cadenceStartedAt:r.cadence_started_at||'',
+      lastContactedAt:r.last_contacted_at||'',
+      status:r.status||'active',
+      createdAt:r.created_at||'',
+    };
+  },
+  _toDB(p) {
+    return {
+      id:p.id, first_name:p.firstName||'', last_name:p.lastName||'',
+      email:p.email||'', phone:p.phone||'', company:p.company||'',
+      persona:p.persona||'', source:p.source||'', notes:p.notes||'',
+      cadence_step:p.cadenceStep||0,
+      cadence_started_at:p.cadenceStartedAt||null,
+      last_contacted_at:p.lastContactedAt||null,
+      status:p.status||'active',
+    };
+  },
+
+  async getAll() {
+    if (_isCloudMode()) {
+      try {
+        const { data, error } = await DB.client.from('prospects').select('*').order('created_at', { ascending:false });
+        if (error) throw error;
+        const arr = (data||[]).map(r => this._fromDB(r));
+        this._localSave(arr);
+        return arr;
+      } catch(e) { console.warn('Prospects.getAll cloud miss, using local:', e.message); }
+    }
+    return this._localLoad();
+  },
+
+  async save(p) {
+    if (!p.id) p.id = uid();
+    if (!p.createdAt) p.createdAt = new Date().toISOString();
+    if (_isCloudMode()) {
+      try {
+        const row = this._toDB(p);
+        const { error } = await DB.client.from('prospects').upsert(row);
+        if (error) throw error;
+      } catch(e) { console.error('Prospects.save error:', e); toast('Saved locally — cloud sync failed','error'); }
+    }
+    const arr = this._localLoad();
+    const i = arr.findIndex(x => x.id === p.id);
+    if (i >= 0) arr[i] = p; else arr.unshift(p);
+    this._localSave(arr);
+    return p;
+  },
+
+  async delete(id) {
+    if (_isCloudMode()) {
+      try { const { error } = await DB.client.from('prospects').delete().eq('id', id); if (error) throw error; }
+      catch(e) { console.error('Prospects.delete error:', e); }
+    }
+    this._localSave(this._localLoad().filter(p => p.id !== id));
+  },
+
+  async bulkInsert(arr) {
+    let added = 0;
+    for (const p of arr) {
+      if (!p.email && !p.phone) continue; // skip rows with no way to reach them
+      await this.save(p);
+      added++;
+    }
+    return added;
+  },
+};
+
+/* ── CSV parsing — handles quoted fields with embedded commas/newlines ── */
+function _parseCSV(text) {
+  const rows = []; let row = []; let cell = ''; let inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], n = text[i+1];
+    if (inQ) {
+      if (c === '"' && n === '"') { cell += '"'; i++; }
+      else if (c === '"') inQ = false;
+      else cell += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\r') { /* skip */ }
+      else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += c;
+    }
+  }
+  if (cell.length || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(v => v && v.trim()));
+}
+
+function _csvHeaderMap(headers) {
+  const norm = headers.map(h => (h||'').toLowerCase().trim().replace(/[^a-z0-9]/g,''));
+  const find = (...alts) => { for (const a of alts) { const i = norm.indexOf(a); if (i >= 0) return i; } return -1; };
+  return {
+    firstName: find('firstname','first','fname','givenname'),
+    lastName:  find('lastname','last','lname','surname','familyname'),
+    email:     find('email','emailaddress','mail'),
+    phone:     find('phone','phonenumber','mobile','cell','tel'),
+    company:   find('company','business','organization','org'),
+    persona:   find('persona','segment','type','category'),
+    source:    find('source','leadsource','origin'),
+    notes:     find('notes','note','comment','comments'),
+  };
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER: PROSPECTING
+══════════════════════════════════════════════════ */
+window._prospectState = window._prospectState || { tab:'contacts', personaFilter:'all', personaPick:'builders' };
+
+async function renderProspecting() {
+  const el = document.getElementById('page-prospecting');
+  if (!el) return;
+  const PS = window._prospectState;
+
+  el.innerHTML =
+    '<div class="container">' +
+      '<div class="dash-hero" style="margin-bottom:20px">' +
+        '<div class="dash-hero-title">' +
+          '<span class="label">Outbound Sales</span>' +
+          '<h1 class="display">PROSPECTING</h1>' +
+          '<p class="dash-hero-date">Personas, cadences, and contact pipeline</p>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap">' +
+        _prospectTabBtn('contacts',  'Contacts') +
+        _prospectTabBtn('personas',  'Personas') +
+        _prospectTabBtn('cadences',  'Cadences') +
+        _prospectTabBtn('setup',     'Setup') +
+      '</div>' +
+      '<div id="prospectBody"></div>' +
+    '</div>';
+
+  if      (PS.tab === 'personas') _renderProspectPersonas();
+  else if (PS.tab === 'cadences') _renderProspectCadences();
+  else if (PS.tab === 'setup')    _renderProspectSetup();
+  else                            await _renderProspectContacts();
+}
+
+function _prospectTabBtn(id, label) {
+  const active = window._prospectState.tab === id;
+  return '<button onclick="window._prospectState.tab=\''+id+'\';renderProspecting()" '
+    + 'style="padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;'
+    + 'cursor:pointer;border:1px solid '+(active?'var(--gold)':'var(--ink-60)')+';'
+    + 'background:'+(active?'rgba(196,147,63,.15)':'#fff')+';'
+    + 'color:'+(active?'var(--gold)':'var(--ink-30)')+'">'+esc(label)+'</button>';
+}
+
+async function _renderProspectContacts() {
+  const body = document.getElementById('prospectBody'); if (!body) return;
+  const all  = await Prospects.getAll();
+  const PS   = window._prospectState;
+  const list = PS.personaFilter === 'all' ? all : all.filter(p => p.persona === PS.personaFilter);
+
+  const filterPills = ['all'].concat(PERSONAS.map(p => p.id)).map(id => {
+    const isAct = PS.personaFilter === id;
+    const lbl = id === 'all' ? 'All ('+all.length+')'
+      : (PERSONAS.find(p=>p.id===id).label + ' ('+all.filter(p=>p.persona===id).length+')');
+    return '<button onclick="window._prospectState.personaFilter=\''+id+'\';_renderProspectContacts()" '
+      + 'style="padding:5px 12px;font-size:11px;font-weight:700;border-radius:14px;cursor:pointer;'
+      + 'border:1px solid '+(isAct?'var(--gold)':'var(--ink-70)')+';'
+      + 'background:'+(isAct?'rgba(196,147,63,.12)':'transparent')+';'
+      + 'color:'+(isAct?'var(--gold)':'var(--ink-40)')+'">'+esc(lbl)+'</button>';
+  }).join(' ');
+
+  const personaOpts = PERSONAS.map(p => '<option value="'+p.id+'">'+esc(p.label)+'</option>').join('');
+
+  body.innerHTML =
+    '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);padding:18px;margin-bottom:16px">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">' +
+        '<strong style="flex:1;min-width:180px;font-size:14px;color:#2A2622">Add contact</strong>' +
+        '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'csvFileIn\').click()">Import CSV</button>' +
+        '<input type="file" id="csvFileIn" accept=".csv,text/csv" style="display:none" onchange="_onProspectCSV(event)">' +
+        '<button class="btn btn-ghost btn-sm" onclick="_exportProspectsCSV()">Export CSV</button>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">' +
+        '<input id="pcFirst"   placeholder="First name"  style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<input id="pcLast"    placeholder="Last name"   style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<input id="pcEmail"   placeholder="Email"  type="email" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<input id="pcPhone"   placeholder="Phone"  type="tel"   style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<input id="pcCompany" placeholder="Company"      style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<select id="pcPersona" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+          '<option value="">— Persona —</option>' + personaOpts +
+        '</select>' +
+        '<input id="pcSource"  placeholder="Source"       style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<button class="btn btn-primary btn-sm" onclick="_addProspectFromForm()" style="white-space:nowrap">+ Add</button>' +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' + filterPills + '</div>' +
+    (list.length === 0
+      ? '<div class="empty-state" style="padding:40px"><div class="icon">👥</div><p>No contacts yet. Add one above or import a CSV.</p></div>'
+      : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
+        '<table class="contact-table"><thead><tr>' +
+          '<th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Persona</th><th>Cadence</th><th>Status</th><th></th>' +
+        '</tr></thead><tbody>' +
+        list.map(p => {
+          const personaLbl = (PERSONAS.find(x => x.id === p.persona)||{}).label || '—';
+          const cadCls = p.cadenceStep > 0 ? ('cadence-step-' + Math.min(5, p.cadenceStep)) : '';
+          const cadTxt = p.cadenceStep > 0 ? ('Step '+p.cadenceStep+'/5') : 'Not enrolled';
+          return '<tr>' +
+            '<td><strong>'+esc((p.firstName||'')+' '+(p.lastName||''))+'</strong></td>' +
+            '<td>'+esc(p.email||'—')+'</td>' +
+            '<td>'+esc(p.phone||'—')+'</td>' +
+            '<td>'+esc(p.company||'—')+'</td>' +
+            '<td>'+esc(personaLbl)+'</td>' +
+            '<td>'+(cadCls?'<span class="cadence-badge '+cadCls+'">'+cadTxt+'</span>':'<span style="color:var(--ink-50);font-size:11px">'+cadTxt+'</span>')+'</td>' +
+            '<td><span style="font-size:11px;color:var(--ink-40)">'+esc(p.status||'active')+'</span></td>' +
+            '<td><button onclick="_deleteProspect(\''+esc(p.id)+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="Delete">×</button></td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table></div>'
+    );
+}
+
+async function _addProspectFromForm() {
+  const g = id => (document.getElementById(id)||{}).value || '';
+  const p = {
+    firstName: g('pcFirst').trim(),
+    lastName:  g('pcLast').trim(),
+    email:     g('pcEmail').trim(),
+    phone:     g('pcPhone').trim(),
+    company:   g('pcCompany').trim(),
+    persona:   g('pcPersona'),
+    source:    g('pcSource').trim(),
+    status:    'active',
+    cadenceStep: 0,
+  };
+  if (!p.firstName && !p.lastName && !p.email) { toast('Need at least a name or email','error'); return; }
+  if (!p.email && !p.phone)                    { toast('Need an email or phone','error');         return; }
+  await Prospects.save(p);
+  ['pcFirst','pcLast','pcEmail','pcPhone','pcCompany','pcSource'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  toast('Contact added','success');
+  _renderProspectContacts();
+}
+
+async function _deleteProspect(id) {
+  if (!confirm('Delete this contact?')) return;
+  await Prospects.delete(id);
+  toast('Deleted','success');
+  _renderProspectContacts();
+}
+
+function _onProspectCSV(ev) {
+  const f = ev.target.files && ev.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = async e => {
+    try {
+      const rows = _parseCSV(e.target.result);
+      if (rows.length < 2) { toast('CSV is empty','error'); return; }
+      const map = _csvHeaderMap(rows[0]);
+      const items = rows.slice(1).map(r => ({
+        firstName: map.firstName>=0 ? (r[map.firstName]||'').trim() : '',
+        lastName:  map.lastName >=0 ? (r[map.lastName] ||'').trim() : '',
+        email:     map.email    >=0 ? (r[map.email]    ||'').trim() : '',
+        phone:     map.phone    >=0 ? (r[map.phone]    ||'').trim() : '',
+        company:   map.company  >=0 ? (r[map.company]  ||'').trim() : '',
+        persona:   map.persona  >=0 ? (r[map.persona]  ||'').trim().toLowerCase() : '',
+        source:    map.source   >=0 ? (r[map.source]   ||'').trim() : 'csv-import',
+        notes:     map.notes    >=0 ? (r[map.notes]    ||'').trim() : '',
+        status:    'active', cadenceStep:0,
+      }));
+      const added = await Prospects.bulkInsert(items);
+      toast('Imported '+added+' contact'+(added===1?'':'s'),'success');
+      ev.target.value = '';
+      _renderProspectContacts();
+    } catch(err) { console.error(err); toast('CSV parse error: '+err.message,'error'); }
+  };
+  r.readAsText(f);
+}
+
+async function _exportProspectsCSV() {
+  const all = await Prospects.getAll();
+  if (!all.length) { toast('No contacts to export','error'); return; }
+  const head = ['First Name','Last Name','Email','Phone','Company','Persona','Source','Notes','Cadence Step','Status','Created'];
+  const q = v => '"' + String(v||'').replace(/"/g,'""') + '"';
+  const lines = [head.map(q).join(',')];
+  all.forEach(p => lines.push([
+    p.firstName,p.lastName,p.email,p.phone,p.company,p.persona,p.source,p.notes,p.cadenceStep,p.status,p.createdAt
+  ].map(q).join(',')));
+  const blob = new Blob([lines.join('\n')], { type:'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'prospects-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+/* ── Personas / Cadences placeholders (real content lands in PR B) ── */
+function _renderProspectPersonas() {
+  const body = document.getElementById('prospectBody'); if (!body) return;
+  body.innerHTML = PERSONAS.map(p =>
+    '<div class="persona-card">' +
+      '<h4>'+esc(p.label)+'</h4>' +
+      '<div class="subtitle">Needs · Pains · Desires · Priorities · Worldview</div>' +
+      '<p style="color:var(--ink-40);font-size:13px;margin:0">Persona research lands in the next pass — we want your real customer notes feeding this rather than generic content.</p>' +
+    '</div>'
+  ).join('');
+}
+
+function _renderProspectCadences() {
+  const body = document.getElementById('prospectBody'); if (!body) return;
+  const PS = window._prospectState;
+  const tabs = PERSONAS.map(p =>
+    '<button onclick="window._prospectState.personaPick=\''+p.id+'\';_renderProspectCadences()" '
+      + 'style="padding:6px 12px;font-size:11px;font-weight:700;border-radius:14px;cursor:pointer;'
+      + 'border:1px solid '+(PS.personaPick===p.id?'var(--gold)':'var(--ink-70)')+';'
+      + 'background:'+(PS.personaPick===p.id?'rgba(196,147,63,.12)':'transparent')+';'
+      + 'color:'+(PS.personaPick===p.id?'var(--gold)':'var(--ink-40)')+'">'+esc(p.label)+'</button>'
+  ).join(' ');
+  const persona = PERSONAS.find(p => p.id === PS.personaPick) || PERSONAS[0];
+  body.innerHTML =
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+tabs+'</div>' +
+    '<div class="persona-card">' +
+      '<h4>'+esc(persona.label)+' — 5-step cadence</h4>' +
+      '<div class="subtitle">Subject as a question · &lt;150 words · FOMO close · clear CTA</div>' +
+      [1,2,3,4,5].map(n =>
+        '<div class="cadence-email">' +
+          '<div class="step">Step '+n+'</div>' +
+          '<div class="subj" style="color:var(--ink-50)">Subject — drafted in PR B</div>' +
+          '<div class="body" style="color:var(--ink-50)">Email body using Corporate Visions / SPIN / mirroring / positive selling / neuroscience methods. Drafted in PR B once we have your real customer notes.</div>' +
+          '<div class="method">Method placeholder</div>' +
+        '</div>'
+      ).join('') +
+    '</div>';
+}
+
+function _renderProspectSetup() {
+  const body = document.getElementById('prospectBody'); if (!body) return;
+  const k = (localStorage.getItem('ea_resend_key')||'').trim();
+  const masked = k ? (k.slice(0,4) + '••••••••' + k.slice(-4)) : '';
+  body.innerHTML =
+    '<div class="persona-card">' +
+      '<h4>Resend integration</h4>' +
+      '<div class="subtitle">Used to send cadence emails (real send arrives in PR B via Supabase Edge Function)</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">' +
+        '<input id="rsKey" type="password" placeholder="re_xxxxx" value="'+esc(k)+'" style="flex:1;min-width:240px;padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<button class="btn btn-primary btn-sm" onclick="_saveResendKey()">Save</button>' +
+      '</div>' +
+      (masked ? '<p style="font-size:11px;color:var(--ink-40);margin:0">Stored locally. Currently active key: '+esc(masked)+'</p>' : '<p style="font-size:11px;color:var(--ink-40);margin:0">No key set.</p>') +
+    '</div>' +
+    '<div class="persona-card">' +
+      '<h4>Supabase schema</h4>' +
+      '<div class="subtitle">Run once in Supabase SQL editor for cloud sync. Without it, contacts stay local.</div>' +
+      '<pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:11px;overflow:auto;color:var(--ink-20);margin:0">create table if not exists prospects (\n  id text primary key,\n  first_name text, last_name text,\n  email text, phone text, company text,\n  persona text, source text, notes text,\n  cadence_step int default 0,\n  cadence_started_at timestamptz,\n  last_contacted_at timestamptz,\n  status text default \'active\',\n  created_at timestamptz default now()\n);\nalter table prospects enable row level security;\ncreate policy "prospects all" on prospects for all using (true) with check (true);</pre>' +
+    '</div>';
+}
+
+function _saveResendKey() {
+  const v = (document.getElementById('rsKey')||{}).value || '';
+  localStorage.setItem('ea_resend_key', v.trim());
+  toast('Saved locally','success');
+  _renderProspectSetup();
+}
+
+/* ══════════════════════════════════════════════════
+   RENDER: HISTORY — completed task log
+══════════════════════════════════════════════════ */
+function renderHistory() {
+  const el = document.getElementById('page-history'); if (!el) return;
+  const hist = getTaskHistory();
+
+  el.innerHTML =
+    '<div class="container">' +
+      '<div class="dash-hero" style="margin-bottom:20px">' +
+        '<div class="dash-hero-title">' +
+          '<span class="label">Activity Log</span>' +
+          '<h1 class="display">HISTORY</h1>' +
+          '<p class="dash-hero-date">Completed tasks &middot; '+hist.length+' entries</p>' +
+        '</div>' +
+      '</div>' +
+      (hist.length === 0
+        ? '<div class="empty-state" style="padding:60px"><div class="icon">📋</div><p>No completed tasks yet. Mark tasks Done from the dashboard and they will show up here.</p></div>'
+        : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
+          '<table class="contact-table"><thead><tr>' +
+            '<th>When</th><th>Who</th><th>Task</th>' +
+          '</tr></thead><tbody>' +
+          hist.map(h => {
+            const d = h.completedAt ? new Date(h.completedAt) : null;
+            const when = d ? (d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})) : '—';
+            return '<tr>' +
+              '<td style="white-space:nowrap"><span style="font-size:11px;color:var(--ink-40)">'+esc(when)+'</span></td>' +
+              '<td><strong>'+esc(h.who||'—')+'</strong></td>' +
+              '<td>'+esc(h.label||h.id||'')+'</td>' +
+            '</tr>';
+          }).join('') +
+          '</tbody></table></div>'
+      ) +
+    '</div>';
 }
 
 /* ══════════════════════════════════════════════════
