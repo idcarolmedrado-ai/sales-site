@@ -46,14 +46,13 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: corsHeaders });
 }
 
+// Tighter list — first hits give us emails ~70% of the time. Trying 8 paths
+// in parallel was blowing the Supabase free-tier worker resource limit, so
+// we now go serial with early-exit when emails are found.
 const COMMON_PATHS = [
   "/contact",
   "/contact-us",
-  "/contacts",
   "/about",
-  "/about-us",
-  "/team",
-  "/our-team",
   "/", // homepage last as fallback
 ];
 
@@ -86,7 +85,10 @@ function extractDomain(url: string): string | null {
   }
 }
 
-async function fetchWithTimeout(url: string, ms = 8000): Promise<string | null> {
+// Tightened: 4s timeout (down from 8s), 100KB cap (down from 500KB).
+// The vast majority of contact pages are <30KB — large pages are usually
+// JS-heavy SPAs where scraping won't help anyway.
+async function fetchWithTimeout(url: string, ms = 4000): Promise<string | null> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), ms);
   try {
@@ -94,19 +96,32 @@ async function fetchWithTimeout(url: string, ms = 8000): Promise<string | null> 
       signal: ctl.signal,
       redirect: "follow",
       headers: {
-        // Some sites block bare fetch UAs. Pretend to be a normal browser.
-        "User-Agent": "Mozilla/5.0 (compatible; LeadEnricher/1.0; +https://supabase.com/functions)",
-        "Accept": "text/html,application/xhtml+xml,*/*",
+        "User-Agent": "Mozilla/5.0 (compatible; LeadEnricher/1.0)",
+        "Accept": "text/html,*/*",
       },
     });
     if (!res.ok) return null;
     const ct = res.headers.get("content-type") || "";
-    // Only parse text-ish responses; skip PDFs, images, etc.
-    if (!ct.includes("text") && !ct.includes("xml") && !ct.includes("json")) return null;
-    const text = await res.text();
-    // Skip giant pages — most contact pages are small
-    if (text.length > 500_000) return text.slice(0, 500_000);
-    return text;
+    if (!ct.includes("text") && !ct.includes("xml")) return null;
+    // Stream-read up to 100KB then bail. Avoids loading 5MB pages into memory.
+    const reader = res.body?.getReader();
+    if (!reader) return null;
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    const MAX_BYTES = 100_000;
+    while (total < MAX_BYTES) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value) {
+        chunks.push(value);
+        total += value.length;
+      }
+    }
+    try { await reader.cancel(); } catch { /* ignore */ }
+    const merged = new Uint8Array(total);
+    let off = 0;
+    for (const c of chunks) { merged.set(c, off); off += c.length; }
+    return new TextDecoder("utf-8", { fatal: false }).decode(merged);
   } catch {
     return null;
   } finally {
@@ -211,21 +226,25 @@ serve(async (req: Request): Promise<Response> => {
     ? website.replace(/\/+$/, "")
     : "https://" + domain;
 
-  // Fetch the candidate pages in parallel
-  const urls  = COMMON_PATHS.map(p => baseUrl + p);
-  const htmls = await Promise.all(urls.map(u => fetchWithTimeout(u)));
-
-  // Aggregate scraped emails per page
+  // Fetch pages SERIALLY with early-exit. Stops at the first page that
+  // yields any emails — keeps the function well under Supabase's free-tier
+  // worker resource limit. Order matters: high-yield paths (/contact) first.
+  const urls = COMMON_PATHS.map(p => baseUrl + p);
   const allFound = new Set<string>();
   const sources: Record<string, string[]> = {};
   let pagesScraped = 0;
-  for (let i = 0; i < urls.length; i++) {
-    const html = htmls[i];
+  for (const u of urls) {
+    const html = await fetchWithTimeout(u);
     if (!html) continue;
     pagesScraped++;
     const emails = extractEmails(html, domain);
-    if (emails.size) sources[urls[i]] = Array.from(emails);
-    for (const e of emails) allFound.add(e);
+    if (emails.size) {
+      sources[u] = Array.from(emails);
+      for (const e of emails) allFound.add(e);
+      // Early exit — we got what we came for. Don't burn compute on /about
+      // and homepage if /contact already gave us info@.
+      break;
+    }
   }
 
   const found    = Array.from(allFound);
