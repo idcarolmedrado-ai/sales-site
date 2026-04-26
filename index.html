@@ -10015,6 +10015,7 @@ function _csvHeaderMap(headers) {
     persona:   find('persona','segment','type','category'),
     source:    find('source','leadsource','origin'),
     notes:     find('notes','note','comment','comments'),
+    website:   find('website','url','web','siteurl'),
     state:     find('state','st','statecode'),
     region:    find('region','area','territory'),
   };
@@ -10204,7 +10205,7 @@ async function _renderProspectToday() {
     '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:hidden;margin-bottom:14px">' +
       '<div style="padding:12px 14px;background:rgba(196,147,63,.08);border-bottom:1px solid var(--ink-70);font-size:13px;font-weight:800;color:var(--gold)">REPLIED — FOLLOW UP <span style="font-weight:600;color:var(--ink-50)">— '+replied.length+'</span></div>' +
       (replied.length === 0 ? sectionEmpty : replied.map(p => renderRow(p,
-        '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();convertToOpp(\''+esc(p.id)+'\')" style="padding:4px 10px;font-size:11px">Convert →</button>'
+        '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markReplied(\''+esc(p.id)+'\')" style="padding:4px 10px;font-size:11px">Handle reply →</button>'
       )).join('')) +
     '</div>' +
 
@@ -10326,7 +10327,9 @@ function _renderProspectFind() {
             '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
             '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
             '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-            '<td><button onclick="_addPlacesResult('+i+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>' +
+            (r._added
+              ? '<td><span style="font-size:11px;color:var(--ink-40);padding:4px 10px">Added ✓</span></td>'
+              : '<td><button onclick="_addPlacesResult('+i+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>') +
           '</tr>'
         ).join('') +
         '</tbody></table></div>' +
@@ -10652,7 +10655,7 @@ function _showEnrichModal(p, state) {
 
   let content = '';
   if (state.loading) {
-    content = '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Scraping '+esc(p.website)+'…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Fetching contact, about, team pages in parallel.</div></div>';
+    content = '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Scraping '+esc(p.website)+'…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Checking /contact, /about, and homepage for emails.</div></div>';
   } else if (state.error) {
     content = '<div style="padding:24px;color:var(--red)"><div style="font-weight:800;margin-bottom:8px">Enrichment failed</div><div style="font-size:12px;font-family:monospace">'+esc(state.error)+'</div></div>';
   } else if (state.result) {
@@ -10752,6 +10755,7 @@ async function convertToOpp(id) {
   p.status         = 'converted';
   p.convertedOppId = opp.id;
   p.cadenceStep    = 0;
+  p.archivedAt     = new Date().toISOString();
   await Prospects.save(p);
   _appendCadenceLog({
     prospectId: p.id,
@@ -10779,8 +10783,12 @@ async function _showActivityTimeline(id) {
     const when = e.queuedAt || e.sentAt || e.repliedAt || e.convertedAt;
     let lbl = e.status;
     if (e.status === 'sent-manual')   lbl = 'Step ' + e.step + ' marked sent';
+    if (e.status === 'sent-resend')   lbl = 'Step ' + e.step + ' sent via Resend';
     if (e.status === 'replied')       lbl = 'Replied — cadence paused';
+    if (e.status === 'replied-keep')  lbl = 'Reply logged — cadence continues';
     if (e.status === 'converted')     lbl = 'Converted to opportunity';
+    if (e.status === 're-engaged')    lbl = 'Re-engaged — cadence restarted';
+    if (e.status === 'opted-out')     lbl = 'Opted out — archived';
     if ((e.status||'').includes('queued') || (e.status||'').startsWith('pending')) lbl = 'Step ' + e.step + ' queued';
     events.push({ when, label: lbl, detail: e.subject||'', color: e.status==='replied'?'var(--gold)' : e.status==='converted'?'#4472CA' : '#2A8B5E' });
   });
@@ -10995,6 +11003,7 @@ async function _renderProspectContacts() {
         '<select id="pcState" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
           '<option value="">— State —</option>' + US_STATES.map(s => '<option value="'+s[0]+'">'+s[0]+' · '+esc(s[1])+'</option>').join('') +
         '</select>' +
+        '<input id="pcWebsite" placeholder="Website (for Find Email)" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
         '<input id="pcSource"  placeholder="Source"       style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
         '<button class="btn btn-primary btn-sm" onclick="_addProspectFromForm()" style="white-space:nowrap">+ Add</button>' +
       '</div>' +
@@ -11080,9 +11089,13 @@ async function _renderProspectContacts() {
 function _toggleAllSelected(checked) {
   const PS = window._prospectState;
   if (!checked) { PS.selected = {}; _renderProspectContacts(); return; }
-  // Re-derive the visible list and select all of them
-  Prospects.getAll().then(all => {
-    let list = PS.personaFilter === 'all' ? all : all.filter(p => p.persona === PS.personaFilter);
+  const _ARCHIVED_STATUSES = ['opted-out','completed','converted'];
+  Prospects.getAll().then(allRaw => {
+    let list = allRaw.filter(p => !_ARCHIVED_STATUSES.includes(p.status));
+    list = PS.personaFilter === 'all' ? list : list.filter(p => p.persona === PS.personaFilter);
+    if (PS.regionFilter && PS.regionFilter !== 'all') {
+      list = list.filter(p => (p.region || _stateRegion(p.state||'')) === PS.regionFilter);
+    }
     if (PS.searchQ) list = list.filter(p => _matchesSearch(p, PS.searchQ));
     PS.selected = {};
     list.forEach(p => { PS.selected[p.id] = true; });
@@ -11099,6 +11112,7 @@ async function _addProspectFromForm() {
     email:     g('pcEmail').trim(),
     phone:     g('pcPhone').trim(),
     company:   g('pcCompany').trim(),
+    website:   g('pcWebsite').trim(),
     persona:   g('pcPersona'),
     state:     state,
     region:    state ? _stateRegion(state) : '',
@@ -11109,7 +11123,7 @@ async function _addProspectFromForm() {
   if (!p.firstName && !p.lastName && !p.email) { toast('Need at least a name or email','error'); return; }
   if (!p.email && !p.phone)                    { toast('Need an email or phone','error');         return; }
   await Prospects.save(p);
-  ['pcFirst','pcLast','pcEmail','pcPhone','pcCompany','pcSource'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  ['pcFirst','pcLast','pcEmail','pcPhone','pcCompany','pcWebsite','pcSource'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
   const sel = document.getElementById('pcState');     if (sel) sel.value = '';
   const per = document.getElementById('pcPersona');   if (per) per.value = '';
   toast('Contact added','success');
@@ -11141,6 +11155,7 @@ function _onProspectCSV(ev) {
           email:     map.email    >=0 ? (r[map.email]    ||'').trim() : '',
           phone:     map.phone    >=0 ? (r[map.phone]    ||'').trim() : '',
           company:   map.company  >=0 ? (r[map.company]  ||'').trim() : '',
+          website:   map.website  >=0 ? (r[map.website]  ||'').trim() : '',
           persona:   map.persona  >=0 ? (r[map.persona]  ||'').trim().toLowerCase() : '',
           source:    map.source   >=0 ? (r[map.source]   ||'').trim() : 'csv-import',
           notes:     map.notes    >=0 ? (r[map.notes]    ||'').trim() : '',
@@ -11160,11 +11175,11 @@ function _onProspectCSV(ev) {
 async function _exportProspectsCSV() {
   const all = await Prospects.getAll();
   if (!all.length) { toast('No contacts to export','error'); return; }
-  const head = ['First Name','Last Name','Email','Phone','Company','Persona','Source','Notes','Cadence Step','Status','Created'];
+  const head = ['First Name','Last Name','Email','Phone','Company','Website','Persona','State','Region','Source','Notes','Cadence Step','Status','Last Reply Subject','Created'];
   const q = v => '"' + String(v||'').replace(/"/g,'""') + '"';
   const lines = [head.map(q).join(',')];
   all.forEach(p => lines.push([
-    p.firstName,p.lastName,p.email,p.phone,p.company,p.persona,p.source,p.notes,p.cadenceStep,p.status,p.createdAt
+    p.firstName,p.lastName,p.email,p.phone,p.company,p.website,p.persona,p.state,p.region,p.source,p.notes,p.cadenceStep,p.status,p.lastReplySubject,p.createdAt
   ].map(q).join(',')));
   const blob = new Blob([lines.join('\n')], { type:'text/csv' });
   const url  = URL.createObjectURL(blob);
@@ -11738,8 +11753,9 @@ async function unenrollProspect(id) {
   const all = await Prospects.getAll();
   const p   = all.find(x => x.id === id);
   if (!p) return;
-  p.cadenceStep = 0;
+  p.cadenceStep      = 0;
   p.cadenceStartedAt = '';
+  p.lastContactedAt  = '';
   await Prospects.save(p);
   toast('Removed from cadence', 'success');
   renderProspecting();
@@ -11766,19 +11782,6 @@ async function sendCadenceStep(id) {
   if (cloud && key)       { status = 'ready-to-send';        detail = 'Click "Send via Resend" to fire the Edge Function. Or "Mark sent" if delivered another way.'; }
   else if (cloud && !key) { status = 'no-key';               detail = 'No Resend API key set. Add one in Setup, or click "Mark sent" to log this step manually.'; }
   else if (!cloud)        { status = 'not-cloud';            detail = 'Demo mode — Resend send needs cloud (Supabase) mode. Use "Mark sent" to log manually.'; }
-
-  _appendCadenceLog({
-    prospectId: p.id,
-    name:      ((p.firstName||'') + ' ' + (p.lastName||'')).trim(),
-    email:     p.email,
-    persona:   p.persona,
-    step:      p.cadenceStep,
-    method:    tmpl.method,
-    subject:   subject,
-    status:    status,
-    detail:    detail,
-    queuedAt:  new Date().toISOString(),
-  });
 
   _showCadencePreview(p, tmpl, subject, body, status, detail);
 }
@@ -11863,9 +11866,15 @@ async function markStepSent(id) {
     sentAt:    new Date().toISOString(),
   });
   p.lastContactedAt = new Date().toISOString();
-  if (p.cadenceStep < 5) p.cadenceStep += 1; else p.status = 'completed';
+  if (p.cadenceStep < 5) {
+    p.cadenceStep += 1;
+  } else {
+    p.status = 'completed';
+    p.archivedAt = new Date().toISOString();
+  }
   await Prospects.save(p);
-  toast('Marked sent — advanced to step ' + (p.cadenceStep > 5 ? 5 : p.cadenceStep), 'success');
+  const stepMsg = p.status === 'completed' ? 'cadence complete (5/5)' : 'advanced to step ' + p.cadenceStep;
+  toast('Marked sent — ' + stepMsg, 'success');
   const overlay = document.getElementById('cadenceOverlay'); if (overlay) overlay.remove();
   renderProspecting();
 }
