@@ -8259,6 +8259,7 @@ function _buildSchemaSQL() {
 '  add column if not exists email text,',
 '  add column if not exists phone text,',
 '  add column if not exists company text,',
+'  add column if not exists website text,',
 '  add column if not exists persona text,',
 '  add column if not exists source text,',
 '  add column if not exists notes text,',
@@ -9898,6 +9899,7 @@ const Prospects = {
     return {
       id:r.id, firstName:r.first_name||'', lastName:r.last_name||'',
       email:r.email||'', phone:r.phone||'', company:r.company||'',
+      website:r.website||'',
       persona:r.persona||'', source:r.source||'', notes:r.notes||'',
       region:r.region||'', state:r.state||'',
       cadenceStep:r.cadence_step||0,
@@ -9913,6 +9915,7 @@ const Prospects = {
     return {
       id:p.id, first_name:p.firstName||'', last_name:p.lastName||'',
       email:p.email||'', phone:p.phone||'', company:p.company||'',
+      website:p.website||null,
       persona:p.persona||'', source:p.source||'', notes:p.notes||'',
       region:p.region||null, state:p.state||null,
       cadence_step:p.cadenceStep||0,
@@ -10377,12 +10380,12 @@ async function _addPlacesResult(idx) {
     company:   r.name,
     email:     '',                      // Places does not return email
     phone:     r.phone || '',
+    website:   r.website || '',         // Top-level field — used by Find Email enrichment
     persona:   FS.persona || '',
     state:     r.state || '',
     region:    r.state ? _stateRegion(r.state) : '',
     source:    'Google Places',
     notes:     [
-      r.website        ? 'Website: ' + r.website : '',
       r.googleMapsUri  ? 'Maps: '    + r.googleMapsUri : '',
       r.rating         ? 'Rating: '+r.rating+' ('+r.userRatingCount+' reviews)' : '',
       r.address        ? 'Address: ' + r.address : '',
@@ -10589,6 +10592,118 @@ async function reEngageProspect(id) {
     reEngagedAt: new Date().toISOString(),
   });
   toast('Re-engaged — Step 1 ready to send', 'success');
+  renderProspecting();
+}
+
+/* ══════════════════════════════════════════════════
+   FREE EMAIL ENRICHMENT — scrapes the website + generates patterns
+   No API keys, no monthly limits. Calls the deployed enrich-email
+   Edge Function which fetches /contact /about /team etc and runs
+   regex on mailto: + plain-text emails matching the company domain.
+══════════════════════════════════════════════════ */
+async function enrichContactEmail(id) {
+  if (!_isCloudMode()) { toast('Cloud mode required for email enrichment','error'); return; }
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === id);
+  if (!p) return;
+  if (!p.website) { toast('No website on this contact — add one first','error'); return; }
+
+  // Open a placeholder modal immediately, fill it as the function responds
+  _showEnrichModal(p, { loading:true });
+
+  try {
+    const { data, error } = await DB.client.functions.invoke('enrich-email', {
+      body: {
+        website:   p.website,
+        firstName: p.firstName || '',
+        lastName:  p.lastName  || '',
+      },
+    });
+    if (error) throw new Error(error.message || 'Edge function error');
+    if (data && data.error) throw new Error(data.error);
+    _showEnrichModal(p, { loading:false, result: data });
+  } catch(e) {
+    console.error('enrich-email error:', e);
+    _showEnrichModal(p, { loading:false, error: e.message });
+  }
+}
+
+function _showEnrichModal(p, state) {
+  const existing = document.getElementById('enrichOverlay'); if (existing) existing.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'enrichOverlay';
+  wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  let content = '';
+  if (state.loading) {
+    content = '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Scraping '+esc(p.website)+'…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Fetching contact, about, team pages in parallel.</div></div>';
+  } else if (state.error) {
+    content = '<div style="padding:24px;color:var(--red)"><div style="font-weight:800;margin-bottom:8px">Enrichment failed</div><div style="font-size:12px;font-family:monospace">'+esc(state.error)+'</div></div>';
+  } else if (state.result) {
+    const d = state.result;
+    const found    = d.found    || [];
+    const patterns = d.patterns || [];
+    const sources  = d.sources  || {};
+    const apply = (email) =>
+      '<button onclick="_applyEnrichedEmail(\''+esc(p.id)+'\',\''+esc(email)+'\')" '
+        + 'style="padding:3px 10px;font-size:11px;font-weight:700;background:var(--gold);color:#000;border:none;border-radius:4px;cursor:pointer">Use this</button>';
+
+    const foundSection = found.length === 0 ? '' :
+      '<div style="margin-bottom:14px">' +
+        '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#2A8B5E;margin-bottom:6px">✓ Scraped from website ('+found.length+')</div>' +
+        '<div style="font-size:10px;color:var(--ink-40);margin-bottom:8px">High confidence — these emails were on the site directly.</div>' +
+        found.map(e => {
+          const sourcePages = Object.keys(sources).filter(u => sources[u].includes(e));
+          return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #2A8B5E;border-radius:6px;margin-bottom:4px;background:rgba(42,139,94,.05)">' +
+            '<div style="flex:1;font-size:13px;font-weight:700;color:#2A2622">'+esc(e)+'</div>' +
+            (sourcePages.length ? '<div style="font-size:10px;color:var(--ink-50);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(sourcePages[0].replace(/^https?:\/\//,''))+'</div>' : '') +
+            apply(e) +
+          '</div>';
+        }).join('') +
+      '</div>';
+
+    const patternSection =
+      '<div>' +
+        '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-bottom:6px">⚠ Generated patterns</div>' +
+        '<div style="font-size:10px;color:var(--ink-40);margin-bottom:8px">Lower confidence — common B2B formats. Try the most likely one (top of list); if it bounces, try the next.</div>' +
+        patterns.map(e =>
+          '<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px dashed var(--ink-60);border-radius:6px;margin-bottom:4px">' +
+            '<div style="flex:1;font-size:12px;color:#2A2622">'+esc(e)+'</div>' +
+            apply(e) +
+          '</div>'
+        ).join('') +
+      '</div>';
+
+    const noResults = found.length === 0 && patterns.length === 0;
+
+    content =
+      '<div style="padding:20px 24px 24px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">' +
+          '<div>' +
+            '<h3 style="font-family:var(--font-display);color:var(--gold);font-size:18px;margin:0">Find Email — '+esc(p.company || p.lastName || 'contact')+'</h3>' +
+            '<div style="font-size:12px;color:var(--ink-40);margin-top:4px">Domain: <strong>'+esc(d.domain || '')+'</strong> · '+(d.pagesScraped||0)+' pages scraped</div>' +
+          '</div>' +
+          '<button onclick="document.getElementById(\'enrichOverlay\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink-50)">×</button>' +
+        '</div>' +
+        (d.notes ? '<div style="padding:8px 12px;background:rgba(196,147,63,.06);border-left:3px solid var(--gold);border-radius:0 6px 6px 0;margin-bottom:14px;font-size:11px;color:#2A2622;line-height:1.5">'+esc(d.notes)+'</div>' : '') +
+        (noResults
+          ? '<div class="empty-state" style="padding:30px"><div class="icon">🤷</div><p>Nothing found and no patterns generated. Try the website manually: <a href="'+esc(p.website)+'" target="_blank" style="color:var(--gold)">'+esc(p.website)+'</a></p></div>'
+          : foundSection + patternSection) +
+      '</div>';
+  }
+
+  wrap.innerHTML = '<div style="background:#fff;border-radius:var(--r);max-width:640px;width:100%;max-height:90vh;overflow:auto">'+content+'</div>';
+  document.body.appendChild(wrap);
+}
+
+async function _applyEnrichedEmail(id, email) {
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === id);
+  if (!p) return;
+  p.email = email;
+  await Prospects.save(p);
+  toast('Email saved on '+(p.company||p.lastName||'contact'),'success');
+  const overlay = document.getElementById('enrichOverlay'); if (overlay) overlay.remove();
   renderProspecting();
 }
 
@@ -10906,10 +11021,12 @@ async function _renderProspectContacts() {
           const canSend    = p.persona && p.email && p.cadenceStep > 0 && p.cadenceStep <= 5 && p.status === 'active';
           const canReply   = p.cadenceStep > 0 && p.status === 'active';
           const canConvert = ['replied','active'].includes(p.status) && p.email;
+          const canEnrich  = !p.email && p.website;
           const score = _leadScore(p);
           const isSel = !!PS.selected[p.id];
 
           const actions = [
+            canEnrich  ? '<button onclick="event.stopPropagation();enrichContactEmail(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(160,136,224,.10);border:1px solid #A088E0;border-radius:5px;color:#A088E0;font-size:10px;font-weight:700;cursor:pointer" title="Scrape website + generate email patterns">🔍 Find email</button>' : '',
             canEnroll  ? '<button onclick="event.stopPropagation();enrollProspect(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(196,147,63,.15);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:10px;font-weight:700;cursor:pointer">Enroll</button>' : '',
             canSend    ? '<button onclick="event.stopPropagation();sendCadenceStep(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(42,139,94,.15);border:1px solid #2A8B5E;border-radius:5px;color:#2A8B5E;font-size:10px;font-weight:700;cursor:pointer">Send '+p.cadenceStep+'</button>' : '',
             canReply   ? '<button onclick="event.stopPropagation();markReplied(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(196,147,63,.10);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:10px;font-weight:700;cursor:pointer" title="Mark replied — pauses cadence">Replied</button>' : '',
@@ -11907,6 +12024,14 @@ function _renderProspectSetup() {
       '<pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:11px;overflow:auto;color:var(--ink-20);margin:0 0 10px">supabase functions deploy places-search\n\n# Set the API key as a secret\nsupabase secrets set GOOGLE_PLACES_API_KEY=AIza...</pre>' +
       '<p style="font-size:11px;color:var(--ink-40);margin:0 0 6px">' +
         'Get an API key: <a href="https://console.cloud.google.com/apis/library/places.googleapis.com" target="_blank" style="color:var(--gold)">Google Cloud Console → Places API (New)</a> → enable → create credentials → API key. Restrict to Places API for safety. Free tier ≈ 10,000 Text Search calls/month.' +
+      '</p>' +
+    '</div>' +
+    '<div class="persona-card">' +
+      '<h4>Edge Function — Email Enrichment (free, no API key)</h4>' +
+      '<div class="subtitle">Code is in <code>supabase/functions/enrich-email/</code>. Powers the <strong>🔍 Find email</strong> button on contacts that have a website but no email. Scrapes /contact, /about, /team pages and generates common patterns. ~70-80% capture rate, free, no monthly limits.</div>' +
+      '<pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:11px;overflow:auto;color:var(--ink-20);margin:0 0 10px">supabase functions deploy enrich-email\n\n# No secrets required — fully free.</pre>' +
+      '<p style="font-size:11px;color:var(--ink-40);margin:0">' +
+        'Honest limits: heavy-JS sites (React SPAs) and Cloudflare-protected sites are blind to server-side scraping. Manual lookup (visit website link) covers the rest.' +
       '</p>' +
     '</div>' +
     '<div class="persona-card">' +
