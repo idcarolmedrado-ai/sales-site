@@ -867,6 +867,44 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
 .pagination button:disabled { opacity:.3;cursor:default; }
 .pagination .page-info { font-size:11px;color:var(--ink-40);padding:0 8px; }
 
+/* ── Prospecting module ── */
+.prosp-tabs { display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap; }
+.prosp-tab { padding:8px 16px;border-radius:8px;border:1px solid var(--ink-60);background:#fff;
+  color:var(--ink-20);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body); }
+.prosp-tab:hover { border-color:var(--gold);color:var(--gold); }
+.prosp-tab.active { background:var(--gold);color:#fff;border-color:var(--gold); }
+.persona-card { background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);padding:20px;margin-bottom:16px;
+  box-shadow:0 1px 4px rgba(0,0,0,.04); }
+.persona-card h4 { font-family:var(--font-display);font-size:20px;color:var(--gold);font-weight:800;margin-bottom:4px; }
+.persona-card .subtitle { font-size:12px;color:var(--ink-40);margin-bottom:12px; }
+.persona-grid { display:grid;grid-template-columns:repeat(5,1fr);gap:10px;font-size:11px; }
+.persona-col h5 { font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);
+  margin-bottom:6px;padding-bottom:4px;border-bottom:2px solid var(--gold); }
+.persona-col li { margin-bottom:3px;color:#2A2622;line-height:1.4; }
+.msg-card { background:rgba(184,135,47,.05);border:1px solid rgba(184,135,47,.2);border-radius:var(--r);padding:16px;margin-bottom:12px; }
+.msg-card h5 { color:var(--gold);font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px; }
+.msg-card p { font-size:13px;color:#2A2622;line-height:1.6; }
+.cadence-email { background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);padding:16px;margin-bottom:10px; }
+.cadence-email .step { font-size:10px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px; }
+.cadence-email .subj { font-size:14px;font-weight:700;color:#2A2622;margin-bottom:6px; }
+.cadence-email .body { font-size:13px;color:#2A2622;line-height:1.6;white-space:pre-line; }
+.cadence-email .method { font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;
+  margin-top:8px;padding-top:6px;border-top:1px solid var(--ink-70); }
+.contact-table { width:100%;border-collapse:collapse;font-size:13px; }
+.contact-table th { padding:8px 10px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--ink-20);border-bottom:2px solid var(--ink-60);white-space:nowrap; }
+.contact-table td { padding:8px 10px;border-bottom:1px solid var(--ink-70);color:#2A2622; }
+.contact-table tr:hover td { background:rgba(184,135,47,.04); }
+.cadence-badge { font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;white-space:nowrap; }
+.cadence-step-1 { background:rgba(224,82,82,.12);color:var(--red); }
+.cadence-step-2 { background:rgba(196,147,63,.12);color:var(--gold); }
+.cadence-step-3 { background:rgba(68,114,202,.12);color:var(--blue); }
+.cadence-step-4 { background:rgba(160,136,224,.12);color:var(--purple); }
+.cadence-step-5 { background:rgba(76,175,125,.12);color:var(--green); }
+@media(max-width:768px) {
+  .persona-grid { grid-template-columns:1fr 1fr; }
+}
+
 /* ── Print improvements ── */
 @media print {
   .pipe-card, .data-card { break-inside:avoid; }
@@ -997,6 +1035,10 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
     <button class="nav-tab" onclick="navigate('calendar')" data-page="calendar">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="12" rx="1.5"/><path d="M5 1v4M11 1v4M1 8h14"/><circle cx="5" cy="11" r="1" fill="currentColor"/></svg>
       <span>Calendar</span>
+    </button>
+    <button class="nav-tab" onclick="navigate('prospecting')" data-page="prospecting">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1a4 4 0 100 8 4 4 0 000-8zM14 15c0-2.5-2.7-4-6-4s-6 1.5-6 4"/><path d="M12 4l2 2-2 2" stroke-width="1.8"/></svg>
+      <span>Prospecting</span>
     </button>
         <button class="nav-tab" onclick="navigate('analytics')" data-page="analytics">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="1,11 5,6 9,8 15,2"/><rect x="1" y="12" width="2" height="3"/><rect x="5" y="9" width="2" height="6"/><rect x="9" y="7" width="2" height="8"/><rect x="13" y="4" width="2" height="11"/></svg>
@@ -1252,6 +1294,8 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
 
 <div class="page" id="page-analytics"></div>
 <div class="page" id="page-calendar"></div>
+<div class="page" id="page-prospecting"></div>
+<div class="page" id="page-history"></div>
 <div class="page" id="page-settings"></div>
 <div class="page" id="page-tests">
   <div class="test-container">
@@ -2963,6 +3007,8 @@ async function renderPage(page) {
       case 'sales': window._currentPage='sales'; await renderSales(); break;
       case 'mileage':    await renderMileage();    break;
       case 'calendar':  await renderCalendar();  break;
+      case 'prospecting': await renderProspecting(); break;
+      case 'history':    renderHistory();          break;
       case 'settings':  renderSettings();        break;
       case 'analytics': await renderAnalytics(); break;
       case 'tests': break;
@@ -3040,7 +3086,7 @@ function renderClientTimeline(query) {
 /* Sync these JSON blobs to Supabase user_settings table via _setCloudSetting */
 function getCompletedTasks()    { try{return JSON.parse(localStorage.getItem('ea_completed_tasks')||'[]');}catch(e){return[];} }
 function saveCompletedTasks(a)  { localStorage.setItem('ea_completed_tasks',JSON.stringify(a)); _setCloudSetting && _setCloudSetting('completed_tasks', a); }
-function markTaskComplete(id)   { var d=getCompletedTasks(); if(!d.includes(id)){d.push(id);saveCompletedTasks(d);} renderDashboard(); }
+function markTaskComplete(id)   { var d=getCompletedTasks(); if(!d.includes(id)){d.push(id);saveCompletedTasks(d);} toast('Task completed','success'); renderDashboard(); }
 function clearCompletedTasks()  { localStorage.removeItem('ea_completed_tasks'); _setCloudSetting && _setCloudSetting('completed_tasks', []); renderDashboard(); }
 function getCompletedActives()  { try{return JSON.parse(localStorage.getItem('ea_completed_actives')||'[]');}catch(e){return[];} }
 function saveCompletedActives(a){ localStorage.setItem('ea_completed_actives',JSON.stringify(a)); _setCloudSetting && _setCloudSetting('completed_actives', a); }
@@ -7682,7 +7728,7 @@ async function _updateTasksWidget(opps) {
       + '</div>'
       + '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;'
       + 'background:' + t.labelColor + '22;color:' + t.labelColor + ';flex-shrink:0">' + esc(t.label) + '</span>'
-      + '<button onclick="event.stopPropagation();markTaskComplete(\'' + t.id + '\')"'
+      + '<button onclick="event.stopPropagation();markTaskComplete(\'' + esc(t.id).replace(/'/g,"\\'") + '\')"'
       + ' style="flex-shrink:0;padding:3px 8px;background:rgba(76,175,125,.15);'
       + 'border:1px solid rgba(76,175,125,.4);border-radius:5px;color:var(--green);'
       + 'font-size:10px;font-weight:700;cursor:pointer">&#10003; Done</button>'
