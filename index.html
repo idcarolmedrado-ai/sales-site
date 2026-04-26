@@ -10121,11 +10121,123 @@ const CADENCES = {
   ],
 };
 
+/* ══════════════════════════════════════════════════
+   COMPANION TOUCHES — multi-channel content per step
+   Each cadence step gets a primary EMAIL (above) + a companion touch
+   on a different channel, chosen per persona.
+     - Builders:    LinkedIn / Phone — B2B, project-driven, hard to reach
+     - Realtors:    SMS / Phone / LinkedIn — mobile-first, weekend-active
+     - Sellers:     Phone / SMS — one-time, anxious, prefer human voice
+     - Couples 40+: Handwritten note / Phone / Direct mail — premium touch
+     - Landscaping: LinkedIn / Phone — B2B partner motion
+   Channels: email | linkedin | phone | voicemail | sms | note | mail
+══════════════════════════════════════════════════ */
+const CADENCE_TOUCHES = {
+  builders: {
+    1: { channel:'linkedin', label:'LinkedIn — connect note',
+         content:'Hi {{firstName}} — Carol here, I work with builders nationwide on model-home staging that protects CO dates and broker walks. Just emailed you about how we keep furniture from being the variable that slips a closing. Connecting in case it is useful down the road.' },
+    2: { channel:'phone', label:'Cold call — 3-min discovery',
+         content:'OPENER (15 sec)\n"Hi {{firstName}}, this is Carol Medrado. Quick reason for the call — I just sent you a note about model-home timing. Did I catch you at a bad time, or do you have two minutes?"\n\nIF YES, ASK (90 sec)\n1. "When your last model finished punch-out, how many days before the broker walked it?"\n2. "Was that on the schedule you wanted, or did it slip?"\n3. "If it slipped, what was the variable — furniture, photos, the trades?"\n\nLISTEN FOR\n- Days greater than 14 = pain\n- "Furniture" or "vendor" mentioned = open door\n- "We have a designer" = ask if the designer hits CO dates\n\nCLOSE (30 sec)\n"Worth fifteen minutes next week to compare the timeline our builders run? I will bring three sample plans and the COI / margin sheet."\n\nIF NO\n"Totally understand — when is a better time, end of day or first thing tomorrow?"' },
+    3: { channel:'linkedin', label:'LinkedIn DM (post-connection)',
+         content:'Thanks for connecting, {{firstName}}. I will keep this short — most builders I respect tell me the same thing: the vendor that delivers photogenic and on time wins repeat business, price secondary. That is exactly how we run for builders at {{company}}. If your next phase has a model coming up, happy to send a one-page that maps to the plan. No meeting required to look at it.' },
+    4: { channel:'voicemail', label:'Voicemail drop — 25 sec',
+         content:'"Hi {{firstName}}, Carol Medrado calling. I will keep this brief — two builders running our variance-kit program are moving spec homes thirty days faster than their community average. Same plans, same neighborhoods. Wanted to share the program details with you before our fall intake closes. My number is on the email I sent — call me back when it is convenient. Thanks {{firstName}}."' },
+    5: { channel:'phone', label:'Breakup call — 60 sec',
+         content:'OPENER\n"Hi {{firstName}}, Carol Medrado. Last call from me on this — I will not keep reaching out after today unless you tell me to."\n\nMESSAGE\n"Parade of Homes voting starts in October. The builders I work with treat the model as their #1 sales tool — and the photo decides the broker walk. We are taking three more builders into the fall program before we cap. After that the next intake opens in January.\n\nIf this is the year, give me your community name and I will block the photo day this week. If it is not, just tell me — I will reach back next quarter, no hard feelings."\n\nIF VOICEMAIL\nLeave the message above. End with: "Either way I am rooting for your fall release."' },
+  },
+
+  realtors: {
+    1: { channel:'sms', label:'SMS intro — 160 chars',
+         content:'Hi {{firstName}}, Carol Medrado here. Just emailed you about photo-day-ready staging in 7 days. Empty rooms cost you DOM. Worth a 15-min call this week?' },
+    2: { channel:'phone', label:'Cold call — 2-min listing pitch',
+         content:'OPENER (15 sec)\n"Hi {{firstName}}, Carol Medrado. I emailed about staging. Two minutes to talk listings, or want me to text you a time?"\n\nIF YES, ASK\n1. "Your last vacant listing over $750K — what was the DOM?"\n2. "Was it longer than your average?"\n3. "If a vacant comp moved 30% faster staged, would your sellers pay for it?"\n\nLISTEN FOR\n- DOM > 30 days on $750K+ = pain\n- "Sellers won\'t pay" = pitch sell-through\n- "We use [stager X]" = ask about photo-day reliability\n\nCLOSE\n"Send me the address of your next vacant listing. I will quote it in 24 hours and block install before photo day. No commitment to use me — just lets you compare."' },
+    3: { channel:'linkedin', label:'LinkedIn DM — agent partner ask',
+         content:'{{firstName}} — most listing agents I partner with say the first photo decides everything. That line is exactly why we built the seven-day photo-prep program. If you keep a preferred-vendor list, I would like to be on it for the markets you cover. Two slots open in your zip right now. Reply if open to a conversation.' },
+    4: { channel:'voicemail', label:'Voicemail drop — 20 sec',
+         content:'"Hi {{firstName}}, Carol Medrado. Quick one — listing in your price band last month closed at list, three offers in a weekend, photographed two days after staging install. I have the one-pager that walks through the comp. Reply yes to my last email and I will send it tonight. Thanks {{firstName}}."' },
+    5: { channel:'phone', label:'Breakup call — 45 sec',
+         content:'OPENER\n"Hi {{firstName}}, last call from me on staging — I will not keep reaching out after today."\n\nMESSAGE\n"Every market has a peak listing window. The agents who own that stretch set the comp for the year. I keep my preferred-agent partner list under twenty per market because the seven-day promise breaks if I overload it. Two slots in your zip right now.\n\nIf you want photo-day-ready staging on your next listing, text me the address. If timing is off, no problem — I will reach back in six months."\n\nIF VOICEMAIL\nLeave shorter version. Sign off: "Wishing you a strong listing season."' },
+  },
+
+  sellers: {
+    1: { channel:'phone', label:'Soft intro call — 90 sec',
+         content:'OPENER\n"Hi {{firstName}}, this is Carol Medrado. I sent you a note about listing your home — calling to introduce myself rather than just email. Is now an okay time?"\n\nIF YES\n"Quick — most sellers I sit with tell me the same thing. They worry staging is throwing money away on furniture they will not keep. The honest answer is the price reduction email costs more. I work in your area and bring before/after data from comparable homes.\n\nNo pressure on this call. Just want to know — is photo day on the schedule yet, or still a few weeks out?"\n\nLISTEN FOR\n- Anxiety in voice = lead with reassurance\n- "Realtor said..." = align with realtor, do not push\n- "Already chose someone" = ask if they would like a second quote\n\nCLOSE\n"Can I come walk through this week, free consultation, written quote in 48 hours? You are not committed to anything by hosting me."' },
+    2: { channel:'sms', label:'SMS check-in — gentle',
+         content:'Hi {{firstName}}, Carol Medrado. Just checking — has your realtor scheduled photo day yet? I want to make sure staging is in before, never after. Easy text reply works.' },
+    3: { channel:'phone', label:'Mid-cadence call — empathetic',
+         content:'OPENER\n"Hi {{firstName}}, Carol again. Selling a home is a lot. Wanted to check in — where are things at on your end?"\n\nLISTEN\nLet them talk. Most sellers at this stage want someone to acknowledge the emotional weight. Do not pitch in the first ninety seconds.\n\nIF THEY OPEN UP\n"It sounds like [reflect what they said]. A staged listing in your price band moves faster — every week off the market is real money. If a free in-home walk-through this week would help you make the call, I am happy to come."\n\nIF GUARDED\n"Totally understand. I will step back. Let me leave you with one thing — the homes I stage rarely sit a second month on the market. If that is useful when you are ready, my number is on the email."' },
+    4: { channel:'sms', label:'SMS with case-study link',
+         content:'Hi {{firstName}} — quick follow-up. The case study from last week (4BR, listed Friday, 3 offers Sunday, closed at list): happy to text the photos. Reply YES and I will send. No commitment.' },
+    5: { channel:'phone', label:'Breakup call — generous tone',
+         content:'OPENER\n"Hi {{firstName}}, Carol. Last time you will hear from me unless you reach out — and I mean that with no pressure."\n\nMESSAGE\n"Every month a home sits unsold costs roughly the carrying cost — easily eight to fifteen thousand. Staging is a fraction of one month\'s carry. The homes I stage rarely see a second month.\n\nIf you are listing within sixty days, my consultation calendar has slots this week. If timing has shifted, I will reach back in a quarter — no hard feelings either way. I hope your next chapter is everything you wanted."\n\nIF VOICEMAIL\nKeep it warm. End with: "Wishing you a clean, fast sale, {{firstName}}."' },
+  },
+
+  couples: {
+    1: { channel:'note', label:'Handwritten note — premium opener',
+         content:'CARD STOCK · INK PEN · 4-6 SENTENCES\n\nDear {{firstName}},\n\nI work with couples designing the homes they stay in for the next chapter. One designer for the whole home, in-home consultation, no showroom queue.\n\nI sent a longer email but wanted to introduce myself the right way. If a conversation about your home would be useful — even just to listen — I would consider it an honor.\n\nWith respect,\nCarol Medrado\n[phone] · [email]\n\nMAILING\nHandwrite address. First-class stamp. No company logo on the envelope.\n\nWHY\nFor this segment, a handwritten note arrives like a gift. Email is forgotten in a day; the card stays on the kitchen counter for a week.' },
+    2: { channel:'phone', label:'Phone call — assistant-style intro',
+         content:'OPENER\n"Hi {{firstName}}, this is Carol Medrado calling. We have not spoken yet — I sent a note last week. Is this an okay moment, or should I call back?"\n\nIF YES\n"Thank you. I will keep it short. Most couples at your stage of life tell me the same thing — they have earned the right to a designer-led experience, not a showroom queue. They want one trusted relationship, not a dozen vendor calls.\n\nThat is exactly how I work. If you would like an in-home consultation — no fee, no pressure — I bring a tablet of options and listen first. Tuesday or Thursday afternoons are when I usually do these."\n\nLISTEN FOR\n- Spouse mentioned = invite both\n- "Already working with someone" = ask gently if it is going well\n- Travel calendar concerns = frame schedule flexibility\n\nCLOSE\n"What is a Tuesday or Thursday afternoon that respects your schedule? I will block it now."' },
+    3: { channel:'sms', label:'SMS — coffee or coffee-equivalent invite',
+         content:'Hi {{firstName}}, Carol Medrado. No pressure — wanted to offer a low-key option. Coffee or tea this week, 30 min, just to meet and talk through the home? My calendar is open Tue/Thu afternoons. Would either work?' },
+    4: { channel:'mail', label:'Direct mail — printed lookbook',
+         content:'PACKAGE CONTENTS\n- Printed 12-page lookbook of three completed couples-40+ projects (before/after, palettes, favorite details)\n- Personal letter, signed: "{{firstName}}, this is the kind of work I would love to do for your home. — Carol"\n- Business card with QR code to a private booking link\n\nCOST\nApprox $8-12 per package. Sent only after step 2-3 if no reply. Reserved for highest-fit prospects.\n\nWHY\nAt this price point and demographic, a printed piece signals seriousness and survives the inbox. Most couples save lookbooks they like.\n\nFOLLOW-UP\nWait 5 business days after mailing, then proceed to step 5 (final call).' },
+    5: { channel:'phone', label:'Breakup call — gracious, in-home offer',
+         content:'OPENER\n"Hi {{firstName}}, Carol Medrado. Last time you will hear from me — I do not want to crowd you."\n\nMESSAGE\n"My consultation calendar runs three to four weeks ahead. Whole-home projects take ten to twelve weeks from go-ahead. If you want to walk into the finished primary bedroom in front of company this season, the consultation needs to happen this month.\n\nReply with a day that works, or just tell me the season has shifted. Either is fine. I will respect whichever you decide.\n\nThank you for the time you spent with my emails."\n\nIF VOICEMAIL\nGentle, unhurried. Sign off with full name and direct line. End with: "Wishing you a beautiful next chapter, {{firstName}}."' },
+  },
+
+  landscaping: {
+    1: { channel:'linkedin', label:'LinkedIn — connect note',
+         content:'Hi {{firstName}} — Carol Medrado here. Just emailed about an outdoor-furniture partner that finishes the patio you designed and never competes for the design lead. Connecting in case a conversation makes sense down the road.' },
+    2: { channel:'phone', label:'Cold call — 2-min partner pitch',
+         content:'OPENER\n"Hi {{firstName}}, Carol Medrado. I emailed about an outdoor-furniture partner. Two minutes to talk through the program?"\n\nIF YES, ASK\n1. "How often does the outdoor space sit empty after your install?"\n2. "Has a client ever ruined the design with cheap big-box furniture?"\n3. "Do you currently get a referral fee from any furniture vendor?"\n\nLISTEN FOR\n- "Big-box" complaint = the wedge\n- "We just recommend" = pitch the referral fee\n- Designer relationship concern = emphasize we never take the lead\n\nCLOSE\n"Send me your project list for the next ninety days. I will block install windows and price the referral terms in writing. No commitment to use me — comparing programs is the whole point."' },
+    3: { channel:'linkedin', label:'LinkedIn DM — partner motion',
+         content:'{{firstName}} — most landscape firms I respect tell me the same thing: the outdoor room is where modern luxury actually lives. Hardscape and planting frame it, furniture inhabits it. We are an outdoor-only specialist that never takes the design lead. If you want the partner brief, reply and I will send it tonight.' },
+    4: { channel:'voicemail', label:'Voicemail drop — 25 sec',
+         content:'"Hi {{firstName}}, Carol Medrado calling. Three landscape firms I partnered with this year each won a referral project from the reveal photo of a co-styled outdoor room. Wanted to send you the partner brief before our quarterly intake closes. My number is on the email — call back when convenient. Thanks {{firstName}}."' },
+    5: { channel:'phone', label:'Breakup call — 45 sec',
+         content:'OPENER\n"Hi {{firstName}}, Carol Medrado. Last call on this — I will not keep reaching out after today."\n\nMESSAGE\n"Fall is when the reveal photos that travel into your spring proposal deck get taken. Partner-program intake closes end of summer. After that, install crews are locked through November.\n\nIf you have projects finishing between now and October, send me the project list. If timing is off, I will reach back at the start of next year."\n\nIF VOICEMAIL\nLeave shorter version. End with: "Either way, rooting for a strong fall reveal."' },
+  },
+};
+
+function _channelMeta(ch) {
+  const map = {
+    email:    { label:'EMAIL',    icon:'✉',  color:'#4472CA' },
+    linkedin: { label:'LINKEDIN', icon:'in', color:'#0A66C2' },
+    phone:    { label:'PHONE',    icon:'☏',  color:'#2A8B5E' },
+    voicemail:{ label:'VOICEMAIL',icon:'🎤', color:'#A088E0' },
+    sms:      { label:'SMS',      icon:'💬', color:'#C9952F' },
+    note:     { label:'HANDWRITTEN NOTE', icon:'✎', color:'#9C5A3C' },
+    mail:     { label:'DIRECT MAIL',      icon:'📬', color:'#7A4A8A' },
+  };
+  return map[ch] || { label:ch.toUpperCase(), icon:'•', color:'var(--ink-50)' };
+}
+
+function _renderTouchBlock(touch) {
+  if (!touch) return '';
+  const m = _channelMeta(touch.channel);
+  return '<div style="margin-top:10px;padding:12px 14px;background:rgba(0,0,0,.02);border:1px dashed '+m.color+';border-radius:8px">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+      '<span style="font-size:10px;font-weight:800;letter-spacing:.08em;color:'+m.color+';padding:2px 8px;border:1px solid '+m.color+';border-radius:10px">'+m.icon+' '+m.label+'</span>' +
+      '<span style="font-size:11px;font-weight:700;color:var(--ink-30)">'+esc(touch.label||'')+'</span>' +
+    '</div>' +
+    '<div style="font-size:12px;line-height:1.55;color:#2A2622;white-space:pre-line">'+esc(touch.content||'')+'</div>' +
+  '</div>';
+}
+
 /* ── Cadence helpers ── */
 function _renderTemplate(t, prospect) {
   const fn = (prospect && (prospect.firstName || '').trim()) || 'there';
   const co = (prospect && (prospect.company   || '').trim()) || 'your company';
   return String(t).replace(/\{\{firstName\}\}/g, fn).replace(/\{\{company\}\}/g, co);
+}
+
+function _getTouch(personaId, step) {
+  return (CADENCE_TOUCHES[personaId] || {})[step] || null;
+}
+
+function _renderTouchForProspect(touch, prospect) {
+  if (!touch) return null;
+  return Object.assign({}, touch, { content: _renderTemplate(touch.content, prospect) });
 }
 
 function _cadenceLogKey() { return 'ea_cadence_log'; }
@@ -10143,13 +10255,74 @@ async function enrollProspect(id) {
   const p   = all.find(x => x.id === id);
   if (!p) { toast('Contact not found', 'error'); return; }
   if (!p.persona) { toast('Set a persona first', 'error'); return; }
+  // Show enrollment preview modal so the user sees exactly what they're committing to.
+  _showEnrollmentPreview(p);
+}
+
+async function _confirmEnrollment(id) {
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === id);
+  if (!p) return;
   p.cadenceStep      = 1;
   p.cadenceStartedAt = new Date().toISOString();
   p.status           = 'active';
   await Prospects.save(p);
-  toast('Enrolled in ' + p.persona + ' cadence — start with Step 1', 'success');
+  const overlay = document.getElementById('enrollOverlay'); if (overlay) overlay.remove();
+  const personaLbl = (PERSONAS.find(x=>x.id===p.persona)||{}).label || p.persona;
+  toast('Enrolled in ' + personaLbl + ' cadence — Step 1 ready to send', 'success');
   _renderProspectContacts();
 }
+
+function _showEnrollmentPreview(prospect) {
+  const existing = document.getElementById('enrollOverlay'); if (existing) existing.remove();
+  const cads = CADENCES[prospect.persona] || [];
+  const personaLbl = (PERSONAS.find(x=>x.id===prospect.persona)||{}).label || prospect.persona;
+  const wrap = document.createElement('div');
+  wrap.id = 'enrollOverlay';
+  wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  const stepRows = cads.map(c => {
+    const t = _getTouch(prospect.persona, c.step);
+    const em = _channelMeta('email');
+    const cm = t ? _channelMeta(t.channel) : null;
+    const wait = CADENCE_INTERVAL_DAYS_FOR_PREVIEW[c.step];
+    return '<div style="padding:10px 12px;border-bottom:1px solid var(--ink-70)">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
+        '<span style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--gold)">STEP '+c.step+'</span>' +
+        '<span style="font-size:11px;color:var(--ink-40)">'+esc(c.method)+'</span>' +
+        '<span style="font-size:10px;color:var(--ink-50);margin-left:auto">'+(wait===0?'send today':('+'+wait+' days after prior'))+'</span>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">' +
+        '<span style="font-size:9px;font-weight:800;letter-spacing:.06em;color:'+em.color+';padding:2px 6px;border:1px solid '+em.color+';border-radius:8px">'+em.icon+' '+em.label+'</span>' +
+        (cm?'<span style="font-size:9px;font-weight:800;letter-spacing:.06em;color:'+cm.color+';padding:2px 6px;border:1px solid '+cm.color+';border-radius:8px">'+cm.icon+' '+cm.label+'</span>':'') +
+      '</div>' +
+      '<div style="font-size:12px;color:#2A2622;line-height:1.45"><strong>'+esc(_renderTemplate(c.subject, prospect))+'</strong></div>' +
+      (t?'<div style="font-size:11px;color:var(--ink-40);margin-top:2px">+ '+esc(t.label)+'</div>':'') +
+    '</div>';
+  }).join('');
+
+  wrap.innerHTML =
+    '<div style="background:#fff;border-radius:var(--r);max-width:680px;width:100%;max-height:90vh;overflow:auto;padding:24px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">' +
+        '<div>' +
+          '<h3 style="font-family:var(--font-display);color:var(--gold);font-size:18px;margin:0">Enroll in '+esc(personaLbl)+' cadence</h3>' +
+          '<div style="font-size:12px;color:var(--ink-40);margin-top:4px">'+esc((prospect.firstName||'')+' '+(prospect.lastName||''))+' &middot; '+esc(prospect.email||'no email')+(prospect.company?' &middot; '+esc(prospect.company):'')+'</div>' +
+        '</div>' +
+        '<button onclick="document.getElementById(\'enrollOverlay\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink-50)">×</button>' +
+      '</div>' +
+      '<div style="padding:10px 12px;background:rgba(196,147,63,.08);border-left:3px solid var(--gold);border-radius:0 6px 6px 0;margin-bottom:14px;font-size:12px;color:#2A2622">' +
+        'Five steps over roughly <strong>3 weeks</strong>. Each step has an email + a companion touch on a different channel. You manually fire each step — nothing sends without your click.' +
+      '</div>' +
+      '<div style="border:1px solid var(--ink-70);border-radius:8px;overflow:hidden;margin-bottom:16px">'+stepRows+'</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+        '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'enrollOverlay\').remove()">Cancel</button>' +
+        '<button class="btn btn-primary btn-sm" onclick="_confirmEnrollment(\''+esc(prospect.id)+'\')">Confirm enrollment →</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(wrap);
+}
+
+const CADENCE_INTERVAL_DAYS_FOR_PREVIEW = { 1:0, 2:3, 3:4, 4:5, 5:7 };
 
 async function unenrollProspect(id) {
   const all = await Prospects.getAll();
@@ -10205,7 +10378,8 @@ async function sendCadenceStep(id) {
   });
 
   // Show preview modal so the user can copy/paste manually if needed
-  _showCadencePreview(p, tmpl, subject, body, status, detail);
+  const touch = _renderTouchForProspect(_getTouch(p.persona, p.cadenceStep), p);
+  _showCadencePreview(p, tmpl, subject, body, status, detail, touch);
 }
 
 async function markStepSent(id) {
@@ -10232,7 +10406,7 @@ async function markStepSent(id) {
   _renderProspectContacts();
 }
 
-function _showCadencePreview(prospect, tmpl, subject, body, status, detail) {
+function _showCadencePreview(prospect, tmpl, subject, body, status, detail, touch) {
   const existing = document.getElementById('cadenceOverlay'); if (existing) existing.remove();
   const wrap = document.createElement('div');
   wrap.id = 'cadenceOverlay';
@@ -10242,27 +10416,48 @@ function _showCadencePreview(prospect, tmpl, subject, body, status, detail) {
     : status === 'no-key'
       ? '<div style="padding:8px 12px;background:rgba(224,82,82,.08);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red);margin-bottom:12px">⚠ '+esc(detail)+'</div>'
       : '';
+  const em = _channelMeta('email');
   wrap.innerHTML =
-    '<div style="background:#fff;border-radius:var(--r);max-width:640px;width:100%;max-height:90vh;overflow:auto;padding:24px">' +
+    '<div style="background:#fff;border-radius:var(--r);max-width:720px;width:100%;max-height:90vh;overflow:auto;padding:24px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
         '<h3 style="font-family:var(--font-display);color:var(--gold);font-size:18px;margin:0">Step '+tmpl.step+' / 5 · '+esc(tmpl.method)+'</h3>' +
         '<button onclick="document.getElementById(\'cadenceOverlay\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink-50)">×</button>' +
       '</div>' +
       banner +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">' +
+        '<span style="font-size:10px;font-weight:800;letter-spacing:.08em;color:'+em.color+';padding:2px 8px;border:1px solid '+em.color+';border-radius:10px">'+em.icon+' '+em.label+'</span>' +
+        '<span style="font-size:11px;color:var(--ink-50)">primary touch</span>' +
+      '</div>' +
       '<div style="font-size:11px;color:var(--ink-50);margin-bottom:4px">To</div>' +
       '<div style="padding:8px;background:var(--ink-90);border-radius:6px;font-size:13px;margin-bottom:10px">'+esc(prospect.email||'(no email)')+'</div>' +
       '<div style="font-size:11px;color:var(--ink-50);margin-bottom:4px">Subject</div>' +
       '<input id="cadSubject" value="'+esc(subject)+'" style="width:100%;padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px;font-weight:700;margin-bottom:10px">' +
       '<div style="font-size:11px;color:var(--ink-50);margin-bottom:4px">Body</div>' +
-      '<textarea id="cadBody" rows="14" style="width:100%;padding:10px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px;line-height:1.5;font-family:inherit">'+esc(body)+'</textarea>' +
+      '<textarea id="cadBody" rows="12" style="width:100%;padding:10px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px;line-height:1.5;font-family:inherit">'+esc(body)+'</textarea>' +
+      (touch ? _renderTouchBlock(touch) : '') +
       '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">' +
-        '<button class="btn btn-ghost btn-sm" onclick="_copyCadence()">Copy</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="_copyCadence()">Copy email</button>' +
+        (touch ? '<button class="btn btn-ghost btn-sm" onclick="_copyCompanionTouch()">Copy companion</button>' : '') +
         '<button class="btn btn-ghost btn-sm" onclick="_openMailto(\''+esc(prospect.email||'')+'\')">Open in mail app</button>' +
         '<div style="flex:1"></div>' +
         '<button class="btn btn-primary btn-sm" onclick="markStepSent(\''+esc(prospect.id)+'\')">Mark sent &amp; advance →</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(wrap);
+  // Stash companion content on the overlay for the copy button
+  if (touch) wrap.dataset.companion = JSON.stringify({ label:touch.label, content:touch.content });
+}
+
+function _copyCompanionTouch() {
+  const wrap = document.getElementById('cadenceOverlay');
+  if (!wrap || !wrap.dataset.companion) return;
+  try {
+    const t = JSON.parse(wrap.dataset.companion);
+    navigator.clipboard.writeText(t.label + '\n\n' + t.content).then(
+      () => toast('Companion copied','success'),
+      () => toast('Copy failed','error')
+    );
+  } catch(e) { toast('Copy failed','error'); }
 }
 
 function _copyCadence() {
@@ -10351,16 +10546,23 @@ function _renderProspectCadences() {
   body.innerHTML =
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+tabs+'</div>' +
     '<div class="persona-card">' +
-      '<h4>'+esc(persona.label)+' — 5-step cadence</h4>' +
-      '<div class="subtitle">Subject as a question · &lt;150 words · FOMO close · clear CTA · {{firstName}} {{company}} merge tags</div>' +
-      cads.map(c =>
-        '<div class="cadence-email">' +
-          '<div class="step">Step '+c.step+'</div>' +
+      '<h4>'+esc(persona.label)+' — 5-step multi-channel cadence</h4>' +
+      '<div class="subtitle">Each step: a primary email + a companion touch on a different channel. Subject = question · &lt;150 words · FOMO close · clear CTA · {{firstName}} {{company}} merge tags</div>' +
+      cads.map(c => {
+        const t  = _getTouch(persona.id, c.step);
+        const em = _channelMeta('email');
+        return '<div class="cadence-email">' +
+          '<div class="step">Step '+c.step+' &middot; '+esc(c.method)+'</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;margin:6px 0 8px">' +
+            '<span style="font-size:10px;font-weight:800;letter-spacing:.08em;color:'+em.color+';padding:2px 8px;border:1px solid '+em.color+';border-radius:10px">'+em.icon+' '+em.label+'</span>' +
+            '<span style="font-size:11px;color:var(--ink-50)">primary touch</span>' +
+          '</div>' +
           '<div class="subj">'+esc(c.subject)+'</div>' +
           '<div class="body">'+esc(c.body)+'</div>' +
           '<div class="method">'+esc(c.method)+'</div>' +
-        '</div>'
-      ).join('') +
+          _renderTouchBlock(t) +
+        '</div>';
+      }).join('') +
     '</div>';
 }
 
