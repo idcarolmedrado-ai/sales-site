@@ -10101,6 +10101,7 @@ async function renderProspecting() {
       '<div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap">' +
         _prospectTabBtn('today',     'Today') +
         _prospectTabBtn('contacts',  'Contacts') +
+        _prospectTabBtn('find',      '🔍 Find Leads') +
         _prospectTabBtn('archive',   'Archive') +
         _prospectTabBtn('analytics', 'Analytics') +
         _prospectTabBtn('personas',  'Personas') +
@@ -10116,6 +10117,7 @@ async function renderProspecting() {
   else if (PS.tab === 'analytics') await _renderProspectAnalytics();
   else if (PS.tab === 'contacts')  await _renderProspectContacts();
   else if (PS.tab === 'archive')   await _renderProspectArchive();
+  else if (PS.tab === 'find')      _renderProspectFind();
   else                             await _renderProspectToday();
 }
 
@@ -10196,9 +10198,6 @@ async function _renderProspectToday() {
 }
 
 /* ══════════════════════════════════════════════════
-   ANALYTICS — funnel + per-persona + per-step
-══════════════════════════════════════════════════ */
-/* ══════════════════════════════════════════════════
    ARCHIVE — opted-out + completed cadences. Re-engageable.
 ══════════════════════════════════════════════════ */
 async function _renderProspectArchive() {
@@ -10209,8 +10208,6 @@ async function _renderProspectArchive() {
     p.status === 'completed' ||
     p.status === 'converted'
   );
-
-  // Sort newest archived first
   archived.sort((a,b) => new Date(b.archivedAt || b.lastContactedAt || 0) - new Date(a.archivedAt || a.lastContactedAt || 0));
 
   const counts = {
@@ -10242,7 +10239,7 @@ async function _renderProspectArchive() {
         const personaLbl = (PERSONAS.find(x=>x.id===p.persona)||{}).label || '—';
         const archDate = p.archivedAt ? new Date(p.archivedAt) : (p.lastContactedAt ? new Date(p.lastContactedAt) : null);
         const when = archDate ? archDate.toLocaleDateString() : '—';
-        const canReEngage = p.status !== 'converted'; // Don't re-engage converted opps
+        const canReEngage = p.status !== 'converted';
         return '<tr style="cursor:pointer" onclick="_showActivityTimeline(\''+esc(p.id)+'\')">' +
           '<td><strong>'+esc((p.firstName||'')+' '+(p.lastName||''))+'</strong></td>' +
           '<td>'+esc(personaLbl)+'</td>' +
@@ -10268,6 +10265,139 @@ async function _renderProspectArchive() {
       '<strong>Archive</strong> = prospects who finished a cadence (5/5 sent without reply), opted out of emails, or converted to an opportunity. They never re-appear in Today or Contacts. <strong>Re-engage</strong> restarts a cadence from Step 1 — useful for win-back six months later. Click any row for the full activity timeline.' +
     '</div>' +
     list;
+}
+
+/* ══════════════════════════════════════════════════
+   FIND LEADS — Google Places lead discovery (B2B segments)
+   Calls the deployed places-search Edge Function which proxies
+   Google Places API (New) Text Search. Returns business listings
+   with name + phone + website + state. Email NOT included —
+   Places API does not provide it.
+══════════════════════════════════════════════════ */
+window._findLeadsState = window._findLeadsState || {
+  persona:'builders', query:'', location:'', results:[], loading:false,
+  nextPageToken:'', lastQuery:''
+};
+
+function _renderProspectFind() {
+  const body = document.getElementById('prospectBody'); if (!body) return;
+  const FS = window._findLeadsState;
+
+  const personaPicker = PERSONAS.filter(p => ['builders','realtors','landscaping'].includes(p.id))
+    .map(p => '<option value="'+p.id+'"'+(FS.persona===p.id?' selected':'')+'>'+esc(p.label)+'</option>').join('');
+  const stateOpts = US_STATES.map(s => '<option value="'+s[0]+'">'+s[0]+' · '+esc(s[1])+'</option>').join('');
+
+  const resultsHTML = FS.loading
+    ? '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Searching Google Places…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">First call usually takes 1–2 seconds.</div></div>'
+    : FS.results.length === 0
+      ? (FS.lastQuery
+          ? '<div class="empty-state" style="padding:40px"><div class="icon">🔍</div><p>No results for "'+esc(FS.lastQuery)+'". Try a different region or query.</p></div>'
+          : '')
+      : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
+        '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90)">' +
+          '<strong>'+FS.results.length+' results</strong> for "'+esc(FS.lastQuery)+'" — phone + website only. Click <strong>Add</strong> to save as contact (you will need to find the email separately).' +
+        '</div>' +
+        '<table class="contact-table"><thead><tr><th>Business</th><th>State</th><th>Phone</th><th>Website</th><th>Rating</th><th></th></tr></thead><tbody>' +
+        FS.results.map((r, i) =>
+          '<tr>' +
+            '<td><strong>'+esc(r.name)+'</strong>' +
+              '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address || '')+'</div>' +
+            '</td>' +
+            '<td><span style="font-size:11px;font-weight:700;color:#4472CA">'+esc(r.state||'—')+'</span></td>' +
+            '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+            '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+            '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+            '<td><button onclick="_addPlacesResult('+i+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>' +
+          '</tr>'
+        ).join('') +
+        '</tbody></table></div>' +
+        (FS.nextPageToken ? '<div style="text-align:center;margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="_findLeadsLoadMore()">Load more results</button></div>' : '');
+
+  body.innerHTML =
+    '<div class="persona-card" style="margin-bottom:14px">' +
+      '<h4>🔍 Find Leads — Google Places</h4>' +
+      '<div class="subtitle">Lead discovery for B2B personas (builders, realtors, landscapers). Returns business name + phone + website + state. <strong>Does not return email</strong> — Google Places does not provide it. You will need to find emails separately (company website, Hunter.io, etc).</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:10px">' +
+        '<select id="flPersona" onchange="window._findLeadsState.persona=this.value" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+personaPicker+'</select>' +
+        '<input id="flQuery" placeholder="Optional refinement (e.g. \'custom luxury\')" value="'+esc(FS.query)+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<input id="flLocation" placeholder="City, State or just State (e.g. Aspen, CO)" value="'+esc(FS.location)+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<button class="btn btn-primary btn-sm" onclick="_findLeadsRun()" '+(FS.loading?'disabled':'')+'>'+(FS.loading?'Searching…':'🔍 Search')+'</button>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--ink-40);line-height:1.5">' +
+        'Setup: Settings → Edge Function. Deploy <code>supabase functions deploy places-search</code>. Set <code>GOOGLE_PLACES_API_KEY</code> as a Supabase secret. Free tier covers ~10,000 searches/month.' +
+      '</div>' +
+    '</div>' +
+    resultsHTML;
+}
+
+async function _findLeadsRun(usePageToken) {
+  const FS = window._findLeadsState;
+  if (!_isCloudMode()) { toast('Cloud mode required — Edge Function lives in Supabase', 'error'); return; }
+  FS.persona  = (document.getElementById('flPersona')||{}).value || FS.persona;
+  FS.query    = (document.getElementById('flQuery')||{}).value   || '';
+  FS.location = (document.getElementById('flLocation')||{}).value || '';
+  if (!FS.query && !FS.persona) { toast('Pick a persona or type a query','error'); return; }
+  FS.loading = true;
+  if (!usePageToken) { FS.results = []; FS.nextPageToken = ''; }
+  _renderProspectFind();
+  try {
+    const { data, error } = await DB.client.functions.invoke('places-search', {
+      body: {
+        persona:   FS.persona,
+        query:     FS.query,
+        location:  FS.location,
+        pageToken: usePageToken ? FS.nextPageToken : undefined,
+      },
+    });
+    if (error) throw new Error(error.message || 'Edge function error');
+    if (data && data.error) throw new Error(data.error + (data.detail ? ' — ' + JSON.stringify(data.detail).slice(0,200) : ''));
+    const newResults = data && data.results || [];
+    FS.results = usePageToken ? FS.results.concat(newResults) : newResults;
+    FS.nextPageToken = data && data.nextPageToken || '';
+    FS.lastQuery     = data && data.textQuery     || (FS.query + (FS.location ? ' in '+FS.location : ''));
+    toast(usePageToken ? '+'+newResults.length+' more results' : 'Found '+newResults.length+' result'+(newResults.length===1?'':'s'),'success');
+  } catch(e) {
+    console.error('places-search error:', e);
+    toast('Search failed: '+e.message,'error');
+  } finally {
+    FS.loading = false;
+    _renderProspectFind();
+  }
+}
+
+async function _findLeadsLoadMore() { return _findLeadsRun(true); }
+
+/* Add a single Places result as a Prospects contact */
+async function _addPlacesResult(idx) {
+  const FS = window._findLeadsState;
+  const r = FS.results[idx]; if (!r) return;
+  const contact = {
+    firstName: '',
+    lastName:  r.name,                  // Business name in lastName field for display
+    company:   r.name,
+    email:     '',                      // Places does not return email
+    phone:     r.phone || '',
+    persona:   FS.persona || '',
+    state:     r.state || '',
+    region:    r.state ? _stateRegion(r.state) : '',
+    source:    'Google Places',
+    notes:     [
+      r.website        ? 'Website: ' + r.website : '',
+      r.googleMapsUri  ? 'Maps: '    + r.googleMapsUri : '',
+      r.rating         ? 'Rating: '+r.rating+' ('+r.userRatingCount+' reviews)' : '',
+      r.address        ? 'Address: ' + r.address : '',
+    ].filter(Boolean).join('\n'),
+    status:    'active',
+    cadenceStep: 0,
+  };
+  if (!contact.phone) {
+    if (!confirm('No phone number on this listing. Add anyway? You will need to find both phone and email separately.')) return;
+  }
+  await Prospects.save(contact);
+  toast('Added '+r.name+' — find email next, then enroll', 'success');
+  // Mark this result as added so the button can disable
+  FS.results[idx] = { ...r, _added: true };
+  _renderProspectFind();
 }
 
 async function _renderProspectAnalytics() {
@@ -11766,10 +11896,18 @@ function _renderProspectSetup() {
       (fromAddr ? '<p style="font-size:11px;color:var(--ink-40);margin:0">Currently sending as: '+esc(fromAddr)+'</p>' : '<p style="font-size:11px;color:var(--ink-40);margin:0">No from address set.</p>') +
     '</div>' +
     '<div class="persona-card">' +
-      '<h4>Edge Function — deploy + secrets (one-time)</h4>' +
-      '<div class="subtitle">The function code is in <code>supabase/functions/send-cadence/</code>. Deploy from a terminal in the repo root. The browser cannot call Resend directly — this function is the bridge.</div>' +
-      '<pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:11px;overflow:auto;color:var(--ink-20);margin:0 0 10px">supabase login\nsupabase link --project-ref &lt;your-project-ref&gt;\nsupabase functions deploy send-cadence\n\n# Recommended — set as secrets so the key never lives in the browser:\nsupabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx\nsupabase secrets set RESEND_FROM=\'Carol Medrado &lt;carol@yourdomain.com&gt;\'</pre>' +
-      '<p style="font-size:11px;color:var(--ink-40);margin:0">Once the function is deployed and either the secrets are set or the local key is filled in above, the cadence-step modal will show a green ✓ banner and a <strong>Send via Resend</strong> button.</p>' +
+      '<h4>Edge Function — Resend (cadence email send)</h4>' +
+      '<div class="subtitle">Code is in <code>supabase/functions/send-cadence/</code>. Browser cannot call Resend directly — this function is the bridge.</div>' +
+      '<pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:11px;overflow:auto;color:var(--ink-20);margin:0 0 10px">supabase login\nsupabase link --project-ref &lt;your-project-ref&gt;\nsupabase functions deploy send-cadence\n\n# Set as secrets (preferred — key never in browser)\nsupabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx\nsupabase secrets set RESEND_FROM=\'Carol Medrado &lt;carol@yourdomain.com&gt;\'</pre>' +
+      '<p style="font-size:11px;color:var(--ink-40);margin:0">Once deployed + secrets set, the cadence-step modal shows a green ✓ banner and a <strong>Send via Resend</strong> button.</p>' +
+    '</div>' +
+    '<div class="persona-card">' +
+      '<h4>Edge Function — Google Places (lead discovery)</h4>' +
+      '<div class="subtitle">Code is in <code>supabase/functions/places-search/</code>. Powers the <strong>🔍 Find Leads</strong> tab. Returns business name + phone + website + state for B2B segments. Email NOT included (Places API limitation).</div>' +
+      '<pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:11px;overflow:auto;color:var(--ink-20);margin:0 0 10px">supabase functions deploy places-search\n\n# Set the API key as a secret\nsupabase secrets set GOOGLE_PLACES_API_KEY=AIza...</pre>' +
+      '<p style="font-size:11px;color:var(--ink-40);margin:0 0 6px">' +
+        'Get an API key: <a href="https://console.cloud.google.com/apis/library/places.googleapis.com" target="_blank" style="color:var(--gold)">Google Cloud Console → Places API (New)</a> → enable → create credentials → API key. Restrict to Places API for safety. Free tier ≈ 10,000 Text Search calls/month.' +
+      '</p>' +
     '</div>' +
     '<div class="persona-card">' +
       '<h4>Supabase schema</h4>' +
