@@ -9545,12 +9545,20 @@ async function _renderProspectContacts() {
       ? '<div class="empty-state" style="padding:40px"><div class="icon">👥</div><p>No contacts yet. Add one above or import a CSV.</p></div>'
       : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
         '<table class="contact-table"><thead><tr>' +
-          '<th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Persona</th><th>Cadence</th><th>Status</th><th></th>' +
+          '<th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Persona</th><th>Cadence</th><th>Status</th><th>Actions</th>' +
         '</tr></thead><tbody>' +
         list.map(p => {
           const personaLbl = (PERSONAS.find(x => x.id === p.persona)||{}).label || '—';
           const cadCls = p.cadenceStep > 0 ? ('cadence-step-' + Math.min(5, p.cadenceStep)) : '';
           const cadTxt = p.cadenceStep > 0 ? ('Step '+p.cadenceStep+'/5') : 'Not enrolled';
+          const canEnroll = p.persona && p.email && p.cadenceStep === 0;
+          const canSend   = p.persona && p.email && p.cadenceStep > 0 && p.cadenceStep <= 5;
+          const actions = [
+            canEnroll ? '<button onclick="enrollProspect(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(196,147,63,.15);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:10px;font-weight:700;cursor:pointer">Enroll</button>' : '',
+            canSend   ? '<button onclick="sendCadenceStep(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(76,175,125,.15);border:1px solid var(--green);border-radius:5px;color:var(--green);font-size:10px;font-weight:700;cursor:pointer">Send '+p.cadenceStep+'</button>' : '',
+            (p.cadenceStep > 0) ? '<button onclick="unenrollProspect(\''+esc(p.id)+'\')" style="padding:3px 6px;background:none;border:1px solid var(--ink-60);border-radius:5px;color:var(--ink-40);font-size:10px;font-weight:700;cursor:pointer" title="Stop cadence">Stop</button>' : '',
+            '<button onclick="_deleteProspect(\''+esc(p.id)+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0 4px" title="Delete">×</button>',
+          ].filter(Boolean).join(' ');
           return '<tr>' +
             '<td><strong>'+esc((p.firstName||'')+' '+(p.lastName||''))+'</strong></td>' +
             '<td>'+esc(p.email||'—')+'</td>' +
@@ -9559,7 +9567,7 @@ async function _renderProspectContacts() {
             '<td>'+esc(personaLbl)+'</td>' +
             '<td>'+(cadCls?'<span class="cadence-badge '+cadCls+'">'+cadTxt+'</span>':'<span style="color:var(--ink-50);font-size:11px">'+cadTxt+'</span>')+'</td>' +
             '<td><span style="font-size:11px;color:var(--ink-40)">'+esc(p.status||'active')+'</span></td>' +
-            '<td><button onclick="_deleteProspect(\''+esc(p.id)+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="Delete">×</button></td>' +
+            '<td><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">'+actions+'</div></td>' +
           '</tr>';
         }).join('') +
         '</tbody></table></div>'
@@ -9638,40 +9646,719 @@ async function _exportProspectsCSV() {
   a.click(); URL.revokeObjectURL(url);
 }
 
-/* ── Personas / Cadences placeholders (real content lands in PR B) ── */
-function _renderProspectPersonas() {
-  const body = document.getElementById('prospectBody'); if (!body) return;
-  body.innerHTML = PERSONAS.map(p =>
-    '<div class="persona-card">' +
-      '<h4>'+esc(p.label)+'</h4>' +
-      '<div class="subtitle">Needs · Pains · Desires · Priorities · Worldview</div>' +
-      '<p style="color:var(--ink-40);font-size:13px;margin:0">Persona research lands in the next pass — we want your real customer notes feeding this rather than generic content.</p>' +
-    '</div>'
-  ).join('');
+/* ══════════════════════════════════════════════════
+   PERSONA RESEARCH — high-end furniture / interior design, U.S. nationwide
+   Authored as marketing strategy: needs/pains/desires/priorities/worldview
+   each = exactly 10 entries per persona. Edit freely as you learn from
+   real conversations — these are the v1 hypotheses, not final truth.
+   Regional language is intentionally light so the same content reads
+   credible whether the project is in coastal FL, Aspen, the Hamptons,
+   Park City, Lake Tahoe, Charleston, or Scottsdale.
+══════════════════════════════════════════════════ */
+const PERSONA_RESEARCH = {
+  builders: {
+    label: 'Builders / Contractors',
+    summary: 'Production and custom builders staging model homes, spec homes, and amenity spaces — coastal Florida, mountain resort markets, Texas Hill Country, the Carolinas, the Hamptons, Park City, Scottsdale. The model home is their #1 sales tool — every closing day that slips costs them carrying cost and broker confidence.',
+    valueProp: 'Win the broker walk and protect the CO date: photo-grade staging, builder-margin pricing, and one accountable rep across every plan in your community.',
+    pillars: [
+      'CO-date delivery — never the variable that slips your closing',
+      'Builder-margin pricing with one consolidated PO across communities',
+      'Photo-grade styling for MLS, drone, and Parade of Homes',
+      'COI + white-glove install protects punch-out finishes',
+      'Reorder a model with one email — variance kits priced by plan',
+    ],
+    needs: [
+      'CO-date guaranteed delivery so closings do not slip',
+      'Builder-margin pricing consolidated across communities',
+      'CAD-ready specs at the design phase, not at retail-ready',
+      'COI / liability coverage on every install crew',
+      'Punch-out-trained installers who do not ding new finishes',
+      'Photo-grade staging that performs in MLS and drone',
+      'A single rep accountable across multiple plans',
+      'Sample loaner program for design centers',
+      'Lighting + textiles + outdoor coordinated in one PO',
+      'Reorder workflow from prior PO history for model refresh',
+    ],
+    pains: [
+      'Furniture lead time misses CO date and pushes closing',
+      'Damage to flooring or walls during install eats margin',
+      'Coordinating multiple vendors burns the super\'s week',
+      'Designer fees creep past the line item in the budget',
+      'MLS photos look flat — brokers tour comparable homes',
+      'Models look "rental" — buyers cannot picture themselves',
+      'Mid-build change orders force restyling at the last minute',
+      'Vendors ghost during the 90-day punch-out window',
+      'No spec-home variant kits — every model styled from scratch',
+      'FF&E vs marketing cost classification confuses accounting',
+    ],
+    desires: [
+      'A broker walk where every agent says "this is the best in the parade"',
+      'A rep who knows their floor plans by heart',
+      'Furniture that survives 18 months of model traffic',
+      'Move-in day where the buyer tears up at the front door',
+      'Spec-home variants priced as kits, not project-by-project',
+      'Photographer-ready styling without an extra fee',
+      'One-email reorder when refreshing a model',
+      'Outdoor pieces graded for the climate they sit in — coastal salt, mountain freeze, desert sun',
+      'Buyer-facing financing so the look goes home with the buyer',
+      'A staging line visibly different from the competing builder',
+    ],
+    priorities: [
+      'Protect CO and closing dates above all else',
+      'Beat the competing builder at the broker walk',
+      'Win Parade of Homes / Best of Year recognition',
+      'Protect builder reputation through the punch-out phase',
+      'Minimize unsold-model carrying cost',
+      'Move spec homes 30 days faster than the comp',
+      'Train site supers without re-training every cycle',
+      'Photographer / MLS turnaround within a week of CO',
+      'Insurance and risk: every install team carries proof',
+      'Standardize variance across plans within a community',
+    ],
+    worldview: [
+      'Time is money — the day a closing slips is the day margin disappears',
+      'Models are sales tools, not decoration',
+      'Brokers convert tours — make their walk easy',
+      'Vendors who hit dates win repeat business; price is secondary',
+      'Design matters, but "delivered photogenic and on time" matters more',
+      'Builders trade in stories — make your win story tellable',
+      'Read the regional buyer — coastal transitional, mountain rustic, desert contemporary, low-country traditional',
+      'Buyer demographics skew older + cash — quality beats trendy',
+      'Punch-out is the brand moment that gets remembered',
+      'Vendors who understand draw schedules become long-term partners',
+    ],
+  },
+  realtors: {
+    label: 'Realtors',
+    summary: 'Listing agents in luxury and mid-luxury markets nationwide — from Miami and Greenwich to Aspen, Scottsdale, Nashville, and the Bay Area. Staging budget is small but the listing photo is the entire game — empty rooms or generic stage props cost them weeks on market and price reductions.',
+    valueProp: 'Win the listing photo and shorten days-on-market: turnkey staging quotes in 24 hours, photo-prep within seven days, and a co-marketing kit you can hand the seller.',
+    pillars: [
+      'Photo-day-ready staging in seven days from quote acceptance',
+      '24-hour quote turnaround on every listing brief',
+      'Co-marketing kit: before/after, IG reels, open-house signage',
+      'Stage-to-sell ROI receipts — average DOM reduction your listings beat',
+      'Short-stage rentals plus optional sell-through if the buyer wants it',
+    ],
+    needs: [
+      'Same-week photo-prep staging for active listings',
+      '24-hour quote turnaround on listing briefs',
+      'A staging quote the seller will sign on the spot',
+      'Before / after content built for IG and broker websites',
+      'Open-house signage that promotes both agent and listing',
+      'Short-stage rental plus sell-through option for the buyer',
+      'Coordinated drapery and lighting for twilight photo shoots',
+      'Stage-and-list partnership cross-referrals',
+      'Comparables proof — DOM impact data they can show sellers',
+      'A rep who responds during weekend open houses',
+    ],
+    pains: [
+      'Listings sit on market because empty rooms photograph cold',
+      'Sellers refuse to spend $5K on staging they cannot keep',
+      'Generic stage props look like every other listing in the comp set',
+      'Photo day arrives before staging delivery slot opens',
+      'Drapery and lighting overlooked — windows look raw on twilight shoots',
+      'Open-house traffic is high but offers stay low',
+      'No content to fuel IG and Realtor.com reels post-listing',
+      'Price reductions kill the agent\'s commission and credibility',
+      'Sellers second-guess investment without ROI data',
+      'Stagers ghost between Friday afternoon and Monday morning',
+    ],
+    desires: [
+      'A listing where the photo causes saved-search traffic to spike',
+      'Sellers who text "we got three offers in five days"',
+      'Staging that converts to optional sell-through for the buyer',
+      'Co-branded reels they can post without hiring an editor',
+      'Twilight shots where windows and lighting carry the room',
+      'A staging quote sellers sign without the weekend deliberation',
+      'A rep who texts back during Saturday open houses',
+      'Comp set comparison data that justifies the spend',
+      'A standing partnership — not a one-off vendor relationship',
+      'Brokerage-wide preferred-vendor status',
+    ],
+    priorities: [
+      'Reduce days on market on every listing they take',
+      'Win listings with a marketing pitch that includes staging',
+      'Protect commission against price reductions',
+      'Generate content for personal brand on IG / TikTok',
+      'Earn referrals from current sellers',
+      'Photo day must hit the schedule — period',
+      'Open-house experience that moves buyers to write offers',
+      'Maintain brokerage preferred-vendor relationships',
+      'Cash flow timing — invoice after closing if possible',
+      'Build a repeatable listing playbook',
+    ],
+    worldview: [
+      'The first photo decides the listing\'s fate',
+      'Empty rooms read "tired listing" within ten seconds',
+      'Staging is not decoration — it is conversion optimization',
+      'Buyers buy a feeling, then justify with logic',
+      'Price reductions hurt more than the staging investment',
+      'IG and TikTok content compounds when the listing is photogenic',
+      'Sellers trust agents who bring receipts, not opinions',
+      'Buyers shop a feeling — calibrate styling to the regional aesthetic, not a single national look',
+      'Twilight photos triple click-through — fight for them',
+      'Speed is the agent\'s scarcest resource',
+    ],
+  },
+  sellers: {
+    label: 'Home Sellers',
+    summary: 'Owner-occupants prepping a home for sale anywhere in the U.S. — often empty-nesters downsizing, relocating, or moving to a new build. Anxious about the spend, eager for proof, and motivated by avoiding price cuts more than by maximizing list price.',
+    valueProp: 'Sell faster, for more, without the panic — staging that pays for itself in the first ten days on market, with a clear before / after and a guaranteed photo-day schedule.',
+    pillars: [
+      'Pay-after-close-friendly options to remove the upfront-cost objection',
+      'Staging tied to photo day — never the bottleneck on listing date',
+      'Before / after data from comparable zip codes in their market',
+      'Optional sell-through to the buyer if the look stays',
+      'Coordinated with their realtor — no third-party blame loop',
+    ],
+    needs: [
+      'Reassurance that staging pays for itself before the price cut',
+      'A timeline tied to their realtor\'s photo-day schedule',
+      'Before / after proof from comparable zip codes',
+      'Optional sell-through so they recover the spend',
+      'Coordination with their realtor without finger-pointing',
+      'Donation / haul-away help for old furniture',
+      'Concierge-level handling of move-out logistics',
+      'Soft-touch communication during a stressful transition',
+      'Region-appropriate styling tuned to the buyer pool actually shopping their zip',
+      'Clear, written quote with no surprise add-ons',
+    ],
+    pains: [
+      'Home sits two weeks longer than the comps and the price cut starts',
+      'Furniture from 2008 photographs as "tired" no matter how clean',
+      'They cannot picture what the home will look like staged',
+      'Realtor pressure on a budget the seller does not want to spend',
+      'Old pieces nobody in the family wants — donation logistics overwhelm',
+      'Move date and photo date arrive in the same week',
+      'Staging companies want full payment up front',
+      'Photos online look like every other listing in the neighborhood',
+      'Open-house feedback says "felt dated" — they hear "felt cheap"',
+      'Nervous about strangers in the house during install',
+    ],
+    desires: [
+      'Multiple offers in the first weekend',
+      'List price holds — no reductions, no renegotiation',
+      'A photo their realtor brags about on social',
+      'Their adult kids saying "wow, the house has never looked this good"',
+      'Donation or sell-through that handles old pieces gracefully',
+      'A move-out timeline that does not collide with photo day',
+      'Buyers who write the offer because of how the home felt',
+      'Staging spend recovered at closing through a higher price',
+      'A vendor that treats their home as carefully as their realtor does',
+      'A graceful exit from the home of twenty years',
+    ],
+    priorities: [
+      'Avoid price reductions',
+      'Hit photo day on schedule',
+      'Stay inside the staging budget the realtor proposed',
+      'Donate or sell old furniture with minimal logistics',
+      'Protect the home during install and de-stage',
+      'Simple, written contract — no surprises at the end',
+      'Communication that respects the emotional weight of selling',
+      'Coordination with the buyer for sell-through if interested',
+      'Region-appropriate styling — not metro-modern by default',
+      'Move-out logistics that align with the closing calendar',
+    ],
+    worldview: [
+      'The first ten days on market decide everything',
+      'A price cut feels worse than spending on staging',
+      'Photos beat open houses — most buyers decide before walking in',
+      'Their home is not a comp — it is a memory',
+      'Realtor incentive aligns more often than not, but not always',
+      'Real buyers bring spouses on a second showing — feel decides',
+      'Empty-nester sellers want grace, not pressure',
+      'Quality of strangers in the home matters more than price',
+      'Selling well funds the next chapter — usually a smaller home',
+      'Staging is an investment, not a vanity expense, when proven with data',
+    ],
+  },
+  couples: {
+    label: 'Couples 40+',
+    summary: 'Direct retail buyers — empty nesters, second-home owners, recent transplants. Cash-rich, time-poor, taste-mature. They want one trusted designer relationship, not a dozen vendor calls. Decision driven by the partner who feels less heard.',
+    valueProp: 'One designer-led relationship for the whole home — in-home consultation, coordinated rooms, and the kind of attention that respects how much they have already done in their lives.',
+    pillars: [
+      'In-home consultation by appointment — not a showroom queue',
+      'One designer for the whole home, not a different rep per room',
+      'Coordinated palette across rooms, lighting, drapery, outdoor',
+      'White-glove delivery and installation, no DIY assembly',
+      'After-the-sale relationship — refresh, reorder, refer',
+    ],
+    needs: [
+      'In-home consultation that respects their time',
+      'A single designer for the whole home',
+      'Coordinated palette across living, dining, primary bedroom',
+      'Lighting and drapery that elevate the architecture',
+      'White-glove delivery — no flat-pack assembly',
+      'Designer-led decisions when the partners disagree',
+      'Climate-appropriate fabrics — sun, salt, humidity, freeze, or altitude UV depending on where the home sits',
+      'Trade-in or donation handling for the pieces they are replacing',
+      'A schedule that respects winter / summer travel',
+      'After-the-sale availability for refresh and reorder',
+    ],
+    pains: [
+      'Showrooms feel transactional — nobody listens',
+      'Different rep for every room creates an uncoordinated home',
+      'Online research overwhelm — too many opinions, not enough taste',
+      'Spouses disagree and the project stalls for months',
+      'Fabrics chosen on a different region\'s aesthetic fail in the local climate (humidity, freeze, UV, salt)',
+      'Delivery windows wreck travel plans',
+      'Old furniture from prior chapters of life nobody wants',
+      'Designer fees feel opaque — what am I paying for?',
+      'Neighbors\' homes look "Pinterest finished" — theirs feels stalled',
+      'Big-box retailers send 22-year-olds with no context',
+    ],
+    desires: [
+      'Walking into their finished primary bedroom and exhaling',
+      'A home that hosts their grown kids for the holidays beautifully',
+      'A relationship with a designer they trust for years, not a transaction',
+      'A coordinated home that feels intentional, not catalog-styled',
+      'Outdoor space — patio, lanai, deck, courtyard — that delivers the indoor / outdoor lifestyle they bought into',
+      'Pieces that out-survive the next two moves',
+      'Both partners feeling heard in the decision',
+      'A designer who pushes back when they pick the wrong thing',
+      'Concierge-level scheduling around their travel calendar',
+      'One vendor relationship for the next decade',
+    ],
+    priorities: [
+      'A coordinated, designer-led result — not catalog assembly',
+      'Both partners aligned on the major decisions',
+      'Quality and longevity over trend',
+      'Schedule respecting travel and seasonal residency',
+      'White-glove delivery and install',
+      'Trade-in or donation for old pieces, gracefully',
+      'A relationship — not a one-time purchase',
+      'Climate-appropriate materials matched to the home\'s location',
+      'Concierge communication, not portal logins',
+      'A home that hosts grown kids and grandkids well',
+    ],
+    worldview: [
+      'They have earned the right to a designer-led experience',
+      'Time is worth more than money at this stage of life',
+      'A coordinated home reflects who they are — not the catalog',
+      'Spouse alignment is the real success metric',
+      'A great home matches its place — coastal, mountain, desert, or urban each demand a different language',
+      'Quality compounds — cheap furniture costs more in regret',
+      'Designers earn fees by saving them from their own indecision',
+      'Showroom visits are research, not decisions',
+      'One trusted vendor saves a thousand small choices',
+      'Hosting beautifully is a love language',
+    ],
+  },
+  landscaping: {
+    label: 'Landscaping Companies',
+    summary: 'Landscape design-build firms and pool / outdoor-living specialists nationwide — coastal Florida, the Carolinas, Texas, Arizona, California, mountain resort markets, the Hamptons. They sell the outdoor lifestyle, but their clients ask "and what about the furniture?" mid-installation. They need an outdoor furniture partner who closes that loop without competing for the design relationship.',
+    valueProp: 'Become the one-stop outdoor partner: a furniture rep who finishes the patio, lanai, or deck you designed, never competes for the client, and pays a referral that respects your project.',
+    pillars: [
+      'Outdoor-only specialist — salt, sun, freeze, monsoon, altitude UV all spec\'d to the project\'s climate',
+      'Referral pricing that protects your margin and your relationship',
+      'Co-quoted with your hardscape proposal — one client conversation',
+      'White-glove install scheduled around your project Gantt chart',
+      'Photography-grade staging for your portfolio after install',
+    ],
+    needs: [
+      'Outdoor-specialist furniture partner — not retail with an outdoor section',
+      'Co-quoting workflow tied to their hardscape proposal',
+      'Climate-graded finishes and covers — salt, sun, freeze, monsoon, altitude UV per project',
+      'Schedule sync with their project Gantt chart',
+      'Referral pricing that respects their margin',
+      'Photography access for their portfolio after install',
+      'Lighting integration with landscape lighting designs',
+      'Drapery / shade structures coordinated with pergolas',
+      'Tabletop and dining setup for client handover photos',
+      'Hand-off process that does not cost them the client',
+    ],
+    pains: [
+      'Client buys cheap furniture from a big-box and ruins the design',
+      'Plastic furniture clashes with the $100K hardscape they just installed',
+      'Furniture vendors steal the client and try to upsell hardscape',
+      'No referral program — they recommend out of goodwill, not partnership',
+      'Schedule mismatches leave the patio or deck empty for weeks after install',
+      'Photography misses the styled shot — portfolio suffers',
+      'Tabletop and dining setup falls on the client and looks unfinished',
+      'Big-box outdoor "weather-resistant" rusts in eighteen months',
+      'Designer specs ignored — client substitutes inferior products',
+      'Multiple vendors at the project site clash with their crew',
+    ],
+    desires: [
+      'A reveal photo that wins them next year\'s project',
+      'A partner who never tries to take the design lead',
+      'Client says "you guys finished it perfectly"',
+      'A referral check that recognizes the project value',
+      'Photo handoff for their portfolio without coordination overhead',
+      'One conversation with the client about furniture and they\'re done',
+      'Outdoor-grade materials that survive year three',
+      'Coordinated lighting that turns the outdoor space into evening theater',
+      'Schedule alignment within a 48-hour window',
+      'A vendor that thanks them publicly and tags their portfolio',
+    ],
+    priorities: [
+      'Protect their design relationship and client trust',
+      'Hit project deliver-by date with the outdoor space fully styled',
+      'Build portfolio assets from every completed project',
+      'Earn referral income without sales effort',
+      'Outdoor-grade durability — second photo three years later',
+      'Avoid client substitution after the design is finalized',
+      'Win next year\'s project from this year\'s reveal photo',
+      'Schedule sync with their internal Gantt',
+      'Co-marketing across IG and project case studies',
+      'Single point of contact at the furniture partner',
+    ],
+    worldview: [
+      'The outdoor lifestyle is the product — furniture is the punctuation',
+      'Outdoor specs live or die on the right climate match — salt, sun, freeze, snow, monsoon',
+      'Big-box outdoor furniture is a designer\'s worst enemy',
+      'Photography is the marketing — finish the shot',
+      'Referrals are the highest-margin lead source',
+      'A partner that respects the design relationship is rare and worth keeping',
+      'The outdoor room — patio, lanai, deck, courtyard, terrace — is where modern luxury actually lives',
+      'Lighting is half of the evening reveal',
+      'Year-three durability is the real test, not the install photo',
+      'One trusted partner is worth ten "we work with anyone" vendors',
+    ],
+  },
+};
+
+/* ══════════════════════════════════════════════════
+   EMAIL CADENCES — 5 emails per persona, 25 total
+   Each email <150 words. Subject = question with first name.
+   FOMO close + clear CTA. Methods rotate:
+     1. Corporate Visions — provoke status quo, "why change?"
+     2. SPIN Selling      — Situation, Problem, Implication, Need-payoff
+     3. Mirroring         — echo their language, low-pressure resonance
+     4. Positive Selling  — gain-framed, social proof, credible specifics
+     5. Neuroscience      — loss aversion, scarcity, vivid future-pacing
+   Variables: {{firstName}} {{company}}
+══════════════════════════════════════════════════ */
+const CADENCES = {
+  builders: [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, what slips first when a model is not ready for the broker walk?',
+      body:'Most builders we talk to lose the same week twice a year — the week the model was supposed to photograph and the week the closing was supposed to fund. Both slip when furniture is the variable nobody owns.\n\nWe own that variable for builders nationwide — coastal, mountain, desert, urban. Builder-margin pricing, CO-date guaranteed delivery, COI on every install, and one rep across every plan in the community.\n\nThree builders I work with have not pushed a closing because of furniture in eighteen months.\n\nWorth fifteen minutes this week to compare your last model timeline against ours? I will bring the photo-day schedule and the variance-kit pricing for your next plan.\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, how many days does your average model sit empty after CO?',
+      body:'Quick question. When a model finishes punch-out, how many days before it is photographed and broker-ready? Seven, fourteen, twenty-one?\n\nEvery day the model sits empty, the broker walk happens at the competing community first. Every comparable tour shifts the buyer\'s anchor. By day twenty-one, your phase release has lost the opening week of momentum.\n\nA builder in a comparable luxury market staged with us eight days after CO last quarter — broker walk filled, three contracts in two weeks.\n\nIf your next plan releases this quarter, can I send a sample timeline showing CO + 8 days fully styled? Only takes a reply.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, is "delivered photogenic and on time" still the metric?',
+      body:'You have said before — and I think most builders I respect say it the same way — that the vendor who delivers photogenic and on time wins repeat business. Price is secondary.\n\nThat is exactly how we run the program for {{company}}: one rep, builder-margin, CO-date discipline, COI on file, white-glove install that does not ding finishes.\n\nNot pitching a meeting. Just want to ask — is photogenic-and-on-time still the metric for your next phase release? If yes, I will send a one-page that maps to your plan.\n\nIf the metric has shifted, tell me what it is and I will rebuild around it.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, would a 30-day faster spec-home sell-through change the math?',
+      body:'Two builders running the variance-kit program with us this year have moved spec homes thirty days faster than their community average. Same plan, same neighborhood, same buyer demographic. Only variable: photo-grade staging delivered seven days after CO.\n\nThirty days off carrying cost on a $750K spec is roughly $4,500 saved. Across a community of twelve specs, that is real money — and broker confidence compounds across phases.\n\nI would like to share the program details with you. Twenty-minute call this week or next, your choice.\n\nFour spots open this month. After that, the next intake is post-Memorial Day.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, who is going to win Parade of Homes in your community?',
+      body:'Last note from me, then I will step back.\n\nParade of Homes voting starts in October. The builder who wins is almost always the one whose model photographs best. Not the one with the best plan. Not the one with the best price. The one whose model walked first and walked photogenic.\n\nWe are taking three more builders into the fall program before we cap. After that, the next intake opens in January and the photographer roster is locked.\n\nIf you want me to walk your next phase, reply with your community name and I will block the photo day this week.\n\nIf this is not the year, no problem — I will reach back next quarter.\n\n— Carol' },
+  ],
+
+  realtors: [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, what does the first listing photo cost you when it is empty?',
+      body:'Empty rooms read "tired listing" in the first ten seconds. Saved-search algorithms throttle, click-through dies, and by day eleven the price-cut conversation begins. The seller blames the agent. The agent blames the market. Nobody blames the photo.\n\nWe stage listings nationwide — photo-day-ready in seven days from quote acceptance. Quote in twenty-four hours. Co-marketing kit included — before / after, IG reel, twilight shot.\n\nThree agents we work with cut their average DOM by 40% this quarter on listings $700K+.\n\nWorth fifteen minutes to compare your last six listings against the benchmark? I will bring the data.\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, what was the DOM on your last vacant listing over $750K?',
+      body:'One question. On your last vacant listing over $750K, what was the days-on-market? Was it longer than your average?\n\nThe gap is almost always vacancy. Comparable staged listings in the same zip move 30-50% faster. The seller hears "needs price reduction" and the commission shrinks before the offer arrives.\n\nWe have a 24-hour staging quote workflow built for listing agents — sign-on-the-spot pricing, photo-day schedule guaranteed, optional sell-through if the buyer wants the look.\n\nIf you have a vacant listing coming up, send me the address and the photo-day target. I will quote it before tomorrow morning.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, is the first photo still doing the work for your listings?',
+      body:'You have probably heard yourself say it on a listing presentation: the first photo decides everything. Buyers scroll on their phone, the home is dismissed in ten seconds or saved.\n\nThat is the line my best listing-agent partners use, and it is exactly why we built the seven-day photo-prep program. Drapery and lighting included. Twilight-shot ready. Co-marketing kit so your IG and Realtor.com reel are done.\n\nIf the first photo is still doing the work for you, I want to be on your preferred-vendor list. If something else is the metric this year, tell me and I will rebuild the offer.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, would three offers in the first weekend change your listing pitch?',
+      body:'Listing last month: $1.2M, vacant, photographed two days after staging install. Three offers the first weekend. Closed at list, zero reductions.\n\nThe seller texted the agent: "this paid for itself in five days."\n\nThat is the receipt your listing pitch needs. Sellers do not push back on staging when you walk in with this kind of comp. We have a one-page brief I send my agent partners — feel free to use it on your next presentation.\n\nReply "send" and I will email it tonight.\n\nI keep the partner list under twenty agents per market. Two open spots in your market right now.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, who is taking the new listings on your block this season?',
+      body:'Last note from me.\n\nEvery market has a peak listing window — for some it is January through April, for others it is March through June, for resort markets it is shoulder season. The agents who own that stretch in your market will set the comp for the rest of the year. Every listing photo between now and then becomes the anchor for the neighborhood.\n\nI keep my preferred-agent partner list under twenty per market because the seven-day promise breaks if I overload it. Two slots in your zip right now.\n\nIf you want photo-day-ready staging on your next listing, reply with the property address. I will quote it in twenty-four hours and block the install schedule before the slots close.\n\nIf timing is off, I will reach back in six months. Either is fine.\n\n— Carol' },
+  ],
+
+  sellers: [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, what feels worse — staging cost or the price reduction email?',
+      body:'I get it. Staging feels like spending money on furniture you do not get to keep.\n\nBut every seller I work with who skipped staging eventually sent the same email to their realtor: "let\'s drop the price." That email costs ten to thirty thousand dollars. Staging costs a fraction of that and arrives photo-day-ready.\n\nWe stage homes nationwide, priced for the buyer pool actually shopping your zip code — coastal, mountain, urban, suburban. Pay-after-close-friendly options. Optional sell-through if the buyer wants to keep the look.\n\nWorth fifteen minutes to walk through what your home should look like in the listing photos? I will come to you.\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, when is photo day on your listing schedule?',
+      body:'Quick question for you. Has your realtor scheduled the listing photos yet? Same day or after staging?\n\nIf the photos happen before staging, the listing is anchored on the empty version forever. Even if you stage later, Zillow remembers. Buyers see the cold photos first and make their decision before opening the listing description.\n\nWe schedule install before photo day, never after. Realtor coordinates, we deliver, photographer arrives to a styled home.\n\nIf photo day is more than two weeks out, send me the date and your realtor\'s name. I will sync directly with them so you do not have to be the middleman.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, is selling well the bridge to the next chapter?',
+      body:'Most sellers I sit with say the same thing in different words — selling well is the bridge to the next chapter. The downsize, the move closer to the kids, the place by the water, the place in the mountains.\n\nThat next chapter is funded by what this home sells for. A staged listing moves faster in any market, holds list price, and protects the proceeds you are about to use.\n\nNo pressure. If selling well is the bridge for you too, I would like to come walk through and show what staging would look like room by room. Free consultation, written quote in 48 hours.\n\nReply with a day this week and I will come to you.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, would multiple offers in the first weekend change everything?',
+      body:'Last seller I worked with — four bedroom, listed at $890K. We staged Tuesday, photographed Thursday, listed Friday morning.\n\nThree offers by Sunday afternoon. Closed at $912K, zero reductions, fifteen days to contract. They sent me a thank-you card with their grandkids on the front porch of the new place.\n\nThat outcome is not unusual when staging hits photo day on schedule. We have a before / after comparison kit I share with sellers — happy to send it.\n\nReply "send" and I will email it tonight along with my next available consultation slot.\n\nFour open consultations this week.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, what does another month on market cost you?',
+      body:'Last note from me, then I will step back and let you decide.\n\nEvery month a home sits unsold costs roughly the carrying cost — taxes, insurance, mortgage interest, and the price reduction that almost always follows. Easily $8,000–$15,000 a month at the price points I work in.\n\nStaging is a fraction of one month\'s carry. And the homes I stage rarely see a second month.\n\nIf you are listing within sixty days, reply with the photo-day target and I will hold a consultation slot this week. If timing has shifted, just say so — I will reach back in a quarter.\n\nWishing you a clean, fast sale.\n\n— Carol' },
+  ],
+
+  couples: [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, why do most home projects stall after the third showroom visit?',
+      body:'Three reasons, every time: too many opinions online, a different rep for every room, and one partner feeling unheard.\n\nAfter the third showroom visit, the project stops. The dining table never gets ordered. The patio or deck stays half-finished. A year goes by.\n\nI work differently. One designer for the whole home. In-home consultation by appointment. Coordinated palette across living, dining, primary, and outdoor — so the home feels intentional, not catalog-assembled.\n\nThree couples I work with this year have finished entire homes inside ninety days from first visit.\n\nWorth a one-hour in-home consultation? No fee, no pressure. I will bring a tablet of options and listen first.\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, which room has been "almost done" the longest?',
+      body:'Honest question. In your home right now, which room has been "almost done" the longest? Living? Primary? The patio or deck you keep saying you will furnish properly next year?\n\nThe room that has been almost-done the longest is the one costing you the most — not in dollars, in joy. The grandkids visit and you apologize for it. Friends come over and you mentally edit it out of the tour.\n\nOne in-home consultation usually unlocks it. Coordinated palette, one designer, white-glove delivery on a schedule that respects your travel calendar.\n\nWhich room is it for you? Reply and I will come walk it next week.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, is a coordinated home worth the relationship to get it?',
+      body:'Most couples I work with at this stage of life say the same thing — they have earned the right to a designer-led experience, not a showroom queue. They want one trusted relationship, not a dozen vendor calls.\n\nThat is exactly how I work. In-home consultation, no pushy retail. Climate-appropriate fabrics for wherever the home sits. Schedule that respects winter and summer travel. After-the-sale availability for refresh and reorder.\n\nIf a coordinated home is what you are after, I would like to be that relationship. If something else is the priority, tell me and I will respect it.\n\nEither way, reply and let me know how to be useful.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, would hosting the holidays beautifully be worth a Tuesday afternoon?',
+      body:'A couple I worked with last year finished their home with me in October. Thanksgiving they hosted both adult kids and four grandkids. The oldest daughter texted: "Mom, the house has never looked this good in my entire life."\n\nThat outcome is not luck. It is one designer, one palette, white-glove install, scheduled around their travel.\n\nFrom first in-home consultation to fully styled holiday-ready home: about ten weeks at the pace most couples want.\n\nReply with a Tuesday or Thursday afternoon this month and I will block it. No fee for the consultation. Detailed written proposal within a week if it feels like a fit.\n\nThree consultation slots open before month-end.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, when do you want to walk into the finished primary bedroom?',
+      body:'Last note. Then I will step back.\n\nProjects that start in the spring finish in time for the entertaining season. Projects that start in the summer finish in time for the holidays. Projects that start after October risk slipping to next year.\n\nMy in-home consultation calendar runs three to four weeks ahead. Lead time on coordinated whole-home projects is roughly ten to twelve weeks from go-ahead.\n\nIf you want to walk into the finished primary bedroom in front of company this season, the consultation needs to happen this month.\n\nReply with a day that works. Or tell me the season has shifted and I will reach back at the right time. Either is honest and fine with me.\n\n— Carol' },
+  ],
+
+  landscaping: [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, what happens to your reveal photo when the client buys plastic furniture?',
+      body:'Here is what I see almost every month: a beautiful $100K hardscape installed, a stunning outdoor design, and then the client buys outdoor furniture from a big-box retailer because nobody offered them a better option. The reveal photo never happens. The portfolio shot is missed. Year three the cheap furniture fails and the design suffers for it.\n\nWe are an outdoor-only specialist — climate-graded for the project, whether it sits in coastal salt, desert sun, mountain freeze, or a Northeast monsoon — and we never take the design lead from the firm we partner with.\n\nReferral pricing that respects your project margin. Co-quoted with your hardscape proposal. Photo handoff for your portfolio after install.\n\nWorth a fifteen-minute call to compare programs?\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, how often does the outdoor space sit empty after install?',
+      body:'A real question. After your team finishes a hardscape, patio, or deck, how long does the space sit empty before the client furnishes it? Two weeks? Two months?\n\nEvery week the space sits empty is a week your reveal photo does not happen, your IG portfolio shot is missed, and the client experiences the design half-finished. By the time the furniture arrives, the moment has passed.\n\nWe co-quote with your hardscape proposal so the install schedule lines up. Furniture and styling delivered within seventy-two hours of your final walk-through.\n\nIf you have a project finishing in the next ninety days, send me the address and target date. I will quote co-styled inside a week.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, is the outdoor room still where modern luxury actually lives?',
+      body:'You hear it on every project: the outdoor room — patio, lanai, deck, courtyard, terrace — is where modern luxury actually lives. Indoor / outdoor flow is the whole pitch. The hardscape and the planting frame it, the furniture inhabits it, and the lighting closes it out at sunset.\n\nThat is exactly the model we built around — outdoor-only specialist, climate-graded materials for whichever zip the project sits in, lighting integration, schedule synced to your project Gantt. Never competing for the design lead.\n\nIf the outdoor room is still the heart of your work, I want to be the partner that finishes it. If the work has shifted somewhere else, tell me where and I will rebuild around that.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, would a partner that brings you next year\'s project be useful?',
+      body:'Three landscape firms I partnered with this year each won a referral project from the reveal photo of a co-styled outdoor room. The neighbor walked over, asked who designed it, and the firm picked up a six-figure project.\n\nThat is the math of finishing the photo. Your hardscape stays in the frame. Your planting stays in the frame. The lifestyle shot becomes your best lead generator.\n\nReferral pricing on furniture and a portfolio-grade reveal session — happy to walk you through how it works.\n\nReply "tell me more" and I will send the partner brief tonight. Six firms in our preferred-partner program right now. Two open seats this quarter.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, who is finishing your fall reveals this year?',
+      body:'Last note from me.\n\nFall is when the reveal photos that travel into your spring proposal deck get taken. The projects you finish before the holiday slowdown are the ones your next year is built on.\n\nPartner-program intake closes end of summer for fall reveals. After that the photo schedule and install crews are locked through November.\n\nIf you have projects finishing between now and October, send me the project list. I will block install windows for each one and price the referral terms in writing.\n\nIf timing is off, I will reach back at the start of next year. Either is fine.\n\n— Carol' },
+  ],
+};
+
+/* ── Cadence helpers ── */
+function _renderTemplate(t, prospect) {
+  const fn = (prospect && (prospect.firstName || '').trim()) || 'there';
+  const co = (prospect && (prospect.company   || '').trim()) || 'your company';
+  return String(t).replace(/\{\{firstName\}\}/g, fn).replace(/\{\{company\}\}/g, co);
 }
 
+function _cadenceLogKey() { return 'ea_cadence_log'; }
+function getCadenceLog()  { try { return JSON.parse(localStorage.getItem(_cadenceLogKey()) || '[]'); } catch(e) { return []; } }
+function _appendCadenceLog(entry) {
+  const arr = getCadenceLog();
+  arr.unshift(entry);
+  if (arr.length > 1000) arr.length = 1000;
+  localStorage.setItem(_cadenceLogKey(), JSON.stringify(arr));
+  if (typeof _setCloudSetting === 'function') _setCloudSetting('cadence_log', arr);
+}
+
+async function enrollProspect(id) {
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === id);
+  if (!p) { toast('Contact not found', 'error'); return; }
+  if (!p.persona) { toast('Set a persona first', 'error'); return; }
+  p.cadenceStep      = 1;
+  p.cadenceStartedAt = new Date().toISOString();
+  p.status           = 'active';
+  await Prospects.save(p);
+  toast('Enrolled in ' + p.persona + ' cadence — start with Step 1', 'success');
+  _renderProspectContacts();
+}
+
+async function unenrollProspect(id) {
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === id);
+  if (!p) return;
+  p.cadenceStep = 0;
+  p.cadenceStartedAt = '';
+  await Prospects.save(p);
+  toast('Removed from cadence', 'success');
+  _renderProspectContacts();
+}
+
+async function sendCadenceStep(id) {
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === id);
+  if (!p)             { toast('Contact not found','error'); return; }
+  if (!p.email)       { toast('Contact has no email','error'); return; }
+  if (!p.persona)     { toast('Set a persona first','error'); return; }
+  if (!p.cadenceStep) { toast('Not enrolled — click Enroll first','error'); return; }
+  if (p.cadenceStep > 5) { toast('Cadence complete (5/5)','info'); return; }
+
+  const tmpl = (CADENCES[p.persona] || []).find(t => t.step === p.cadenceStep);
+  if (!tmpl) { toast('No template for this step','error'); return; }
+
+  const subject = _renderTemplate(tmpl.subject, p);
+  const body    = _renderTemplate(tmpl.body,    p);
+  const key     = (localStorage.getItem('ea_resend_key') || '').trim();
+  let status    = 'queued';
+  let detail    = '';
+
+  if (key) {
+    // Resend send is intentionally a stub — browser CORS + key exposure
+    // make direct API calls unsafe. The Edge Function lands in a follow-up.
+    status = 'pending-edge-function';
+    detail = 'Resend key present, but sends route through a Supabase Edge Function that has not been deployed yet. Mark sent manually for now.';
+  } else {
+    status = 'no-key';
+    detail = 'No Resend API key set. Add one in Setup, or click "Mark sent" to log this step manually.';
+  }
+
+  // Log queue attempt — does NOT advance step; advance happens on confirmed send
+  _appendCadenceLog({
+    prospectId: p.id,
+    name:      ((p.firstName||'') + ' ' + (p.lastName||'')).trim(),
+    email:     p.email,
+    persona:   p.persona,
+    step:      p.cadenceStep,
+    method:    tmpl.method,
+    subject:   subject,
+    status:    status,
+    detail:    detail,
+    queuedAt:  new Date().toISOString(),
+  });
+
+  // Show preview modal so the user can copy/paste manually if needed
+  _showCadencePreview(p, tmpl, subject, body, status, detail);
+}
+
+async function markStepSent(id) {
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === id);
+  if (!p || !p.cadenceStep) return;
+  const tmpl = (CADENCES[p.persona] || []).find(t => t.step === p.cadenceStep);
+  _appendCadenceLog({
+    prospectId: p.id,
+    name:      ((p.firstName||'') + ' ' + (p.lastName||'')).trim(),
+    email:     p.email,
+    persona:   p.persona,
+    step:      p.cadenceStep,
+    method:    tmpl ? tmpl.method : '',
+    subject:   tmpl ? _renderTemplate(tmpl.subject, p) : '',
+    status:    'sent-manual',
+    sentAt:    new Date().toISOString(),
+  });
+  p.lastContactedAt = new Date().toISOString();
+  if (p.cadenceStep < 5) p.cadenceStep += 1; else p.status = 'completed';
+  await Prospects.save(p);
+  toast('Marked sent — advanced to step ' + (p.cadenceStep > 5 ? 5 : p.cadenceStep), 'success');
+  const overlay = document.getElementById('cadenceOverlay'); if (overlay) overlay.remove();
+  _renderProspectContacts();
+}
+
+function _showCadencePreview(prospect, tmpl, subject, body, status, detail) {
+  const existing = document.getElementById('cadenceOverlay'); if (existing) existing.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'cadenceOverlay';
+  wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  const banner = status === 'pending-edge-function'
+    ? '<div style="padding:8px 12px;background:rgba(196,147,63,.12);border:1px solid var(--gold);border-radius:6px;font-size:12px;color:var(--gold);margin-bottom:12px">⚠ '+esc(detail)+'</div>'
+    : status === 'no-key'
+      ? '<div style="padding:8px 12px;background:rgba(224,82,82,.08);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red);margin-bottom:12px">⚠ '+esc(detail)+'</div>'
+      : '';
+  wrap.innerHTML =
+    '<div style="background:#fff;border-radius:var(--r);max-width:640px;width:100%;max-height:90vh;overflow:auto;padding:24px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+        '<h3 style="font-family:var(--font-display);color:var(--gold);font-size:18px;margin:0">Step '+tmpl.step+' / 5 · '+esc(tmpl.method)+'</h3>' +
+        '<button onclick="document.getElementById(\'cadenceOverlay\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink-50)">×</button>' +
+      '</div>' +
+      banner +
+      '<div style="font-size:11px;color:var(--ink-50);margin-bottom:4px">To</div>' +
+      '<div style="padding:8px;background:var(--ink-90);border-radius:6px;font-size:13px;margin-bottom:10px">'+esc(prospect.email||'(no email)')+'</div>' +
+      '<div style="font-size:11px;color:var(--ink-50);margin-bottom:4px">Subject</div>' +
+      '<input id="cadSubject" value="'+esc(subject)+'" style="width:100%;padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px;font-weight:700;margin-bottom:10px">' +
+      '<div style="font-size:11px;color:var(--ink-50);margin-bottom:4px">Body</div>' +
+      '<textarea id="cadBody" rows="14" style="width:100%;padding:10px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px;line-height:1.5;font-family:inherit">'+esc(body)+'</textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">' +
+        '<button class="btn btn-ghost btn-sm" onclick="_copyCadence()">Copy</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="_openMailto(\''+esc(prospect.email||'')+'\')">Open in mail app</button>' +
+        '<div style="flex:1"></div>' +
+        '<button class="btn btn-primary btn-sm" onclick="markStepSent(\''+esc(prospect.id)+'\')">Mark sent &amp; advance →</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(wrap);
+}
+
+function _copyCadence() {
+  const s = document.getElementById('cadSubject');
+  const b = document.getElementById('cadBody');
+  if (!s || !b) return;
+  const text = 'Subject: ' + s.value + '\n\n' + b.value;
+  navigator.clipboard.writeText(text).then(
+    () => toast('Copied','success'),
+    () => toast('Copy failed','error')
+  );
+}
+
+function _openMailto(email) {
+  const s = document.getElementById('cadSubject');
+  const b = document.getElementById('cadBody');
+  if (!s || !b) return;
+  const url = 'mailto:' + encodeURIComponent(email)
+    + '?subject=' + encodeURIComponent(s.value)
+    + '&body='    + encodeURIComponent(b.value);
+  window.location.href = url;
+}
+
+/* ── Persona research render — replaces the placeholder ── */
+function _renderProspectPersonas() {
+  const body = document.getElementById('prospectBody'); if (!body) return;
+  const PS   = window._prospectState;
+  const tabs = PERSONAS.map(p => {
+    const a = PS.personaPick === p.id;
+    return '<button onclick="window._prospectState.personaPick=\''+p.id+'\';_renderProspectPersonas()" '
+      + 'style="padding:6px 12px;font-size:11px;font-weight:700;border-radius:14px;cursor:pointer;'
+      + 'border:1px solid '+(a?'var(--gold)':'var(--ink-70)')+';'
+      + 'background:'+(a?'rgba(196,147,63,.12)':'transparent')+';'
+      + 'color:'+(a?'var(--gold)':'var(--ink-40)')+'">'+esc(p.label)+'</button>';
+  }).join(' ');
+  const persona = PERSONAS.find(p => p.id === PS.personaPick) || PERSONAS[0];
+  const r = PERSONA_RESEARCH[persona.id];
+  if (!r) { body.innerHTML = '<p>No research for this persona yet.</p>'; return; }
+
+  const list = (title, arr) =>
+    '<div style="margin-bottom:14px">' +
+      '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-bottom:6px">'+title+'</div>' +
+      '<ol style="margin:0;padding-left:20px;font-size:13px;line-height:1.6;color:#2A2622">' +
+        arr.map(x => '<li>'+esc(x)+'</li>').join('') +
+      '</ol>' +
+    '</div>';
+
+  body.innerHTML =
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+tabs+'</div>' +
+    '<div class="persona-card">' +
+      '<h4>'+esc(persona.label)+'</h4>' +
+      '<div class="subtitle">'+esc(r.summary)+'</div>' +
+      '<div style="background:rgba(196,147,63,.08);border-left:3px solid var(--gold);padding:12px 14px;border-radius:0 6px 6px 0;margin-bottom:16px">' +
+        '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-bottom:4px">Value proposition</div>' +
+        '<p style="margin:0 0 10px;font-size:14px;color:#2A2622;line-height:1.55"><strong>'+esc(r.valueProp)+'</strong></p>' +
+        '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin-bottom:4px">Messaging pillars</div>' +
+        '<ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.55;color:#2A2622">' +
+          r.pillars.map(p => '<li>'+esc(p)+'</li>').join('') +
+        '</ul>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">' +
+        list('Needs', r.needs) +
+        list('Pains', r.pains) +
+        list('Desires', r.desires) +
+        list('Priorities', r.priorities) +
+        list('Worldview', r.worldview) +
+      '</div>' +
+    '</div>';
+}
+
+/* ── Cadence render — replaces the placeholder ── */
 function _renderProspectCadences() {
   const body = document.getElementById('prospectBody'); if (!body) return;
   const PS = window._prospectState;
-  const tabs = PERSONAS.map(p =>
-    '<button onclick="window._prospectState.personaPick=\''+p.id+'\';_renderProspectCadences()" '
+  const tabs = PERSONAS.map(p => {
+    const a = PS.personaPick === p.id;
+    return '<button onclick="window._prospectState.personaPick=\''+p.id+'\';_renderProspectCadences()" '
       + 'style="padding:6px 12px;font-size:11px;font-weight:700;border-radius:14px;cursor:pointer;'
-      + 'border:1px solid '+(PS.personaPick===p.id?'var(--gold)':'var(--ink-70)')+';'
-      + 'background:'+(PS.personaPick===p.id?'rgba(196,147,63,.12)':'transparent')+';'
-      + 'color:'+(PS.personaPick===p.id?'var(--gold)':'var(--ink-40)')+'">'+esc(p.label)+'</button>'
-  ).join(' ');
+      + 'border:1px solid '+(a?'var(--gold)':'var(--ink-70)')+';'
+      + 'background:'+(a?'rgba(196,147,63,.12)':'transparent')+';'
+      + 'color:'+(a?'var(--gold)':'var(--ink-40)')+'">'+esc(p.label)+'</button>';
+  }).join(' ');
   const persona = PERSONAS.find(p => p.id === PS.personaPick) || PERSONAS[0];
+  const cads    = CADENCES[persona.id] || [];
+
   body.innerHTML =
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+tabs+'</div>' +
     '<div class="persona-card">' +
       '<h4>'+esc(persona.label)+' — 5-step cadence</h4>' +
-      '<div class="subtitle">Subject as a question · &lt;150 words · FOMO close · clear CTA</div>' +
-      [1,2,3,4,5].map(n =>
+      '<div class="subtitle">Subject as a question · &lt;150 words · FOMO close · clear CTA · {{firstName}} {{company}} merge tags</div>' +
+      cads.map(c =>
         '<div class="cadence-email">' +
-          '<div class="step">Step '+n+'</div>' +
-          '<div class="subj" style="color:var(--ink-50)">Subject — drafted in PR B</div>' +
-          '<div class="body" style="color:var(--ink-50)">Email body using Corporate Visions / SPIN / mirroring / positive selling / neuroscience methods. Drafted in PR B once we have your real customer notes.</div>' +
-          '<div class="method">Method placeholder</div>' +
+          '<div class="step">Step '+c.step+'</div>' +
+          '<div class="subj">'+esc(c.subject)+'</div>' +
+          '<div class="body">'+esc(c.body)+'</div>' +
+          '<div class="method">'+esc(c.method)+'</div>' +
         '</div>'
       ).join('') +
     '</div>';
