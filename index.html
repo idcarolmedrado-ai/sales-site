@@ -8641,14 +8641,24 @@ async function migrateAllToCloud() {
   }
 
   // 3. Mileage records — explicit awaited upsert (was fire-and-forget before)
+  // Boolean fields (the 5 stop checkboxes + isManual) come in from
+  // localStorage as either true / false / "" / undefined. Postgres rejects
+  // empty strings on boolean columns ("invalid input syntax for type boolean")
+  // so we coerce to a real boolean before sending.
   show('Syncing mileage records...');
   const mil = track('mileage','🚗 Mileage records');
   const mileage = Store.load('mileage');
+  const _MILEAGE_BOOL_FIELDS = ['isManual','stopHome1','stopDC1','stopClient','stopHome2','stopDC2'];
+  const _cleanMileage = (rec) => {
+    const r = { ...rec };
+    for (const k of _MILEAGE_BOOL_FIELDS) r[k] = !!r[k];
+    return r;
+  };
   mil.attempted = mileage.length;
   if (mileage.length) {
     try {
       for (let i = 0; i < mileage.length; i += 50) {
-        const slice = mileage.slice(i, i + 50);
+        const slice = mileage.slice(i, i + 50).map(_cleanMileage);
         const { error } = await DB.client.from('mileage_records').upsert(slice, { onConflict: 'id' });
         if (error) throw error;
         mil.succeeded += slice.length;
