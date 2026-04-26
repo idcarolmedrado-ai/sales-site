@@ -8269,6 +8269,8 @@ function _buildSchemaSQL() {
 '  add column if not exists cadence_started_at timestamptz,',
 '  add column if not exists last_contacted_at timestamptz,',
 '  add column if not exists last_reply_at timestamptz,',
+'  add column if not exists last_reply_subject text,',
+'  add column if not exists last_reply_from text,',
 '  add column if not exists archived_at timestamptz,',
 '  add column if not exists status text default \'active\',',
 '  add column if not exists created_at timestamptz default now();',
@@ -9906,6 +9908,8 @@ const Prospects = {
       cadenceStartedAt:r.cadence_started_at||'',
       lastContactedAt:r.last_contacted_at||'',
       lastReplyAt:r.last_reply_at||'',
+      lastReplySubject:r.last_reply_subject||'',
+      lastReplyFrom:r.last_reply_from||'',
       status:r.status||'active',
       archivedAt:r.archived_at||'',
       createdAt:r.created_at||'',
@@ -9922,6 +9926,8 @@ const Prospects = {
       cadence_started_at:p.cadenceStartedAt||null,
       last_contacted_at:p.lastContactedAt||null,
       last_reply_at:p.lastReplyAt||null,
+      last_reply_subject:p.lastReplySubject||null,
+      last_reply_from:p.lastReplyFrom||null,
       status:p.status||'active',
       archived_at:p.archivedAt||null,
     };
@@ -10156,10 +10162,16 @@ async function _renderProspectToday() {
   const renderRow = (p, primaryAction) => {
     const personaLbl = (PERSONAS.find(x=>x.id===p.persona)||{}).label || '—';
     const score = _leadScore(p);
+    // For replied prospects, show the reply subject as a sub-line so the rep
+    // can scan the queue and prioritize without opening each one
+    const replySubLine = (p.status === 'replied' && p.lastReplySubject)
+      ? '<div style="font-size:11px;color:var(--gold);margin-top:2px;font-style:italic">↳ "'+esc(p.lastReplySubject.slice(0,80))+(p.lastReplySubject.length>80?'…':'')+'"</div>'
+      : '';
     return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--ink-70)">' +
       '<div style="flex:1;min-width:0;cursor:pointer" onclick="_showActivityTimeline(\''+esc(p.id)+'\')">' +
         '<div style="font-weight:700;font-size:13px;color:#2A2622">'+esc((p.firstName||'')+' '+(p.lastName||''))+'</div>' +
         '<div style="font-size:11px;color:var(--ink-40)">'+esc(personaLbl)+(p.company?' &middot; '+esc(p.company):'')+(p.email?' &middot; '+esc(p.email):'')+'</div>' +
+        replySubLine +
       '</div>' +
       '<span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:10px;background:'+_scoreColor(score)+'22;color:'+_scoreColor(score)+';flex-shrink:0">'+score+'</span>' +
       (p.cadenceStep>0?'<span class="cadence-badge cadence-step-'+Math.min(5,p.cadenceStep)+'" style="flex-shrink:0">Step '+p.cadenceStep+'/5</span>':'') +
@@ -10170,6 +10182,10 @@ async function _renderProspectToday() {
   const sectionEmpty = '<div style="padding:24px;text-align:center;color:var(--ink-50);font-size:12px">Nothing here right now.</div>';
 
   body.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
+      '<div style="font-size:11px;color:var(--ink-50)">Inbound replies are auto-detected via Resend webhooks.</div>' +
+      '<button class="btn btn-ghost btn-sm" onclick="renderProspecting()" title="Pull latest from Supabase (in case a webhook just fired)">🔄 Refresh</button>' +
+    '</div>' +
     '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">' +
       counter('Total prospects', total,         '#2A2622') +
       counter('Active in cadence', enrolled.length, 'var(--gold)') +
@@ -12032,6 +12048,20 @@ function _renderProspectSetup() {
       '<pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:11px;overflow:auto;color:var(--ink-20);margin:0 0 10px">supabase functions deploy enrich-email\n\n# No secrets required — fully free.</pre>' +
       '<p style="font-size:11px;color:var(--ink-40);margin:0">' +
         'Honest limits: heavy-JS sites (React SPAs) and Cloudflare-protected sites are blind to server-side scraping. Manual lookup (visit website link) covers the rest.' +
+      '</p>' +
+    '</div>' +
+    '<div class="persona-card">' +
+      '<h4>Edge Function — Inbound Reply Detection</h4>' +
+      '<div class="subtitle">Code is in <code>supabase/functions/inbound-reply/</code>. When a prospect replies to a cadence email, this function auto-marks the prospect as replied so it appears in your <strong>Today → Replied — follow up</strong> queue without you clicking anything.</div>' +
+      '<ol style="font-size:11px;color:var(--ink-30);line-height:1.7;padding-left:20px;margin:0 0 10px">' +
+        '<li><a href="https://resend.com/domains" target="_blank" style="color:var(--gold)">Resend → Domains</a> → click your sending domain → set up the receiving MX records they show. Wait for verification (5-15 min).</li>' +
+        '<li>Deploy via dashboard: Edge Functions → Deploy a new function → Via Editor → name <code>inbound-reply</code> → paste from the repo → Deploy.</li>' +
+        '<li><a href="https://resend.com/webhooks" target="_blank" style="color:var(--gold)">Resend → Webhooks</a> → Create endpoint → URL = <code style="font-size:10px">https://rsoukgpaqsgsdfvwrceu.supabase.co/functions/v1/inbound-reply</code> → event: <code>email.received</code> → save → copy the <code>whsec_...</code> signing secret.</li>' +
+        '<li>Set the secret in Supabase: Project Settings → Edge Functions → Secrets → name <code>RESEND_WEBHOOK_SECRET</code>, value the <code>whsec_</code> from step 3.</li>' +
+        '<li>Test: send an email to your verified domain from a prospect address that matches a contact in the app. Within seconds the prospect should flip to status=Replied automatically.</li>' +
+      '</ol>' +
+      '<p style="font-size:11px;color:var(--ink-40);margin:0">' +
+        'What this does NOT do: parse the email body. Resend webhooks ship metadata only. Subject is captured and shown in the Today queue; for the body, open your actual email client. The 3-option Replied modal still applies — pick Convert / Opt-out / Keep cadence after reading the message.' +
       '</p>' +
     '</div>' +
     '<div class="persona-card">' +
