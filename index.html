@@ -1992,7 +1992,17 @@ function stageLabel(stage) { return T(STAGE_KEYS[stage] || 'stage_new') || stage
    CONSTANTS & LOOKUP DATA (from Excel Lookup sheet)
 ══════════════════════════════════════════════════ */
 const LOOKUP = {
-  stages: ['New Lead','Home Call','Design in Progress','Quote Sent','Follow-up','Pending Decision','Sale Made','Postponed','Canceled'],
+  // Stages: 'Closed Won' is the ONLY stage that counts as a sale.
+  // Legacy 'Sale Made' rows are treated as 'Closed Won' on read.
+  // Legacy 'Canceled' rows are treated as 'Closed Lost' on read.
+  stages: ['New Lead','Home Call','Design in Progress','Quote Sent','Follow-up','Pending Decision','Closed Won','Closed Lost','Postponed'],
+  // Loss reasons — sized for an interior designer's actual deal-loss patterns.
+  lostReasons: [
+    'Price / Budget',
+    'Lost to competitor',
+    'Timing — project on hold or canceled',
+    'Scope changed / Decided to DIY',
+  ],
   projectTypes: ['Living Room','Dining','Bedroom','Home Office','Outdoor','Lighting','Rugs & Flooring','Decor','Window Treatment','Drapery','Clearance','Mix'],
   nextSteps: ['Schedule Home Visit','Presentation','Presentation / Quote','Follow-Up Call','Send Proposal','Awaiting Decision','Postpone'],
   probabilities: [0,10,25,50,70,75,85,90,100],
@@ -2002,16 +2012,35 @@ const LOOKUP = {
   stageColors: {
     'New Lead':'#888','Home Call':'#C4933F','Design in Progress':'#4472CA',
     'Quote Sent':'#E8A030','Follow-up':'#FFA500','Pending Decision':'#FF8844',
-    'Sale Made':'#4CAF7D','Postponed':'#A088E0','Canceled':'#E05252'
+    'Closed Won':'#4CAF7D','Closed Lost':'#E05252','Postponed':'#A088E0',
+    // Legacy aliases (in case rendering encounters old data)
+    'Sale Made':'#4CAF7D','Canceled':'#E05252'
   },
   stageBadgeClass: {
     'New Lead':'badge-stage-new','Home Call':'badge-stage-homecall',
     'Design in Progress':'badge-stage-design','Quote Sent':'badge-stage-quote',
     'Follow-up':'badge-stage-followup','Pending Decision':'badge-stage-pending',
-    'Sale Made':'badge-stage-sale','Postponed':'badge-stage-postponed',
-    'Canceled':'badge-stage-canceled'
+    'Closed Won':'badge-stage-sale','Closed Lost':'badge-stage-canceled',
+    'Postponed':'badge-stage-postponed',
+    // Legacy aliases
+    'Sale Made':'badge-stage-sale','Canceled':'badge-stage-canceled'
   }
 };
+
+/* Single source of truth for "did this opp actually close?".
+   Use these helpers everywhere instead of checking stage / saleMade ad-hoc.
+   Backwards compatible with legacy 'Sale Made' / 'Canceled' rows. */
+function isClosedWon(opp) {
+  if (!opp) return false;
+  return opp.stage === 'Closed Won' || opp.stage === 'Sale Made'
+    || (opp.saleMade === 'Yes' && (opp.stage === 'Closed Won' || opp.stage === 'Sale Made'));
+}
+function isClosedLost(opp) {
+  if (!opp) return false;
+  return opp.stage === 'Closed Lost' || opp.stage === 'Canceled';
+}
+function isClosed(opp)    { return isClosedWon(opp) || isClosedLost(opp); }
+function isInPipeline(opp){ return !isClosed(opp); }
 
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -8103,109 +8132,16 @@ function renderSettings() {
       </div>
 
       <div class="tab-section" style="margin-top:20px">
-        <h3>📋 Required Schema</h3>
-        <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">Full SQL to set up every table the app needs in Supabase. Click <strong>Verify Schema</strong> above to see what is missing — only run the parts you need. Safe to re-run; uses <code>create table if not exists</code>.</p>
-        <details style="margin-bottom:8px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--gold);padding:6px 0">▸ Show full schema SQL</summary>
-        <pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:10px;overflow:auto;color:var(--ink-20);margin:8px 0;line-height:1.5">-- 1. opportunities (CRM)
-create table if not exists opportunities (
-  id text primary key,
-  first_name text, last_name text,
-  email text, phone text, address text,
-  project_type text, lead_source text, stage text,
-  home_call text, home_call_date text,
-  sale_made text, gold_comp text,
-  probability int default 0, estimate numeric default 0,
-  follow_up_date text, next_step text, notes text,
-  "closeDate" text, "customerNumber" text, "saleDate" text,
-  "activePhase" text, "deliveryDate" text, "linkReviewDate" text,
-  "issueFlag" text, "issueType" text, "issueResult" text,
-  "goldCompValue" numeric default 0, "saleOrderNumber" text,
-  "saleAmount" numeric default 0,
-  "cancelReason" text, "cancelNotes" text,
-  created_at timestamptz default now()
-);
-
--- 2. prospects (cadence pipeline)
-create table if not exists prospects (
-  id text primary key,
-  first_name text, last_name text,
-  email text, phone text, company text,
-  persona text, source text, notes text,
-  cadence_step int default 0,
-  cadence_started_at timestamptz,
-  last_contacted_at timestamptz,
-  status text default 'active',
-  created_at timestamptz default now()
-);
-
--- 3. mileage_records
-create table if not exists mileage_records (
-  id text primary key,
-  "sourceOppId" text, date text, "clientName" text, address text,
-  leg1 text, leg2 text, leg3 text, leg4 text, leg5 text,
-  commute text, tolls text, notes text, purpose text
-);
-
--- 4. post_delivery_records
-create table if not exists post_delivery_records (
-  "oppId" text primary key,
-  "deliveryDate" text, "contactReason" text,
-  "newOpportunity" text, notes text,
-  "p60_newOpportunity" text, "p60_notes" text
-);
-
--- 5. user_settings (key-value for goals, completed tasks, sent mailings, profile)
-create table if not exists user_settings (
-  key_name text primary key,
-  value jsonb,
-  updated_at timestamptz default now()
-);
-
--- 6. attachments (file metadata; binary lives in storage bucket)
-create table if not exists attachments (
-  id uuid primary key default gen_random_uuid(),
-  opp_id text,
-  file_name text, file_path text, file_size bigint, file_type text,
-  created_at timestamptz default now()
-);
-
--- 7. audit_trail (event log per opportunity)
-create table if not exists audit_trail (
-  id uuid primary key default gen_random_uuid(),
-  opp_id text,
-  event_type text, detail text,
-  event_at text,
-  created_at timestamptz default now()
-);
-
--- Permissive RLS for solo use (tighten before adding teammates)
-alter table opportunities          enable row level security;
-alter table prospects              enable row level security;
-alter table mileage_records        enable row level security;
-alter table post_delivery_records  enable row level security;
-alter table user_settings          enable row level security;
-alter table attachments            enable row level security;
-alter table audit_trail            enable row level security;
-
-create policy "opportunities all" on opportunities         for all using (true) with check (true);
-create policy "prospects all"     on prospects             for all using (true) with check (true);
-create policy "mileage all"       on mileage_records       for all using (true) with check (true);
-create policy "post_delivery all" on post_delivery_records for all using (true) with check (true);
-create policy "user_settings all" on user_settings         for all using (true) with check (true);
-create policy "attachments all"   on attachments           for all using (true) with check (true);
-create policy "audit_trail all"   on audit_trail           for all using (true) with check (true);</pre>
+        <h3>🛠 One-Click Schema Setup</h3>
+        <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">Copy this SQL → paste into <strong>Supabase → SQL Editor → New query</strong> → Run. Idempotent: creates missing tables, adds missing columns to <code>opportunities</code> (the fix for the schema-cache errors), enables RLS, sets permissive policies, and creates the two storage buckets. Safe to re-run.</p>
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <button onclick="_copySchemaSQL()" class="btn btn-primary btn-sm">📋 Copy SQL to clipboard</button>
+          <button onclick="window.open('https://supabase.com/dashboard/project/_/sql/new','_blank')" class="btn btn-ghost btn-sm">🔗 Open Supabase SQL Editor</button>
+        </div>
+        <details><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--gold);padding:6px 0">▸ Preview the SQL (~120 lines)</summary>
+        <pre id="schemaSqlBlock" style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:10px;overflow:auto;color:var(--ink-20);margin:8px 0;line-height:1.5;max-height:400px">${esc(_buildSchemaSQL())}</pre>
         </details>
-        <details><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--gold);padding:6px 0">▸ Storage buckets (Supabase → Storage)</summary>
-        <p style="font-size:11px;color:var(--ink-40);margin:8px 0">Two buckets needed. Create from the Storage tab in Supabase, or run via SQL:</p>
-        <pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:10px;overflow:auto;color:var(--ink-20);margin:0;line-height:1.5">insert into storage.buckets (id, name, public)
-  values ('avatars',     'avatars',     true),
-         ('attachments', 'attachments', true)
-on conflict (id) do nothing;
-
--- Permissive policies for solo use
-create policy "avatars public"     on storage.objects for all using  (bucket_id = 'avatars')     with check (bucket_id = 'avatars');
-create policy "attachments public" on storage.objects for all using  (bucket_id = 'attachments') with check (bucket_id = 'attachments');</pre>
-        </details>
+        <p style="font-size:11px;color:var(--ink-40);margin-top:10px">⚠ Storage bucket creation via SQL may need elevated privileges. If the bucket lines fail, create them manually: <strong>Supabase → Storage → New bucket</strong> → name <code>avatars</code> (public), then again for <code>attachments</code> (public).</p>
       </div>
 
       <div class="tab-section" style="margin-top:20px">
@@ -8217,6 +8153,158 @@ create policy "attachments public" on storage.objects for all using  (bucket_id 
         </div>
       </div>
     </div>`;
+}
+
+/* ══════════════════════════════════════════════════
+   SCHEMA SQL BUILDER — single idempotent script
+   Creates missing tables, adds missing columns to existing
+   tables (fixes "could not find column" schema-cache errors),
+   enables RLS, sets permissive policies, creates storage buckets.
+   Safe to re-run. Copy → paste into Supabase SQL editor.
+══════════════════════════════════════════════════ */
+function _buildSchemaSQL() {
+  return [
+'-- ═════════════════════════════════════════════════════════════════',
+'-- Carol Medrado Sales Intelligence — full Supabase schema',
+'-- Idempotent. Safe to run on a fresh project OR an existing one.',
+'-- ═════════════════════════════════════════════════════════════════',
+'',
+'-- ── 1. opportunities (CRM) ──',
+'create table if not exists opportunities ( id text primary key );',
+'alter table opportunities',
+'  add column if not exists first_name text,',
+'  add column if not exists last_name text,',
+'  add column if not exists email text,',
+'  add column if not exists phone text,',
+'  add column if not exists address text,',
+'  add column if not exists project_type text,',
+'  add column if not exists lead_source text,',
+'  add column if not exists stage text,',
+'  add column if not exists home_call text,',
+'  add column if not exists home_call_date text,',
+'  add column if not exists sale_made text,',
+'  add column if not exists gold_comp text,',
+'  add column if not exists probability int default 0,',
+'  add column if not exists estimate numeric default 0,',
+'  add column if not exists follow_up_date text,',
+'  add column if not exists next_step text,',
+'  add column if not exists notes text,',
+'  add column if not exists "closeDate" text,',
+'  add column if not exists "customerNumber" text,',
+'  add column if not exists "saleDate" text,',
+'  add column if not exists "activePhase" text,',
+'  add column if not exists "deliveryDate" text,',
+'  add column if not exists "linkReviewDate" text,',
+'  add column if not exists "issueFlag" text,',
+'  add column if not exists "issueType" text,',
+'  add column if not exists "issueResult" text,',
+'  add column if not exists "goldCompValue" numeric default 0,',
+'  add column if not exists "saleOrderNumber" text,',
+'  add column if not exists "saleAmount" numeric default 0,',
+'  add column if not exists "cancelReason" text,',
+'  add column if not exists "cancelNotes" text,',
+'  add column if not exists lost_reason text,',
+'  add column if not exists created_at timestamptz default now();',
+'',
+'-- ── 2. prospects (cadence pipeline) ──',
+'create table if not exists prospects (',
+'  id text primary key,',
+'  first_name text, last_name text,',
+'  email text, phone text, company text,',
+'  persona text, source text, notes text,',
+'  cadence_step int default 0,',
+'  cadence_started_at timestamptz,',
+'  last_contacted_at timestamptz,',
+'  status text default \'active\',',
+'  created_at timestamptz default now()',
+');',
+'',
+'-- ── 3. mileage_records ──',
+'create table if not exists mileage_records (',
+'  id text primary key,',
+'  "sourceOppId" text, date text, "clientName" text, address text,',
+'  leg1 text, leg2 text, leg3 text, leg4 text, leg5 text,',
+'  commute text, tolls text, notes text, purpose text',
+');',
+'',
+'-- ── 4. post_delivery_records ──',
+'create table if not exists post_delivery_records (',
+'  "oppId" text primary key,',
+'  "deliveryDate" text, "contactReason" text,',
+'  "newOpportunity" text, notes text,',
+'  "p60_newOpportunity" text, "p60_notes" text',
+');',
+'',
+'-- ── 5. user_settings (key-value: goals, completed tasks, profile) ──',
+'create table if not exists user_settings (',
+'  key_name text primary key,',
+'  value jsonb,',
+'  updated_at timestamptz default now()',
+');',
+'',
+'-- ── 6. attachments (file metadata; binary lives in storage bucket) ──',
+'create table if not exists attachments (',
+'  id uuid primary key default gen_random_uuid(),',
+'  opp_id text,',
+'  file_name text, file_path text, file_size bigint, file_type text,',
+'  created_at timestamptz default now()',
+');',
+'',
+'-- ── 7. audit_trail (event log per opportunity) ──',
+'create table if not exists audit_trail (',
+'  id uuid primary key default gen_random_uuid(),',
+'  opp_id text,',
+'  event_type text, detail text,',
+'  event_at text,',
+'  created_at timestamptz default now()',
+');',
+'',
+'-- ── RLS — permissive for solo use; tighten before adding teammates ──',
+'alter table opportunities          enable row level security;',
+'alter table prospects              enable row level security;',
+'alter table mileage_records        enable row level security;',
+'alter table post_delivery_records  enable row level security;',
+'alter table user_settings          enable row level security;',
+'alter table attachments            enable row level security;',
+'alter table audit_trail            enable row level security;',
+'',
+'drop policy if exists "opportunities all" on opportunities;',
+'drop policy if exists "prospects all"     on prospects;',
+'drop policy if exists "mileage all"       on mileage_records;',
+'drop policy if exists "post_delivery all" on post_delivery_records;',
+'drop policy if exists "user_settings all" on user_settings;',
+'drop policy if exists "attachments all"   on attachments;',
+'drop policy if exists "audit_trail all"   on audit_trail;',
+'',
+'create policy "opportunities all" on opportunities         for all using (true) with check (true);',
+'create policy "prospects all"     on prospects             for all using (true) with check (true);',
+'create policy "mileage all"       on mileage_records       for all using (true) with check (true);',
+'create policy "post_delivery all" on post_delivery_records for all using (true) with check (true);',
+'create policy "user_settings all" on user_settings         for all using (true) with check (true);',
+'create policy "attachments all"   on attachments           for all using (true) with check (true);',
+'create policy "audit_trail all"   on audit_trail           for all using (true) with check (true);',
+'',
+'-- ── Storage buckets ──',
+'-- May fail without elevated privileges. If so, create via:',
+'--   Supabase → Storage → New bucket → name=avatars, public=true',
+'--   Supabase → Storage → New bucket → name=attachments, public=true',
+'insert into storage.buckets (id, name, public)',
+'  values (\'avatars\', \'avatars\', true), (\'attachments\', \'attachments\', true)',
+'on conflict (id) do nothing;',
+'',
+'drop policy if exists "avatars public"     on storage.objects;',
+'drop policy if exists "attachments public" on storage.objects;',
+'create policy "avatars public"     on storage.objects for all using (bucket_id = \'avatars\')     with check (bucket_id = \'avatars\');',
+'create policy "attachments public" on storage.objects for all using (bucket_id = \'attachments\') with check (bucket_id = \'attachments\');',
+  ].join('\n');
+}
+
+function _copySchemaSQL() {
+  const sql = _buildSchemaSQL();
+  navigator.clipboard.writeText(sql).then(
+    () => toast('SQL copied — paste into Supabase SQL Editor and Run', 'success'),
+    () => toast('Copy failed — select + copy manually from the preview', 'error')
+  );
 }
 
 /* ══════════════════════════════════════════════════
