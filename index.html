@@ -8149,8 +8149,12 @@ function renderSettings() {
         <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">Export or clear local data. Supabase data is not affected.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button onclick="exportLocalData()" class="btn btn-ghost btn-sm">📦 Export Local Backup</button>
+          <button onclick="inspectLocalStorage()" class="btn btn-ghost btn-sm">🔬 Inspect localStorage</button>
+          <button onclick="reconstructFromMileage()" class="btn btn-ghost btn-sm">🩹 Reconstruct opps from mileage</button>
           <button onclick="if(confirm('Clear all local data? Supabase data will remain.'))localStorage.clear()" class="btn btn-danger btn-sm">🗑 Clear Local Data</button>
         </div>
+        <div id="storageInspector" style="font-size:11px;margin-top:10px;display:none;padding:12px;background:var(--ink-90);border-radius:6px;font-family:monospace;line-height:1.6;max-height:300px;overflow:auto"></div>
+        <div id="reconstructStatus" style="font-size:11px;margin-top:10px;display:none;padding:10px;background:var(--ink-90);border-radius:6px;line-height:1.6"></div>
       </div>
     </div>`;
 }
@@ -8313,6 +8317,12 @@ function _buildSchemaSQL() {
 'drop policy if exists "attachments public" on storage.objects;',
 'create policy "avatars public"     on storage.objects for all using (bucket_id = \'avatars\')     with check (bucket_id = \'avatars\');',
 'create policy "attachments public" on storage.objects for all using (bucket_id = \'attachments\') with check (bucket_id = \'attachments\');',
+'',
+'-- ── Force PostgREST to refresh its schema cache immediately ──',
+'-- Without this, newly-added columns may take 60+ seconds to appear',
+'-- in the API. Causes the "Could not find the X column in the',
+'-- schema cache" error to clear instantly.',
+'notify pgrst, \'reload schema\';',
   ].join('\n');
 }
 
@@ -8322,6 +8332,135 @@ function _copySchemaSQL() {
     () => toast('SQL copied — paste into Supabase SQL Editor and Run', 'success'),
     () => toast('Copy failed — select + copy manually from the preview', 'error')
   );
+}
+
+/* ══════════════════════════════════════════════════
+   localStorage diagnostic — lists every ea_* key with size + count
+   so the user can see exactly what data this browser has.
+══════════════════════════════════════════════════ */
+function inspectLocalStorage() {
+  const out = document.getElementById('storageInspector');
+  if (!out) return;
+  const rows = [];
+  let totalBytes = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k) continue;
+    const v = localStorage.getItem(k) || '';
+    const bytes = new Blob([v]).size;
+    totalBytes += bytes;
+    let count = '';
+    try {
+      const parsed = JSON.parse(v);
+      if (Array.isArray(parsed))                       count = parsed.length + ' items';
+      else if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.opportunities))       count = parsed.opportunities.length + ' opps';
+        else                                            count = Object.keys(parsed).length + ' keys';
+      }
+    } catch { /* not json — leave count blank */ }
+    rows.push({ k, bytes, count });
+  }
+  rows.sort((a,b) => b.bytes - a.bytes);
+  out.style.display = '';
+  const fmt = (b) => b > 1024 ? (b/1024).toFixed(1) + ' KB' : b + ' B';
+  const list = rows.map(r =>
+    '<div style="display:flex;gap:10px;padding:3px 0;border-bottom:1px solid var(--ink-70)">' +
+      '<div style="flex:1;color:var(--ink-20);overflow:hidden;text-overflow:ellipsis">'+esc(r.k)+'</div>' +
+      '<div style="flex:0 0 90px;text-align:right;color:var(--gold)">'+esc(r.count)+'</div>' +
+      '<div style="flex:0 0 70px;text-align:right;color:var(--ink-50)">'+fmt(r.bytes)+'</div>' +
+    '</div>'
+  ).join('');
+  out.innerHTML =
+    '<div style="font-size:11px;color:var(--ink-40);margin-bottom:8px">Total: <strong style="color:var(--gold)">'+rows.length+'</strong> keys, '+fmt(totalBytes)+'</div>' +
+    list +
+    '<div style="font-size:11px;color:var(--ink-40);margin-top:10px">Look for <code>ea_sales_v4</code> — that is your opportunities. If the count is lower than expected, the data was cleared from this browser. Check other browsers, devices, or backups.</div>';
+}
+
+/* ══════════════════════════════════════════════════
+   Reconstruct missing opportunities from mileage_records
+   When opportunities are lost but mileage records remain, this
+   creates placeholder opp records for any sourceOppId referenced
+   by a mileage row that does not exist in opportunities. The
+   placeholders carry name + address + home-call date so the user
+   can fill in the rest manually.
+══════════════════════════════════════════════════ */
+async function reconstructFromMileage() {
+  const out = document.getElementById('reconstructStatus');
+  if (!out) return;
+  out.style.display = '';
+  out.innerHTML = '<div style="color:var(--gold)">Scanning mileage records…</div>';
+
+  const mileage = (typeof Store !== 'undefined' && Store.load) ? Store.load('mileage') : [];
+  if (!mileage.length) { out.innerHTML = '<div style="color:var(--red)">No mileage records found in this browser.</div>'; return; }
+
+  // Get current opps
+  const allOpps = await DB.getAll();
+  const haveIds = new Set(allOpps.map(o => o.id));
+
+  // Find orphan sourceOppIds referenced by mileage but not in opps
+  const orphans = {};
+  mileage.forEach(m => {
+    if (!m.sourceOppId || haveIds.has(m.sourceOppId)) return;
+    if (orphans[m.sourceOppId]) return;
+    orphans[m.sourceOppId] = {
+      sourceOppId: m.sourceOppId,
+      clientName:  m.clientName  || '',
+      address:     m.address     || '',
+      homeCallDate: m.date       || '',
+    };
+  });
+  const orphanList = Object.values(orphans);
+  if (!orphanList.length) {
+    out.innerHTML = '<div style="color:var(--green)">✓ No orphan mileage references — every mileage row has a matching opportunity.</div>';
+    return;
+  }
+
+  if (!confirm('Found ' + orphanList.length + ' opportunit' + (orphanList.length===1?'y':'ies') + ' referenced by mileage records but missing from your data.\n\nReconstruct as placeholders so they show in your dashboard? You can fill in the missing details (project type, estimate, stage) afterwards.')) return;
+
+  out.innerHTML = '<div style="color:var(--gold)">Reconstructing ' + orphanList.length + ' placeholder opportunit' + (orphanList.length===1?'y':'ies') + '…</div>';
+
+  let created = 0, failed = 0;
+  for (const o of orphanList) {
+    // Best-effort name parsing — single name vs "First Last"
+    const parts = (o.clientName||'').trim().split(/\s+/);
+    const firstName = parts.shift() || 'Unknown';
+    const lastName  = parts.join(' ') || '';
+    const opp = {
+      id:           o.sourceOppId,            // Preserve the original id so mileage rows still link
+      _isExisting:  false,
+      firstName, lastName,
+      email: '', phone: '',
+      address:      o.address,
+      projectType:  '',
+      leadSource:   'Reconstructed from mileage',
+      stage:        'Home Call',              // Reasonable default — they did get a home call
+      homeCall:     'Yes',
+      homeCallDate: o.homeCallDate,
+      saleMade:     'No',
+      goldComp:     'No',
+      probability:  25,
+      estimate:     0,
+      followUpDate: '',
+      nextStep:     'Follow-Up Call',
+      notes:        'Placeholder reconstructed from mileage record on ' + new Date().toISOString().slice(0,10) + '. Fill in project type / estimate / stage manually.',
+      createdAt:    o.homeCallDate || new Date().toISOString().slice(0,10),
+    };
+    try {
+      await DB.save(opp);
+      created++;
+    } catch(e) {
+      console.error('reconstruct opp failed:', o.sourceOppId, e);
+      failed++;
+    }
+  }
+
+  DB._invalidateCache();
+  out.innerHTML =
+    '<div style="color:'+(failed===0?'var(--green)':'var(--gold)')+'">' +
+      (failed===0 ? '✓' : '⚠') + ' Reconstructed ' + created + ' placeholder opportunit' + (created===1?'y':'ies') + (failed?', '+failed+' failed':'') + '.' +
+    '</div>' +
+    '<div style="font-size:11px;color:var(--ink-40);margin-top:6px">Open Pipeline tab to fill in project type, estimate, and stage for each one. Then run Sync Everything to Cloud.</div>';
+  toast('Reconstructed ' + created + ' opps from mileage', 'success');
 }
 
 /* ══════════════════════════════════════════════════
