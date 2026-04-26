@@ -8094,9 +8094,118 @@ function renderSettings() {
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button onclick="migrateAllToCloud()" class="btn btn-primary btn-sm" ${!_isCloudMode()?'disabled':''}>☁ Sync Everything to Cloud</button>
+          <button onclick="verifyCloudSchema()" class="btn btn-ghost btn-sm" ${!_isCloudMode()?'disabled':''}>🔍 Verify Schema</button>
           <button onclick="renderSettings()" class="btn btn-ghost btn-sm">🔄 Refresh Status</button>
         </div>
         <div id="migrationStatus" style="font-size:11px;color:var(--gold);margin-top:10px;display:none"></div>
+        <div id="schemaStatus" style="font-size:11px;margin-top:10px;display:none;padding:10px;background:var(--ink-90);border-radius:6px;line-height:1.7;font-family:monospace"></div>
+        <div id="syncResults" style="font-size:11px;margin-top:10px;display:none"></div>
+      </div>
+
+      <div class="tab-section" style="margin-top:20px">
+        <h3>📋 Required Schema</h3>
+        <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">Full SQL to set up every table the app needs in Supabase. Click <strong>Verify Schema</strong> above to see what is missing — only run the parts you need. Safe to re-run; uses <code>create table if not exists</code>.</p>
+        <details style="margin-bottom:8px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--gold);padding:6px 0">▸ Show full schema SQL</summary>
+        <pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:10px;overflow:auto;color:var(--ink-20);margin:8px 0;line-height:1.5">-- 1. opportunities (CRM)
+create table if not exists opportunities (
+  id text primary key,
+  first_name text, last_name text,
+  email text, phone text, address text,
+  project_type text, lead_source text, stage text,
+  home_call text, home_call_date text,
+  sale_made text, gold_comp text,
+  probability int default 0, estimate numeric default 0,
+  follow_up_date text, next_step text, notes text,
+  "closeDate" text, "customerNumber" text, "saleDate" text,
+  "activePhase" text, "deliveryDate" text, "linkReviewDate" text,
+  "issueFlag" text, "issueType" text, "issueResult" text,
+  "goldCompValue" numeric default 0, "saleOrderNumber" text,
+  "saleAmount" numeric default 0,
+  "cancelReason" text, "cancelNotes" text,
+  created_at timestamptz default now()
+);
+
+-- 2. prospects (cadence pipeline)
+create table if not exists prospects (
+  id text primary key,
+  first_name text, last_name text,
+  email text, phone text, company text,
+  persona text, source text, notes text,
+  cadence_step int default 0,
+  cadence_started_at timestamptz,
+  last_contacted_at timestamptz,
+  status text default 'active',
+  created_at timestamptz default now()
+);
+
+-- 3. mileage_records
+create table if not exists mileage_records (
+  id text primary key,
+  "sourceOppId" text, date text, "clientName" text, address text,
+  leg1 text, leg2 text, leg3 text, leg4 text, leg5 text,
+  commute text, tolls text, notes text, purpose text
+);
+
+-- 4. post_delivery_records
+create table if not exists post_delivery_records (
+  "oppId" text primary key,
+  "deliveryDate" text, "contactReason" text,
+  "newOpportunity" text, notes text,
+  "p60_newOpportunity" text, "p60_notes" text
+);
+
+-- 5. user_settings (key-value for goals, completed tasks, sent mailings, profile)
+create table if not exists user_settings (
+  key_name text primary key,
+  value jsonb,
+  updated_at timestamptz default now()
+);
+
+-- 6. attachments (file metadata; binary lives in storage bucket)
+create table if not exists attachments (
+  id uuid primary key default gen_random_uuid(),
+  opp_id text,
+  file_name text, file_path text, file_size bigint, file_type text,
+  created_at timestamptz default now()
+);
+
+-- 7. audit_trail (event log per opportunity)
+create table if not exists audit_trail (
+  id uuid primary key default gen_random_uuid(),
+  opp_id text,
+  event_type text, detail text,
+  event_at text,
+  created_at timestamptz default now()
+);
+
+-- Permissive RLS for solo use (tighten before adding teammates)
+alter table opportunities          enable row level security;
+alter table prospects              enable row level security;
+alter table mileage_records        enable row level security;
+alter table post_delivery_records  enable row level security;
+alter table user_settings          enable row level security;
+alter table attachments            enable row level security;
+alter table audit_trail            enable row level security;
+
+create policy "opportunities all" on opportunities         for all using (true) with check (true);
+create policy "prospects all"     on prospects             for all using (true) with check (true);
+create policy "mileage all"       on mileage_records       for all using (true) with check (true);
+create policy "post_delivery all" on post_delivery_records for all using (true) with check (true);
+create policy "user_settings all" on user_settings         for all using (true) with check (true);
+create policy "attachments all"   on attachments           for all using (true) with check (true);
+create policy "audit_trail all"   on audit_trail           for all using (true) with check (true);</pre>
+        </details>
+        <details><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--gold);padding:6px 0">▸ Storage buckets (Supabase → Storage)</summary>
+        <p style="font-size:11px;color:var(--ink-40);margin:8px 0">Two buckets needed. Create from the Storage tab in Supabase, or run via SQL:</p>
+        <pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:10px;overflow:auto;color:var(--ink-20);margin:0;line-height:1.5">insert into storage.buckets (id, name, public)
+  values ('avatars',     'avatars',     true),
+         ('attachments', 'attachments', true)
+on conflict (id) do nothing;
+
+-- Permissive policies for solo use
+create policy "avatars public"     on storage.objects for all using  (bucket_id = 'avatars')     with check (bucket_id = 'avatars');
+create policy "attachments public" on storage.objects for all using  (bucket_id = 'attachments') with check (bucket_id = 'attachments');</pre>
+        </details>
       </div>
 
       <div class="tab-section" style="margin-top:20px">
@@ -8108,6 +8217,47 @@ function renderSettings() {
         </div>
       </div>
     </div>`;
+}
+
+/* ══════════════════════════════════════════════════
+   VERIFY CLOUD SCHEMA — pings each required table + bucket
+   and reports presence in the Settings panel.
+══════════════════════════════════════════════════ */
+async function verifyCloudSchema() {
+  if (!_isCloudMode()) { toast('Not in cloud mode', 'error'); return; }
+  const out = document.getElementById('schemaStatus');
+  if (!out) return;
+  out.style.display = '';
+  out.innerHTML = '<div style="color:var(--gold)">Checking schema…</div>';
+
+  const tables = ['opportunities','prospects','mileage_records','post_delivery_records','user_settings','attachments','audit_trail'];
+  const buckets = ['avatars','attachments'];
+  const results = [];
+
+  for (const t of tables) {
+    try {
+      const { error } = await DB.client.from(t).select('*', { count:'exact', head:true });
+      if (error) throw error;
+      results.push({ name:t, kind:'table', ok:true });
+    } catch(e) {
+      results.push({ name:t, kind:'table', ok:false, msg: e.message || String(e) });
+    }
+  }
+  for (const b of buckets) {
+    try {
+      const { error } = await DB.client.storage.from(b).list('', { limit:1 });
+      if (error) throw error;
+      results.push({ name:b, kind:'bucket', ok:true });
+    } catch(e) {
+      results.push({ name:b, kind:'bucket', ok:false, msg: e.message || String(e) });
+    }
+  }
+
+  out.innerHTML = results.map(r => {
+    const ico = r.ok ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--red)">✗</span>';
+    const detail = r.ok ? 'present' : (`<span style="color:var(--red)">${esc(r.msg).slice(0,80)}</span>`);
+    return `<div>${ico} <strong>${r.name}</strong> <span style="color:var(--ink-50)">(${r.kind})</span> — ${detail}</div>`;
+  }).join('');
 }
 
 /* ══════════════════════════════════════════════════
@@ -8168,108 +8318,133 @@ function _renderSyncSummary() {
 
 async function migrateAllToCloud() {
   if (!_isCloudMode()) { toast('Not connected to cloud', 'error'); return; }
-  if (!confirm('Sync ALL local data to Supabase cloud? This includes opportunities, attachments, profile picture, mileage, goals, tasks, and audit trail. Safe to run multiple times — uses upsert so duplicates are merged by id.')) return;
+  if (!confirm('Sync ALL local data to Supabase cloud? Includes opportunities, attachments, profile picture, mileage, goals, tasks, audit trail. Safe to re-run — uses upsert keyed by id.')) return;
 
-  const status = document.getElementById('migrationStatus');
-  const show = (msg) => { if (status) { status.style.display=''; status.textContent = msg; } };
-  let done = 0, failed = 0;
+  const status  = document.getElementById('migrationStatus');
+  const results = document.getElementById('syncResults');
+  const show    = (msg) => { if (status) { status.style.display=''; status.textContent = msg; } };
+  if (results) { results.style.display = 'none'; results.innerHTML = ''; }
+
+  // Per-category result tracker — tells the user exactly what worked
+  const r = {};
+  const track = (key, label) => (r[key] = r[key] || { label, attempted:0, succeeded:0, failed:0, error:'' });
 
   // 0. Opportunities — the canonical CRM data
-  // Reads ea_sales_v4 → opportunities array, maps with DB._toDB(),
-  // and upserts in batches of 50. Idempotent — safe to re-run.
   show('Syncing opportunities...');
+  const opp = track('opportunities','💼 Opportunities');
   try {
     const raw  = JSON.parse(localStorage.getItem(DB.LOCAL_KEY) || '{"opportunities":[]}');
     const opps = (raw.opportunities || []).filter(o => o && o.id);
+    opp.attempted = opps.length;
     if (opps.length) {
       const rows = opps.map(o => DB._toDB(o));
-      // Batch upsert — Supabase has a payload size limit, 50 keeps us safe
       for (let i = 0; i < rows.length; i += 50) {
         const slice = rows.slice(i, i + 50);
         const { error } = await DB.client.from('opportunities').upsert(slice, { onConflict: 'id' });
         if (error) throw error;
-        done += slice.length;
+        opp.succeeded += slice.length;
         show(`Syncing opportunities... ${Math.min(i+50, rows.length)}/${rows.length}`);
       }
       DB._invalidateCache();
     }
-  } catch(e) {
-    console.error('opportunities migration:', e);
-    toast('Opportunities sync failed: ' + e.message, 'error');
-    failed++;
-  }
+  } catch(e) { console.error('opps migration:', e); opp.failed = opp.attempted - opp.succeeded; opp.error = e.message || String(e); }
 
   // 1. Attachments
+  show('Syncing attachments...');
+  const att = track('attachments','📎 Attachments');
   const atts = JSON.parse(localStorage.getItem(ATTACH_KEY) || '{}');
-  const entries = Object.entries(atts);
-  const totalAtt = entries.reduce((sum, [,arr]) => sum + (arr||[]).length, 0);
-  let attDone = 0;
-  for (const [oppId, files] of entries) {
+  for (const [oppId, files] of Object.entries(atts)) {
     for (const f of (files || [])) {
+      att.attempted++;
       try {
         const res = await fetch(f.data);
         const blob = await res.blob();
         const file = new File([blob], f.name, { type: f.type });
         await _uploadFileToSupabase(file, oppId);
-        attDone++; done++;
-        show(`Uploading attachments... ${attDone}/${totalAtt}`);
-      } catch(e) { console.error('attachment migration:', e); failed++; }
+        att.succeeded++;
+        show(`Uploading attachments... ${att.succeeded}/${att.attempted}`);
+      } catch(e) { console.error('attachment:', e); att.failed++; if (!att.error) att.error = e.message || String(e); }
     }
   }
-  if (totalAtt > 0 && attDone === totalAtt) localStorage.removeItem(ATTACH_KEY);
+  if (att.attempted > 0 && att.failed === 0) localStorage.removeItem(ATTACH_KEY);
 
   // 2. Avatar
   show('Syncing profile picture...');
+  const av = track('avatar','🖼️ Profile picture');
   const s = _getSettings();
   if (s.avatar && s.avatar.startsWith('data:')) {
+    av.attempted = 1;
     try {
       const res = await fetch(s.avatar);
       const blob = await res.blob();
       const ext = (blob.type.split('/')[1] || 'png').split('+')[0];
       const path = `user-${Date.now()}.${ext}`;
       const { error } = await DB.client.storage.from('avatars').upload(path, blob, { contentType: blob.type, upsert: true });
-      if (!error) {
-        const { data: urlData } = DB.client.storage.from('avatars').getPublicUrl(path);
-        s.avatar = urlData.publicUrl;
-        s.avatarPath = path;
-        _saveSettings(s);
-        _applyProfile();
-        done++;
-      } else throw error;
-    } catch(e) { console.error('avatar migration:', e); failed++; }
+      if (error) throw error;
+      const { data: urlData } = DB.client.storage.from('avatars').getPublicUrl(path);
+      s.avatar = urlData.publicUrl;
+      s.avatarPath = path;
+      _saveSettings(s);
+      _applyProfile();
+      av.succeeded = 1;
+    } catch(e) { console.error('avatar:', e); av.failed = 1; av.error = e.message || String(e); }
   }
 
-  // 3. Mileage records (bulk upsert via _cloudSync)
+  // 3. Mileage records — explicit awaited upsert (was fire-and-forget before)
   show('Syncing mileage records...');
+  const mil = track('mileage','🚗 Mileage records');
   const mileage = Store.load('mileage');
-  for (const rec of mileage) { _cloudSync('mileage', rec); done++; }
+  mil.attempted = mileage.length;
+  if (mileage.length) {
+    try {
+      for (let i = 0; i < mileage.length; i += 50) {
+        const slice = mileage.slice(i, i + 50);
+        const { error } = await DB.client.from('mileage_records').upsert(slice, { onConflict: 'id' });
+        if (error) throw error;
+        mil.succeeded += slice.length;
+        show(`Syncing mileage... ${mil.succeeded}/${mileage.length}`);
+      }
+    } catch(e) { console.error('mileage:', e); mil.failed = mil.attempted - mil.succeeded; mil.error = e.message || String(e); }
+  }
 
-  // 4. Post-30/60 records
+  // 4. Post-delivery records — explicit awaited upsert
   show('Syncing delivery records...');
+  const pd = track('post30','📦 Post-30/60 records');
   const post30 = Store.load('post30');
-  for (const rec of post30) { _cloudSync('post30', rec); done++; }
+  pd.attempted = post30.length;
+  if (post30.length) {
+    try {
+      for (let i = 0; i < post30.length; i += 50) {
+        const slice = post30.slice(i, i + 50);
+        const { error } = await DB.client.from('post_delivery_records').upsert(slice, { onConflict: 'oppId' });
+        if (error) throw error;
+        pd.succeeded += slice.length;
+      }
+    } catch(e) { console.error('post30:', e); pd.failed = pd.attempted - pd.succeeded; pd.error = e.message || String(e); }
+  }
 
   // 5. Goals + completed + sent + password via user_settings
   show('Syncing goals and settings...');
+  const set = track('settings','⚙ Goals + tasks + profile');
   try {
     const monthlyGoals = JSON.parse(localStorage.getItem('ea_monthly_goals') || '{}');
-    if (Object.keys(monthlyGoals).length) { await _setCloudSetting('monthly_goals', monthlyGoals); done++; }
+    if (Object.keys(monthlyGoals).length) { set.attempted++; await _setCloudSetting('monthly_goals', monthlyGoals); set.succeeded++; }
     const annual = localStorage.getItem('ea_annual_goal');
-    if (annual) { await _setCloudSetting('annual_goal', Number(annual)); done++; }
+    if (annual) { set.attempted++; await _setCloudSetting('annual_goal', Number(annual)); set.succeeded++; }
     const completedTasks = JSON.parse(localStorage.getItem('ea_completed_tasks') || '[]');
-    if (completedTasks.length) { await _setCloudSetting('completed_tasks', completedTasks); done++; }
+    if (completedTasks.length) { set.attempted++; await _setCloudSetting('completed_tasks', completedTasks); set.succeeded++; }
     const completedActives = JSON.parse(localStorage.getItem('ea_completed_actives') || '[]');
-    if (completedActives.length) { await _setCloudSetting('completed_actives', completedActives); done++; }
+    if (completedActives.length) { set.attempted++; await _setCloudSetting('completed_actives', completedActives); set.succeeded++; }
     const sentMails = JSON.parse(localStorage.getItem('ea_mail_sent') || '[]');
-    if (sentMails.length) { await _setCloudSetting('sent_mails', sentMails); done++; }
+    if (sentMails.length) { set.attempted++; await _setCloudSetting('sent_mails', sentMails); set.succeeded++; }
     const pwHash = localStorage.getItem(AUTH_KEY);
-    if (pwHash) { await _setCloudSetting('password_hash', { hash: pwHash }); done++; }
-    // Profile too (in case changes pending)
-    await _setCloudSetting('profile', s); done++;
-  } catch(e) { console.error('settings migration:', e); failed++; }
+    if (pwHash) { set.attempted++; await _setCloudSetting('password_hash', { hash: pwHash }); set.succeeded++; }
+    set.attempted++; await _setCloudSetting('profile', s); set.succeeded++;
+  } catch(e) { console.error('settings:', e); set.failed = set.attempted - set.succeeded; set.error = e.message || String(e); }
 
-  // 6. Audit trail (bulk insert into audit_trail table)
+  // 6. Audit trail
   show('Syncing audit trail...');
+  const aud = track('audit','📝 Audit trail');
   try {
     const log = JSON.parse(localStorage.getItem('ea_audit_trail') || '{}');
     const rows = [];
@@ -8278,20 +8453,34 @@ async function migrateAllToCloud() {
         rows.push({ opp_id: oppId, event_type: e.type || 'edit', detail: e.detail || '', event_at: e.date || '' });
       }
     }
-    if (rows.length > 0) {
-      // Insert in batches of 100 to avoid payload limits
+    aud.attempted = rows.length;
+    if (rows.length) {
       for (let i = 0; i < rows.length; i += 100) {
-        await DB.client.from('audit_trail').insert(rows.slice(i, i + 100));
-        done += Math.min(100, rows.length - i);
+        const slice = rows.slice(i, i + 100);
+        const { error } = await DB.client.from('audit_trail').insert(slice);
+        if (error) throw error;
+        aud.succeeded += slice.length;
       }
     }
-  } catch(e) { console.error('audit migration:', e); failed++; }
+  } catch(e) { console.error('audit:', e); aud.failed = aud.attempted - aud.succeeded; aud.error = e.message || String(e); }
 
+  // Render the per-category results panel
   show('');
   if (status) status.style.display = 'none';
-  if (failed === 0) toast(`✓ Synced ${done} item(s) to cloud`, 'success');
-  else toast(`Synced ${done} item(s), ${failed} failed — check console`, 'error');
-  renderSettings();
+  const totalDone   = Object.values(r).reduce((s,x) => s + x.succeeded, 0);
+  const totalFailed = Object.values(r).reduce((s,x) => s + x.failed,    0);
+  if (results) {
+    const rows = Object.values(r).map(x => {
+      if (x.attempted === 0) return `<div style="padding:6px 0;color:var(--ink-50)">— ${x.label}: nothing to sync</div>`;
+      if (x.failed === 0)    return `<div style="padding:6px 0;color:var(--green)">✓ ${x.label}: ${x.succeeded}/${x.attempted}</div>`;
+      const errMsg = x.error ? `<div style="padding:4px 0 0 22px;color:var(--red);font-size:10px;font-family:monospace">${esc(x.error).slice(0,200)}</div>` : '';
+      return `<div style="padding:6px 0;color:var(--red)">✗ ${x.label}: ${x.succeeded}/${x.attempted} synced, ${x.failed} failed</div>${errMsg}`;
+    }).join('');
+    results.style.display = '';
+    results.innerHTML = `<div style="padding:12px;background:var(--ink-90);border-radius:6px;line-height:1.5">${rows}</div>`;
+  }
+  if (totalFailed === 0) toast(`✓ Synced ${totalDone} item(s) to cloud`, 'success');
+  else                   toast(`Synced ${totalDone}, ${totalFailed} failed — see results below`, 'error');
 }
 
 async function uploadAvatar(e) {
