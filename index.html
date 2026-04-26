@@ -9460,7 +9460,75 @@ function _csvHeaderMap(headers) {
 /* ══════════════════════════════════════════════════
    RENDER: PROSPECTING
 ══════════════════════════════════════════════════ */
-window._prospectState = window._prospectState || { tab:'contacts', personaFilter:'all', personaPick:'builders' };
+window._prospectState = window._prospectState || {
+  tab:'today', personaFilter:'all', personaPick:'builders',
+  searchQ:'', sortBy:'score', selected:{},
+};
+
+/* Cadence interval days between sends (after send of step N, wait N days for next) */
+const CADENCE_INTERVAL_DAYS = { 1:0, 2:3, 3:4, 4:5, 5:7 };
+
+/* ── Lead scoring 0-100 ── */
+function _leadScore(p) {
+  if (!p) return 0;
+  let s = 0;
+  if (p.persona) s += 20;
+  if (p.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) s += 15;
+  if (p.phone)   s += 10;
+  if (p.company) s += 10;
+  const created = p.createdAt ? new Date(p.createdAt) : null;
+  if (created && !isNaN(created)) {
+    const days = (Date.now() - created.getTime()) / 86400000;
+    if      (days < 7)  s += 15;
+    else if (days < 30) s += 10;
+    else if (days < 90) s += 5;
+  }
+  if (p.lastContactedAt) {
+    const days = (Date.now() - new Date(p.lastContactedAt).getTime()) / 86400000;
+    if      (days < 7)  s += 10;
+    else if (days < 30) s += 5;
+  }
+  if (p.status === 'replied' || p.status === 'converted') s += 25;
+  else if (p.cadenceStep >= 3)   s += 10;
+  else if (p.cadenceStep >= 1)   s += 5;
+  return Math.min(100, s);
+}
+
+function _scoreColor(score) {
+  if (score >= 80) return '#2A8B5E';   // green
+  if (score >= 60) return '#C4933F';   // gold
+  if (score >= 40) return '#A088E0';   // purple
+  return '#9C8E80';                    // ink-50ish
+}
+
+function _cadenceDueDate(p) {
+  if (!p.cadenceStep || p.status !== 'active') return null;
+  const wait = CADENCE_INTERVAL_DAYS[p.cadenceStep] || 0;
+  const base = p.lastContactedAt ? new Date(p.lastContactedAt)
+             : (p.cadenceStartedAt ? new Date(p.cadenceStartedAt) : new Date());
+  if (isNaN(base)) return null;
+  return new Date(base.getTime() + wait * 86400000);
+}
+
+function _isDueToday(p) {
+  if (p.cadenceStep === 1 && !p.lastContactedAt) return true;
+  const d = _cadenceDueDate(p);
+  return !!(d && d.getTime() <= Date.now());
+}
+
+function _daysSince(iso) {
+  if (!iso) return Infinity;
+  const t = new Date(iso).getTime();
+  if (isNaN(t)) return Infinity;
+  return (Date.now() - t) / 86400000;
+}
+
+function _matchesSearch(p, q) {
+  if (!q) return true;
+  q = q.toLowerCase().trim();
+  return ['firstName','lastName','email','phone','company','source','notes']
+    .some(k => String(p[k]||'').toLowerCase().includes(q));
+}
 
 async function renderProspecting() {
   const el = document.getElementById('page-prospecting');
@@ -9473,11 +9541,13 @@ async function renderProspecting() {
         '<div class="dash-hero-title">' +
           '<span class="label">Outbound Sales</span>' +
           '<h1 class="display">PROSPECTING</h1>' +
-          '<p class="dash-hero-date">Personas, cadences, and contact pipeline</p>' +
+          '<p class="dash-hero-date">Daily queue, personas, cadences, and contact pipeline</p>' +
         '</div>' +
       '</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap">' +
+        _prospectTabBtn('today',     'Today') +
         _prospectTabBtn('contacts',  'Contacts') +
+        _prospectTabBtn('analytics', 'Analytics') +
         _prospectTabBtn('personas',  'Personas') +
         _prospectTabBtn('cadences',  'Cadences') +
         _prospectTabBtn('setup',     'Setup') +
@@ -9485,10 +9555,12 @@ async function renderProspecting() {
       '<div id="prospectBody"></div>' +
     '</div>';
 
-  if      (PS.tab === 'personas') _renderProspectPersonas();
-  else if (PS.tab === 'cadences') _renderProspectCadences();
-  else if (PS.tab === 'setup')    _renderProspectSetup();
-  else                            await _renderProspectContacts();
+  if      (PS.tab === 'personas')  _renderProspectPersonas();
+  else if (PS.tab === 'cadences')  _renderProspectCadences();
+  else if (PS.tab === 'setup')     _renderProspectSetup();
+  else if (PS.tab === 'analytics') await _renderProspectAnalytics();
+  else if (PS.tab === 'contacts')  await _renderProspectContacts();
+  else                             await _renderProspectToday();
 }
 
 function _prospectTabBtn(id, label) {
@@ -9500,11 +9572,370 @@ function _prospectTabBtn(id, label) {
     + 'color:'+(active?'var(--gold)':'var(--ink-30)')+'">'+esc(label)+'</button>';
 }
 
+/* ══════════════════════════════════════════════════
+   TODAY — daily prospecting queue (default landing)
+══════════════════════════════════════════════════ */
+async function _renderProspectToday() {
+  const body = document.getElementById('prospectBody'); if (!body) return;
+  const all  = await Prospects.getAll();
+
+  const total      = all.length;
+  const enrolled   = all.filter(p => p.cadenceStep > 0 && p.status === 'active');
+  const due        = enrolled.filter(_isDueToday);
+  const replied    = all.filter(p => p.status === 'replied');
+  const converted  = all.filter(p => p.status === 'converted');
+  const stale      = enrolled.filter(p => _daysSince(p.lastContactedAt) > 14);
+
+  const counter = (label, n, color) =>
+    '<div style="flex:1;min-width:160px;background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);padding:14px 16px">' +
+      '<div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40);margin-bottom:4px">'+esc(label)+'</div>' +
+      '<div style="font-family:var(--font-display);font-size:32px;font-weight:800;color:'+color+';line-height:1">'+n+'</div>' +
+    '</div>';
+
+  const renderRow = (p, primaryAction) => {
+    const personaLbl = (PERSONAS.find(x=>x.id===p.persona)||{}).label || '—';
+    const score = _leadScore(p);
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--ink-70)">' +
+      '<div style="flex:1;min-width:0;cursor:pointer" onclick="_showActivityTimeline(\''+esc(p.id)+'\')">' +
+        '<div style="font-weight:700;font-size:13px;color:#2A2622">'+esc((p.firstName||'')+' '+(p.lastName||''))+'</div>' +
+        '<div style="font-size:11px;color:var(--ink-40)">'+esc(personaLbl)+(p.company?' &middot; '+esc(p.company):'')+(p.email?' &middot; '+esc(p.email):'')+'</div>' +
+      '</div>' +
+      '<span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:10px;background:'+_scoreColor(score)+'22;color:'+_scoreColor(score)+';flex-shrink:0">'+score+'</span>' +
+      (p.cadenceStep>0?'<span class="cadence-badge cadence-step-'+Math.min(5,p.cadenceStep)+'" style="flex-shrink:0">Step '+p.cadenceStep+'/5</span>':'') +
+      '<div style="flex-shrink:0">'+primaryAction+'</div>' +
+    '</div>';
+  };
+
+  const sectionEmpty = '<div style="padding:24px;text-align:center;color:var(--ink-50);font-size:12px">Nothing here right now.</div>';
+
+  body.innerHTML =
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">' +
+      counter('Total prospects', total,         '#2A2622') +
+      counter('Active in cadence', enrolled.length, 'var(--gold)') +
+      counter('Due today', due.length,          '#2A8B5E') +
+      counter('Replied — follow up', replied.length, '#C4933F') +
+      counter('Converted', converted.length,    '#4472CA') +
+    '</div>' +
+
+    '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:hidden;margin-bottom:14px">' +
+      '<div style="padding:12px 14px;background:rgba(42,139,94,.06);border-bottom:1px solid var(--ink-70);font-size:13px;font-weight:800;color:#2A8B5E">SEND TODAY <span style="font-weight:600;color:var(--ink-50)">— '+due.length+' due</span></div>' +
+      (due.length === 0 ? sectionEmpty : due.map(p => renderRow(p,
+        '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();sendCadenceStep(\''+esc(p.id)+'\')" style="padding:4px 10px;font-size:11px">Send '+p.cadenceStep+'</button>'
+      )).join('')) +
+    '</div>' +
+
+    '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:hidden;margin-bottom:14px">' +
+      '<div style="padding:12px 14px;background:rgba(196,147,63,.08);border-bottom:1px solid var(--ink-70);font-size:13px;font-weight:800;color:var(--gold)">REPLIED — FOLLOW UP <span style="font-weight:600;color:var(--ink-50)">— '+replied.length+'</span></div>' +
+      (replied.length === 0 ? sectionEmpty : replied.map(p => renderRow(p,
+        '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();convertToOpp(\''+esc(p.id)+'\')" style="padding:4px 10px;font-size:11px">Convert →</button>'
+      )).join('')) +
+    '</div>' +
+
+    '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:hidden">' +
+      '<div style="padding:12px 14px;background:rgba(224,82,82,.06);border-bottom:1px solid var(--ink-70);font-size:13px;font-weight:800;color:var(--red)">GOING STALE <span style="font-weight:600;color:var(--ink-50)">— '+stale.length+' &middot; no touch in 14+ days</span></div>' +
+      (stale.length === 0 ? sectionEmpty : stale.map(p => renderRow(p,
+        '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();sendCadenceStep(\''+esc(p.id)+'\')" style="padding:4px 10px;font-size:11px">Resume</button>'
+      )).join('')) +
+    '</div>';
+}
+
+/* ══════════════════════════════════════════════════
+   ANALYTICS — funnel + per-persona + per-step
+══════════════════════════════════════════════════ */
+async function _renderProspectAnalytics() {
+  const body = document.getElementById('prospectBody'); if (!body) return;
+  const all  = await Prospects.getAll();
+  const log  = getCadenceLog();
+
+  const enrolled  = all.filter(p => p.cadenceStartedAt);
+  const replied   = all.filter(p => p.status === 'replied');
+  const converted = all.filter(p => p.status === 'converted');
+  const stepsReached = (n) => all.filter(p => p.cadenceStep >= n || (p.cadenceStep > 0 && (p.lastContactedAt || p.status==='replied' || p.status==='converted'))).length;
+
+  // Funnel rows: total → enrolled → step3+ → replied → converted
+  const funnel = [
+    { label:'Total prospects',    n: all.length,        color:'#2A2622' },
+    { label:'Enrolled in cadence', n: enrolled.length,  color:'var(--gold)' },
+    { label:'Reached Step 3+',    n: all.filter(p => p.cadenceStep >= 3 || ['replied','converted'].includes(p.status)).length, color:'#A088E0' },
+    { label:'Replied',            n: replied.length + converted.length, color:'#C4933F' },
+    { label:'Converted to opp',   n: converted.length,  color:'#4472CA' },
+  ];
+  const maxFunnel = Math.max(1, ...funnel.map(r => r.n));
+
+  // Per-persona reply rates
+  const personaRows = PERSONAS.map(per => {
+    const ps = all.filter(p => p.persona === per.id);
+    const rep = ps.filter(p => ['replied','converted'].includes(p.status)).length;
+    const enr = ps.filter(p => p.cadenceStartedAt).length;
+    const rate = enr > 0 ? Math.round((rep / enr) * 100) : 0;
+    return { persona: per.label, total: ps.length, enrolled: enr, replied: rep, rate };
+  });
+
+  // Per-step distribution
+  const stepRows = [1,2,3,4,5].map(n => {
+    const inStep = all.filter(p => p.cadenceStep === n && p.status === 'active').length;
+    const sentLog = log.filter(e => e.step === n && (e.status||'').startsWith('sent')).length;
+    return { step: n, inStep, sentLog };
+  });
+
+  const funnelHTML = funnel.map(r =>
+    '<div style="display:flex;align-items:center;gap:12px;padding:8px 0">' +
+      '<div style="flex-shrink:0;width:160px;font-size:12px;color:#2A2622">'+esc(r.label)+'</div>' +
+      '<div style="flex:1;background:var(--ink-90);border-radius:6px;height:24px;position:relative;overflow:hidden">' +
+        '<div style="width:'+(r.n/maxFunnel*100)+'%;height:100%;background:'+r.color+';transition:width .3s"></div>' +
+      '</div>' +
+      '<div style="flex-shrink:0;width:60px;text-align:right;font-size:14px;font-weight:800;color:'+r.color+'">'+r.n+'</div>' +
+    '</div>'
+  ).join('');
+
+  const personaTable = personaRows.map(r =>
+    '<tr><td><strong>'+esc(r.persona)+'</strong></td>' +
+      '<td>'+r.total+'</td><td>'+r.enrolled+'</td><td>'+r.replied+'</td>' +
+      '<td><span style="font-weight:800;color:'+(r.rate>=20?'#2A8B5E':r.rate>=10?'var(--gold)':'var(--ink-50)')+'">'+r.rate+'%</span></td>' +
+    '</tr>'
+  ).join('');
+
+  const stepTable = stepRows.map(r => {
+    const meth = (CADENCES.builders.find(c=>c.step===r.step)||{}).method || '';
+    return '<tr><td>Step '+r.step+'</td><td style="font-size:11px;color:var(--ink-40)">'+esc(meth)+'</td>' +
+      '<td>'+r.inStep+'</td><td>'+r.sentLog+'</td></tr>';
+  }).join('');
+
+  body.innerHTML =
+    '<div class="persona-card" style="margin-bottom:14px">' +
+      '<h4>Funnel</h4>' +
+      '<div class="subtitle">Where prospects drop off across the 5-step cadence</div>' +
+      funnelHTML +
+    '</div>' +
+
+    '<div class="persona-card" style="margin-bottom:14px">' +
+      '<h4>Per-persona performance</h4>' +
+      '<div class="subtitle">Reply rate = replied or converted ÷ enrolled. Sample size matters — anything under ~10 enrolled is noise.</div>' +
+      '<table class="contact-table"><thead><tr><th>Persona</th><th>Total</th><th>Enrolled</th><th>Replied</th><th>Reply rate</th></tr></thead><tbody>' +
+      personaTable +
+      '</tbody></table>' +
+    '</div>' +
+
+    '<div class="persona-card">' +
+      '<h4>Per-step activity</h4>' +
+      '<div class="subtitle">In Step = active prospects currently sitting at that step. Sent (log) = times that step was marked sent across all prospects.</div>' +
+      '<table class="contact-table"><thead><tr><th>Step</th><th>Method</th><th>In step</th><th>Sent (log)</th></tr></thead><tbody>' +
+      stepTable +
+      '</tbody></table>' +
+    '</div>';
+}
+
+/* ══════════════════════════════════════════════════
+   REPLY + CONVERT — closes the loop with the existing CRM
+══════════════════════════════════════════════════ */
+async function markReplied(id) {
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === id);
+  if (!p) return;
+  p.status      = 'replied';
+  p.lastReplyAt = new Date().toISOString();
+  await Prospects.save(p);
+  _appendCadenceLog({
+    prospectId: p.id,
+    name: ((p.firstName||'')+' '+(p.lastName||'')).trim(),
+    email: p.email, persona: p.persona,
+    step: p.cadenceStep, status: 'replied',
+    repliedAt: new Date().toISOString(),
+  });
+  toast('Marked replied — cadence paused', 'success');
+  // Close any open send modal
+  const overlay = document.getElementById('cadenceOverlay'); if (overlay) overlay.remove();
+  renderProspecting();
+}
+
+async function convertToOpp(id) {
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm('Convert this prospect into a Sales pipeline opportunity?\n\nThe prospect cadence will stop and the opp will appear in your Pipeline tab.')) return;
+  const opp = {
+    firstName:  p.firstName || '',
+    lastName:   p.lastName  || '',
+    email:      p.email     || '',
+    phone:      p.phone     || '',
+    address:    '',
+    projectType:'',
+    leadSource: 'Prospecting',
+    stage:      'New Lead',
+    homeCall:   'No',
+    homeCallDate: '',
+    saleMade:   'No',
+    goldComp:   'No',
+    probability:25,
+    estimate:   0,
+    followUpDate: '',
+    nextStep:   'Schedule discovery call',
+    notes:      'Converted from prospect ' + p.id + (p.company ? ' · ' + p.company : '') + (p.notes ? '\n\n' + p.notes : ''),
+    createdAt:  new Date().toISOString().slice(0,10),
+  };
+  await DB.save(opp);
+  p.status         = 'converted';
+  p.convertedOppId = opp.id;
+  p.cadenceStep    = 0;
+  await Prospects.save(p);
+  _appendCadenceLog({
+    prospectId: p.id,
+    name: ((p.firstName||'')+' '+(p.lastName||'')).trim(),
+    persona: p.persona, status: 'converted',
+    oppId: opp.id, convertedAt: new Date().toISOString(),
+  });
+  toast('Converted to opportunity — see Pipeline tab', 'success');
+  renderProspecting();
+}
+
+/* ══════════════════════════════════════════════════
+   ACTIVITY TIMELINE — every event for a single prospect
+══════════════════════════════════════════════════ */
+async function _showActivityTimeline(id) {
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === id);
+  if (!p) return;
+
+  const log = getCadenceLog().filter(e => e.prospectId === id);
+  const events = [];
+  if (p.createdAt)        events.push({ when:p.createdAt,        label:'Created',           detail:'Source: '+(p.source||'manual'), color:'var(--ink-50)' });
+  if (p.cadenceStartedAt) events.push({ when:p.cadenceStartedAt, label:'Enrolled in cadence', detail:(PERSONAS.find(x=>x.id===p.persona)||{}).label||p.persona, color:'var(--gold)' });
+  log.forEach(e => {
+    const when = e.queuedAt || e.sentAt || e.repliedAt || e.convertedAt;
+    let lbl = e.status;
+    if (e.status === 'sent-manual')   lbl = 'Step ' + e.step + ' marked sent';
+    if (e.status === 'replied')       lbl = 'Replied — cadence paused';
+    if (e.status === 'converted')     lbl = 'Converted to opportunity';
+    if ((e.status||'').includes('queued') || (e.status||'').startsWith('pending')) lbl = 'Step ' + e.step + ' queued';
+    events.push({ when, label: lbl, detail: e.subject||'', color: e.status==='replied'?'var(--gold)' : e.status==='converted'?'#4472CA' : '#2A8B5E' });
+  });
+  if (p.lastReplyAt && !events.some(x => (x.label||'').startsWith('Replied'))) {
+    events.push({ when:p.lastReplyAt, label:'Replied', detail:'', color:'var(--gold)' });
+  }
+  events.sort((a,b) => new Date(b.when||0) - new Date(a.when||0));
+
+  const overlay = document.getElementById('timelineOverlay'); if (overlay) overlay.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'timelineOverlay';
+  wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  const score = _leadScore(p);
+  const personaLbl = (PERSONAS.find(x=>x.id===p.persona)||{}).label || '—';
+
+  const eventRows = events.length === 0
+    ? '<div style="padding:20px;text-align:center;color:var(--ink-50);font-size:12px">No events yet.</div>'
+    : events.map(e => {
+        const d = e.when ? new Date(e.when) : null;
+        const when = d ? d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '—';
+        return '<div style="display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--ink-70)">' +
+          '<div style="width:6px;flex-shrink:0;border-radius:3px;background:'+e.color+'"></div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="font-weight:700;font-size:12px;color:#2A2622">'+esc(e.label)+'</div>' +
+            (e.detail ? '<div style="font-size:11px;color:var(--ink-40);margin-top:2px">'+esc(e.detail)+'</div>' : '') +
+          '</div>' +
+          '<div style="font-size:11px;color:var(--ink-50);flex-shrink:0">'+esc(when)+'</div>' +
+        '</div>';
+      }).join('');
+
+  wrap.innerHTML =
+    '<div style="background:#fff;border-radius:var(--r);max-width:680px;width:100%;max-height:90vh;overflow:auto;padding:24px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">' +
+        '<div>' +
+          '<h3 style="font-family:var(--font-display);color:var(--gold);font-size:18px;margin:0">'+esc((p.firstName||'')+' '+(p.lastName||''))+'</h3>' +
+          '<div style="font-size:12px;color:var(--ink-40);margin-top:4px">'+esc(personaLbl)+(p.company?' &middot; '+esc(p.company):'')+(p.email?' &middot; '+esc(p.email):'')+(p.phone?' &middot; '+esc(p.phone):'')+'</div>' +
+        '</div>' +
+        '<button onclick="document.getElementById(\'timelineOverlay\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink-50)">×</button>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">' +
+        '<span style="padding:4px 10px;background:'+_scoreColor(score)+'22;color:'+_scoreColor(score)+';border-radius:10px;font-size:11px;font-weight:800">SCORE '+score+'</span>' +
+        (p.cadenceStep>0?'<span class="cadence-badge cadence-step-'+Math.min(5,p.cadenceStep)+'">Step '+p.cadenceStep+'/5</span>':'') +
+        '<span style="padding:4px 10px;background:var(--ink-90);color:var(--ink-30);border-radius:10px;font-size:11px;font-weight:700">'+esc(p.status||'active')+'</span>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">' +
+        (p.cadenceStep > 0 && p.status === 'active' ? '<button class="btn btn-ghost btn-sm" onclick="markReplied(\''+esc(p.id)+'\');document.getElementById(\'timelineOverlay\').remove()">Mark replied</button>' : '') +
+        (['replied','active'].includes(p.status) ? '<button class="btn btn-primary btn-sm" onclick="convertToOpp(\''+esc(p.id)+'\');document.getElementById(\'timelineOverlay\').remove()">Convert to opportunity</button>' : '') +
+        (p.convertedOppId ? '<span style="padding:6px 12px;font-size:11px;color:var(--ink-50)">Linked to opp '+esc(p.convertedOppId.slice(0,8))+'…</span>' : '') +
+      '</div>' +
+      '<div style="border:1px solid var(--ink-70);border-radius:8px;overflow:hidden">'+eventRows+'</div>' +
+    '</div>';
+  document.body.appendChild(wrap);
+}
+
+/* ══════════════════════════════════════════════════
+   BULK ACTIONS — multi-select on contacts table
+══════════════════════════════════════════════════ */
+function _toggleSelected(id) {
+  const sel = window._prospectState.selected;
+  if (sel[id]) delete sel[id]; else sel[id] = true;
+  _renderProspectContacts();
+}
+function _clearSelected() {
+  window._prospectState.selected = {};
+  _renderProspectContacts();
+}
+function _selectedIds() { return Object.keys(window._prospectState.selected); }
+
+async function _bulkEnroll() {
+  const ids = _selectedIds(); if (!ids.length) return;
+  if (!confirm('Enroll '+ids.length+' contacts in their persona cadence?')) return;
+  const all = await Prospects.getAll();
+  let n = 0, skipped = 0;
+  for (const id of ids) {
+    const p = all.find(x => x.id === id); if (!p) continue;
+    if (!p.persona || !p.email) { skipped++; continue; }
+    if (p.cadenceStep > 0)      { skipped++; continue; }
+    p.cadenceStep = 1;
+    p.cadenceStartedAt = new Date().toISOString();
+    p.status = 'active';
+    await Prospects.save(p);
+    n++;
+  }
+  toast('Enrolled '+n+(skipped?' · '+skipped+' skipped (missing persona/email or already enrolled)':''),'success');
+  window._prospectState.selected = {};
+  renderProspecting();
+}
+
+async function _bulkSetPersona(personaId) {
+  if (!personaId) return;
+  const ids = _selectedIds(); if (!ids.length) return;
+  const all = await Prospects.getAll();
+  for (const id of ids) {
+    const p = all.find(x => x.id === id); if (!p) continue;
+    p.persona = personaId;
+    await Prospects.save(p);
+  }
+  toast('Persona updated on '+ids.length+' contacts','success');
+  window._prospectState.selected = {};
+  renderProspecting();
+}
+
+async function _bulkDelete() {
+  const ids = _selectedIds(); if (!ids.length) return;
+  if (!confirm('Delete '+ids.length+' contacts? This cannot be undone.')) return;
+  for (const id of ids) await Prospects.delete(id);
+  toast('Deleted '+ids.length,'success');
+  window._prospectState.selected = {};
+  renderProspecting();
+}
+
 async function _renderProspectContacts() {
   const body = document.getElementById('prospectBody'); if (!body) return;
   const all  = await Prospects.getAll();
   const PS   = window._prospectState;
-  const list = PS.personaFilter === 'all' ? all : all.filter(p => p.persona === PS.personaFilter);
+
+  // Apply persona filter then search filter
+  let list = PS.personaFilter === 'all' ? all : all.filter(p => p.persona === PS.personaFilter);
+  if (PS.searchQ) list = list.filter(p => _matchesSearch(p, PS.searchQ));
+
+  // Sort
+  const sortBy = PS.sortBy || 'score';
+  list = list.slice().sort((a,b) => {
+    if (sortBy === 'score')         return _leadScore(b) - _leadScore(a);
+    if (sortBy === 'name')          return ((a.firstName||'')+(a.lastName||'')).localeCompare((b.firstName||'')+(b.lastName||''));
+    if (sortBy === 'created')       return new Date(b.createdAt||0) - new Date(a.createdAt||0);
+    if (sortBy === 'lastContacted') return new Date(b.lastContactedAt||0) - new Date(a.lastContactedAt||0);
+    return 0;
+  });
 
   const filterPills = ['all'].concat(PERSONAS.map(p => p.id)).map(id => {
     const isAct = PS.personaFilter === id;
@@ -9518,8 +9949,21 @@ async function _renderProspectContacts() {
   }).join(' ');
 
   const personaOpts = PERSONAS.map(p => '<option value="'+p.id+'">'+esc(p.label)+'</option>').join('');
+  const selCount = _selectedIds().length;
+
+  // Bulk action bar (only when 1+ selected)
+  const bulkBar = selCount === 0 ? '' :
+    '<div style="background:rgba(196,147,63,.10);border:1px solid var(--gold);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+      '<strong style="font-size:12px;color:var(--gold)">'+selCount+' selected</strong>' +
+      '<button class="btn btn-ghost btn-sm" onclick="_bulkEnroll()">Bulk enroll</button>' +
+      '<select onchange="_bulkSetPersona(this.value)" style="padding:5px 8px;font-size:11px;border:1px solid var(--ink-60);border-radius:5px"><option value="">Set persona…</option>'+personaOpts+'</select>' +
+      '<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="_bulkDelete()">Delete</button>' +
+      '<div style="flex:1"></div>' +
+      '<button class="btn btn-ghost btn-sm" onclick="_clearSelected()">Clear</button>' +
+    '</div>';
 
   body.innerHTML =
+    // Add contact form
     '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);padding:18px;margin-bottom:16px">' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">' +
         '<strong style="flex:1;min-width:180px;font-size:14px;color:#2A2622">Add contact</strong>' +
@@ -9540,26 +9984,57 @@ async function _renderProspectContacts() {
         '<button class="btn btn-primary btn-sm" onclick="_addProspectFromForm()" style="white-space:nowrap">+ Add</button>' +
       '</div>' +
     '</div>' +
+
+    // Search + sort
+    '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">' +
+      '<div style="flex:1;min-width:220px;position:relative">' +
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--ink-50)" stroke-width="1.6" style="position:absolute;left:10px;top:50%;transform:translateY(-50%)"><circle cx="6.5" cy="6.5" r="5"/><path d="M10.5 10.5L15 15"/></svg>' +
+        '<input id="prospectSearch" type="text" placeholder="Search name, email, phone, company, notes…" value="'+esc(PS.searchQ||'')+'" oninput="window._prospectState.searchQ=this.value;_renderProspectContacts();this.focus()" style="width:100%;padding:8px 8px 8px 32px;border:1px solid var(--ink-60);border-radius:8px;font-size:13px">' +
+      '</div>' +
+      '<select onchange="window._prospectState.sortBy=this.value;_renderProspectContacts()" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:12px">' +
+        '<option value="score"' + (sortBy==='score'?' selected':'') + '>Sort: Score (high → low)</option>' +
+        '<option value="name"' + (sortBy==='name'?' selected':'') + '>Sort: Name (A → Z)</option>' +
+        '<option value="created"' + (sortBy==='created'?' selected':'') + '>Sort: Created (newest)</option>' +
+        '<option value="lastContacted"' + (sortBy==='lastContacted'?' selected':'') + '>Sort: Last contacted</option>' +
+      '</select>' +
+    '</div>' +
+
+    // Persona filter pills
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' + filterPills + '</div>' +
+
+    bulkBar +
+
+    // Contacts table
     (list.length === 0
-      ? '<div class="empty-state" style="padding:40px"><div class="icon">👥</div><p>No contacts yet. Add one above or import a CSV.</p></div>'
+      ? '<div class="empty-state" style="padding:40px"><div class="icon">👥</div><p>'+(PS.searchQ ? 'No matches for "'+esc(PS.searchQ)+'".' : 'No contacts yet. Add one above or import a CSV.')+'</p></div>'
       : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
         '<table class="contact-table"><thead><tr>' +
-          '<th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Persona</th><th>Cadence</th><th>Status</th><th>Actions</th>' +
+          '<th style="width:32px"><input type="checkbox" onchange="_toggleAllSelected(this.checked)" '+(selCount && selCount === list.length ? 'checked' : '')+'></th>' +
+          '<th>Score</th><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Persona</th><th>Cadence</th><th>Status</th><th>Actions</th>' +
         '</tr></thead><tbody>' +
         list.map(p => {
           const personaLbl = (PERSONAS.find(x => x.id === p.persona)||{}).label || '—';
           const cadCls = p.cadenceStep > 0 ? ('cadence-step-' + Math.min(5, p.cadenceStep)) : '';
           const cadTxt = p.cadenceStep > 0 ? ('Step '+p.cadenceStep+'/5') : 'Not enrolled';
-          const canEnroll = p.persona && p.email && p.cadenceStep === 0;
-          const canSend   = p.persona && p.email && p.cadenceStep > 0 && p.cadenceStep <= 5;
+          const canEnroll  = p.persona && p.email && p.cadenceStep === 0 && p.status !== 'converted';
+          const canSend    = p.persona && p.email && p.cadenceStep > 0 && p.cadenceStep <= 5 && p.status === 'active';
+          const canReply   = p.cadenceStep > 0 && p.status === 'active';
+          const canConvert = ['replied','active'].includes(p.status) && p.email;
+          const score = _leadScore(p);
+          const isSel = !!PS.selected[p.id];
+
           const actions = [
-            canEnroll ? '<button onclick="enrollProspect(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(196,147,63,.15);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:10px;font-weight:700;cursor:pointer">Enroll</button>' : '',
-            canSend   ? '<button onclick="sendCadenceStep(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(76,175,125,.15);border:1px solid var(--green);border-radius:5px;color:var(--green);font-size:10px;font-weight:700;cursor:pointer">Send '+p.cadenceStep+'</button>' : '',
-            (p.cadenceStep > 0) ? '<button onclick="unenrollProspect(\''+esc(p.id)+'\')" style="padding:3px 6px;background:none;border:1px solid var(--ink-60);border-radius:5px;color:var(--ink-40);font-size:10px;font-weight:700;cursor:pointer" title="Stop cadence">Stop</button>' : '',
-            '<button onclick="_deleteProspect(\''+esc(p.id)+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0 4px" title="Delete">×</button>',
+            canEnroll  ? '<button onclick="event.stopPropagation();enrollProspect(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(196,147,63,.15);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:10px;font-weight:700;cursor:pointer">Enroll</button>' : '',
+            canSend    ? '<button onclick="event.stopPropagation();sendCadenceStep(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(42,139,94,.15);border:1px solid #2A8B5E;border-radius:5px;color:#2A8B5E;font-size:10px;font-weight:700;cursor:pointer">Send '+p.cadenceStep+'</button>' : '',
+            canReply   ? '<button onclick="event.stopPropagation();markReplied(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(196,147,63,.10);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:10px;font-weight:700;cursor:pointer" title="Mark replied — pauses cadence">Replied</button>' : '',
+            canConvert ? '<button onclick="event.stopPropagation();convertToOpp(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(68,114,202,.10);border:1px solid #4472CA;border-radius:5px;color:#4472CA;font-size:10px;font-weight:700;cursor:pointer" title="Convert to opportunity in Pipeline">Convert</button>' : '',
+            (p.cadenceStep > 0) ? '<button onclick="event.stopPropagation();unenrollProspect(\''+esc(p.id)+'\')" style="padding:3px 6px;background:none;border:1px solid var(--ink-60);border-radius:5px;color:var(--ink-40);font-size:10px;font-weight:700;cursor:pointer" title="Stop cadence">Stop</button>' : '',
+            '<button onclick="event.stopPropagation();_deleteProspect(\''+esc(p.id)+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0 4px" title="Delete">×</button>',
           ].filter(Boolean).join(' ');
-          return '<tr>' +
+
+          return '<tr style="cursor:pointer" onclick="_showActivityTimeline(\''+esc(p.id)+'\')">' +
+            '<td onclick="event.stopPropagation()"><input type="checkbox" '+(isSel?'checked':'')+' onchange="_toggleSelected(\''+esc(p.id)+'\')"></td>' +
+            '<td><span style="font-weight:800;font-size:12px;color:'+_scoreColor(score)+';padding:2px 8px;background:'+_scoreColor(score)+'18;border-radius:10px">'+score+'</span></td>' +
             '<td><strong>'+esc((p.firstName||'')+' '+(p.lastName||''))+'</strong></td>' +
             '<td>'+esc(p.email||'—')+'</td>' +
             '<td>'+esc(p.phone||'—')+'</td>' +
@@ -9567,11 +10042,32 @@ async function _renderProspectContacts() {
             '<td>'+esc(personaLbl)+'</td>' +
             '<td>'+(cadCls?'<span class="cadence-badge '+cadCls+'">'+cadTxt+'</span>':'<span style="color:var(--ink-50);font-size:11px">'+cadTxt+'</span>')+'</td>' +
             '<td><span style="font-size:11px;color:var(--ink-40)">'+esc(p.status||'active')+'</span></td>' +
-            '<td><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">'+actions+'</div></td>' +
+            '<td onclick="event.stopPropagation()"><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">'+actions+'</div></td>' +
           '</tr>';
         }).join('') +
         '</tbody></table></div>'
     );
+
+  // Restore search input focus + caret position after re-render
+  setTimeout(() => {
+    const inp = document.getElementById('prospectSearch');
+    if (inp && document.activeElement && document.activeElement.id === 'prospectSearch') {
+      const v = inp.value; inp.focus(); inp.setSelectionRange(v.length, v.length);
+    }
+  }, 0);
+}
+
+function _toggleAllSelected(checked) {
+  const PS = window._prospectState;
+  if (!checked) { PS.selected = {}; _renderProspectContacts(); return; }
+  // Re-derive the visible list and select all of them
+  Prospects.getAll().then(all => {
+    let list = PS.personaFilter === 'all' ? all : all.filter(p => p.persona === PS.personaFilter);
+    if (PS.searchQ) list = list.filter(p => _matchesSearch(p, PS.searchQ));
+    PS.selected = {};
+    list.forEach(p => { PS.selected[p.id] = true; });
+    _renderProspectContacts();
+  });
 }
 
 async function _addProspectFromForm() {
@@ -10332,7 +10828,7 @@ async function unenrollProspect(id) {
   p.cadenceStartedAt = '';
   await Prospects.save(p);
   toast('Removed from cadence', 'success');
-  _renderProspectContacts();
+  renderProspecting();
 }
 
 async function sendCadenceStep(id) {
@@ -10403,7 +10899,7 @@ async function markStepSent(id) {
   await Prospects.save(p);
   toast('Marked sent — advanced to step ' + (p.cadenceStep > 5 ? 5 : p.cadenceStep), 'success');
   const overlay = document.getElementById('cadenceOverlay'); if (overlay) overlay.remove();
-  _renderProspectContacts();
+  renderProspecting();
 }
 
 function _showCadencePreview(prospect, tmpl, subject, body, status, detail, touch) {
