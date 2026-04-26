@@ -10846,20 +10846,13 @@ async function sendCadenceStep(id) {
   const subject = _renderTemplate(tmpl.subject, p);
   const body    = _renderTemplate(tmpl.body,    p);
   const key     = (localStorage.getItem('ea_resend_key') || '').trim();
-  let status    = 'queued';
-  let detail    = '';
+  const cloud   = _isCloudMode();
 
-  if (key) {
-    // Resend send is intentionally a stub — browser CORS + key exposure
-    // make direct API calls unsafe. The Edge Function lands in a follow-up.
-    status = 'pending-edge-function';
-    detail = 'Resend key present, but sends route through a Supabase Edge Function that has not been deployed yet. Mark sent manually for now.';
-  } else {
-    status = 'no-key';
-    detail = 'No Resend API key set. Add one in Setup, or click "Mark sent" to log this step manually.';
-  }
+  let status, detail;
+  if (cloud && key)       { status = 'ready-to-send';        detail = 'Click "Send via Resend" to fire the Edge Function. Or "Mark sent" if delivered another way.'; }
+  else if (cloud && !key) { status = 'no-key';               detail = 'No Resend API key set. Add one in Setup, or click "Mark sent" to log this step manually.'; }
+  else if (!cloud)        { status = 'not-cloud';            detail = 'Demo mode — Resend send needs cloud (Supabase) mode. Use "Mark sent" to log manually.'; }
 
-  // Log queue attempt — does NOT advance step; advance happens on confirmed send
   _appendCadenceLog({
     prospectId: p.id,
     name:      ((p.firstName||'') + ' ' + (p.lastName||'')).trim(),
@@ -10873,9 +10866,70 @@ async function sendCadenceStep(id) {
     queuedAt:  new Date().toISOString(),
   });
 
-  // Show preview modal so the user can copy/paste manually if needed
   const touch = _renderTouchForProspect(_getTouch(p.persona, p.cadenceStep), p);
   _showCadencePreview(p, tmpl, subject, body, status, detail, touch);
+}
+
+/* Send the current cadence email through the deployed send-cadence
+   Edge Function. Reads from-address + key from localStorage; the
+   function uses a Supabase secret if set (preferred) and falls back
+   to the body apiKey otherwise. */
+async function sendViaResendNow(prospectId) {
+  const all = await Prospects.getAll();
+  const p   = all.find(x => x.id === prospectId);
+  if (!p) return;
+  if (!_isCloudMode()) { toast('Cloud mode required for Resend','error'); return; }
+
+  const subject = (document.getElementById('cadSubject')||{}).value;
+  const body    = (document.getElementById('cadBody')||{}).value;
+  if (!subject || !body) { toast('Subject + body required','error'); return; }
+
+  const apiKey   = (localStorage.getItem('ea_resend_key')  || '').trim();
+  const fromAddr = (localStorage.getItem('ea_resend_from') || '').trim();
+
+  // Disable the button + show spinner-ish state
+  const btn = document.getElementById('sendResendBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  try {
+    const { data, error } = await DB.client.functions.invoke('send-cadence', {
+      body: {
+        to:       p.email,
+        subject,
+        text:     body,
+        from:     fromAddr || undefined,
+        apiKey:   apiKey   || undefined,
+      },
+    });
+    if (error) throw new Error(error.message || 'Edge function error');
+    if (data && data.error) throw new Error(data.error + (data.detail ? ' — ' + JSON.stringify(data.detail) : ''));
+
+    // Success — log + advance
+    const tmpl = (CADENCES[p.persona]||[]).find(t => t.step === p.cadenceStep);
+    _appendCadenceLog({
+      prospectId: p.id,
+      name:      ((p.firstName||'')+' '+(p.lastName||'')).trim(),
+      email:     p.email,
+      persona:   p.persona,
+      step:      p.cadenceStep,
+      method:    tmpl ? tmpl.method : '',
+      subject,
+      status:    'sent-resend',
+      resendId:  data && data.id,
+      sentAt:    new Date().toISOString(),
+    });
+    p.lastContactedAt = new Date().toISOString();
+    if (p.cadenceStep < 5) p.cadenceStep += 1; else p.status = 'completed';
+    await Prospects.save(p);
+
+    toast('Sent via Resend ✓ — advanced to step ' + (p.cadenceStep > 5 ? 5 : p.cadenceStep), 'success');
+    const overlay = document.getElementById('cadenceOverlay'); if (overlay) overlay.remove();
+    renderProspecting();
+  } catch (e) {
+    console.error('Resend send error:', e);
+    toast('Send failed: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Send via Resend'; }
+  }
 }
 
 async function markStepSent(id) {
@@ -10907,11 +10961,12 @@ function _showCadencePreview(prospect, tmpl, subject, body, status, detail, touc
   const wrap = document.createElement('div');
   wrap.id = 'cadenceOverlay';
   wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  const banner = status === 'pending-edge-function'
-    ? '<div style="padding:8px 12px;background:rgba(196,147,63,.12);border:1px solid var(--gold);border-radius:6px;font-size:12px;color:var(--gold);margin-bottom:12px">⚠ '+esc(detail)+'</div>'
-    : status === 'no-key'
-      ? '<div style="padding:8px 12px;background:rgba(224,82,82,.08);border:1px solid var(--red);border-radius:6px;font-size:12px;color:var(--red);margin-bottom:12px">⚠ '+esc(detail)+'</div>'
+  const banner = status === 'ready-to-send'
+    ? '<div style="padding:8px 12px;background:rgba(42,139,94,.10);border:1px solid #2A8B5E;border-radius:6px;font-size:12px;color:#2A8B5E;margin-bottom:12px">✓ '+esc(detail)+'</div>'
+    : status === 'no-key' || status === 'not-cloud' || status === 'pending-edge-function'
+      ? '<div style="padding:8px 12px;background:rgba(196,147,63,.10);border:1px solid var(--gold);border-radius:6px;font-size:12px;color:var(--gold);margin-bottom:12px">⚠ '+esc(detail)+'</div>'
       : '';
+  const canSendResend = status === 'ready-to-send';
   const em = _channelMeta('email');
   wrap.innerHTML =
     '<div style="background:#fff;border-radius:var(--r);max-width:720px;width:100%;max-height:90vh;overflow:auto;padding:24px">' +
@@ -10936,6 +10991,7 @@ function _showCadencePreview(prospect, tmpl, subject, body, status, detail, touc
         (touch ? '<button class="btn btn-ghost btn-sm" onclick="_copyCompanionTouch()">Copy companion</button>' : '') +
         '<button class="btn btn-ghost btn-sm" onclick="_openMailto(\''+esc(prospect.email||'')+'\')">Open in mail app</button>' +
         '<div style="flex:1"></div>' +
+        (canSendResend ? '<button id="sendResendBtn" class="btn btn-sm" style="background:#2A8B5E;color:#fff;border:1px solid #2A8B5E" onclick="sendViaResendNow(\''+esc(prospect.id)+'\')">Send via Resend</button>' : '') +
         '<button class="btn btn-primary btn-sm" onclick="markStepSent(\''+esc(prospect.id)+'\')">Mark sent &amp; advance →</button>' +
       '</div>' +
     '</div>';
@@ -11065,16 +11121,32 @@ function _renderProspectCadences() {
 function _renderProspectSetup() {
   const body = document.getElementById('prospectBody'); if (!body) return;
   const k = (localStorage.getItem('ea_resend_key')||'').trim();
+  const fromAddr = (localStorage.getItem('ea_resend_from')||'').trim();
   const masked = k ? (k.slice(0,4) + '••••••••' + k.slice(-4)) : '';
   body.innerHTML =
     '<div class="persona-card">' +
-      '<h4>Resend integration</h4>' +
-      '<div class="subtitle">Used to send cadence emails (real send arrives in PR B via Supabase Edge Function)</div>' +
+      '<h4>Resend integration — API key</h4>' +
+      '<div class="subtitle">Local fallback only. <strong>Preferred path</strong>: store the key as a Supabase secret (instructions below) so it never leaves the server.</div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">' +
         '<input id="rsKey" type="password" placeholder="re_xxxxx" value="'+esc(k)+'" style="flex:1;min-width:240px;padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
         '<button class="btn btn-primary btn-sm" onclick="_saveResendKey()">Save</button>' +
       '</div>' +
       (masked ? '<p style="font-size:11px;color:var(--ink-40);margin:0">Stored locally. Currently active key: '+esc(masked)+'</p>' : '<p style="font-size:11px;color:var(--ink-40);margin:0">No key set.</p>') +
+    '</div>' +
+    '<div class="persona-card">' +
+      '<h4>Resend integration — From address</h4>' +
+      '<div class="subtitle">Must be on a domain you have verified at <a href="https://resend.com/domains" target="_blank" style="color:var(--gold)">resend.com/domains</a>. Until verified, sends fail with a 403.</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">' +
+        '<input id="rsFrom" type="text" placeholder="Carol Medrado &lt;carol@yourdomain.com&gt;" value="'+esc(fromAddr)+'" style="flex:1;min-width:280px;padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<button class="btn btn-primary btn-sm" onclick="_saveResendFrom()">Save</button>' +
+      '</div>' +
+      (fromAddr ? '<p style="font-size:11px;color:var(--ink-40);margin:0">Currently sending as: '+esc(fromAddr)+'</p>' : '<p style="font-size:11px;color:var(--ink-40);margin:0">No from address set.</p>') +
+    '</div>' +
+    '<div class="persona-card">' +
+      '<h4>Edge Function — deploy + secrets (one-time)</h4>' +
+      '<div class="subtitle">The function code is in <code>supabase/functions/send-cadence/</code>. Deploy from a terminal in the repo root. The browser cannot call Resend directly — this function is the bridge.</div>' +
+      '<pre style="background:var(--ink-90);padding:12px;border-radius:6px;font-size:11px;overflow:auto;color:var(--ink-20);margin:0 0 10px">supabase login\nsupabase link --project-ref &lt;your-project-ref&gt;\nsupabase functions deploy send-cadence\n\n# Recommended — set as secrets so the key never lives in the browser:\nsupabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx\nsupabase secrets set RESEND_FROM=\'Carol Medrado &lt;carol@yourdomain.com&gt;\'</pre>' +
+      '<p style="font-size:11px;color:var(--ink-40);margin:0">Once the function is deployed and either the secrets are set or the local key is filled in above, the cadence-step modal will show a green ✓ banner and a <strong>Send via Resend</strong> button.</p>' +
     '</div>' +
     '<div class="persona-card">' +
       '<h4>Supabase schema</h4>' +
@@ -11087,6 +11159,13 @@ function _saveResendKey() {
   const v = (document.getElementById('rsKey')||{}).value || '';
   localStorage.setItem('ea_resend_key', v.trim());
   toast('Saved locally','success');
+  _renderProspectSetup();
+}
+
+function _saveResendFrom() {
+  const v = (document.getElementById('rsFrom')||{}).value || '';
+  localStorage.setItem('ea_resend_from', v.trim());
+  toast('From address saved','success');
   _renderProspectSetup();
 }
 
