@@ -10295,8 +10295,8 @@ async function _renderProspectArchive() {
    Places API does not provide it.
 ══════════════════════════════════════════════════ */
 window._findLeadsState = window._findLeadsState || {
-  persona:'builders', query:'', location:'', results:[], loading:false,
-  nextPageToken:'', lastQuery:''
+  persona:'builders', query:'', state:'', cityQ:'', results:[], loading:false,
+  pagesLoaded:0, lastQuery:''
 };
 
 function _renderProspectFind() {
@@ -10305,21 +10305,34 @@ function _renderProspectFind() {
 
   const personaPicker = PERSONAS.filter(p => ['builders','realtors','landscaping'].includes(p.id))
     .map(p => '<option value="'+p.id+'"'+(FS.persona===p.id?' selected':'')+'>'+esc(p.label)+'</option>').join('');
-  const stateOpts = US_STATES.map(s => '<option value="'+s[0]+'">'+s[0]+' · '+esc(s[1])+'</option>').join('');
+  const stateOpts = '<option value="">— All states —</option>' +
+    US_STATES.map(s => '<option value="'+s[0]+'"'+(FS.state===s[0]?' selected':'')+'>'+s[0]+' · '+esc(s[1])+'</option>').join('');
+  const ratingOpts = ['','3','3.5','4','4.5'].map(v =>
+    '<option value="'+v+'"'+(String(FS.minRating||'')===v?' selected':'')+'>'+
+    (v ? '⭐ '+v+'+ stars' : 'Any rating')+'</option>').join('');
+
+  // Apply rating filter to results
+  const minR = parseFloat(FS.minRating) || 0;
+  const filtered = minR > 0
+    ? FS.results.filter(r => (r.rating || 0) >= minR)
+    : FS.results;
+  const unadded = filtered.filter(r => !r._added);
 
   const resultsHTML = FS.loading
-    ? '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Searching Google Places…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">First call usually takes 1–2 seconds.</div></div>'
+    ? '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Searching Google Places…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Fetching all available pages — this may take a few seconds.</div></div>'
     : FS.results.length === 0
       ? (FS.lastQuery
-          ? '<div class="empty-state" style="padding:40px"><div class="icon">🔍</div><p>No results for "'+esc(FS.lastQuery)+'". Try a different region or query.</p></div>'
+          ? '<div class="empty-state" style="padding:40px"><div class="icon">🔍</div><p>No results for "'+esc(FS.lastQuery)+'". Try a different state or query.</p></div>'
           : '')
       : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
-        '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90)">' +
-          '<strong>'+FS.results.length+' results</strong> for "'+esc(FS.lastQuery)+'" — phone + website only. Click <strong>Add</strong> to save as contact (you will need to find the email separately).' +
+        '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90);display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+          '<div><strong>'+filtered.length+'</strong>'+(minR>0?' of '+FS.results.length:'')+' results for "'+esc(FS.lastQuery)+'" · '+FS.pagesLoaded+' page'+(FS.pagesLoaded===1?'':'s')+' loaded</div>' +
+          (unadded.length > 0 ? '<button onclick="_addAllPlacesResults()" class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px">+ Add all ('+unadded.length+')</button>' : '<span style="color:#2A8B5E;font-size:11px;font-weight:700">All added ✓</span>') +
         '</div>' +
         '<table class="contact-table"><thead><tr><th>Business</th><th>State</th><th>Phone</th><th>Website</th><th>Rating</th><th></th></tr></thead><tbody>' +
-        FS.results.map((r, i) =>
-          '<tr>' +
+        filtered.map((r, i) => {
+          const realIdx = FS.results.indexOf(r);
+          return '<tr>' +
             '<td><strong>'+esc(r.name)+'</strong>' +
               '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address || '')+'</div>' +
             '</td>' +
@@ -10328,66 +10341,66 @@ function _renderProspectFind() {
             '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
             '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
             (r._added
-              ? '<td><span style="font-size:11px;color:var(--ink-40);padding:4px 10px">Added ✓</span></td>'
-              : '<td><button onclick="_addPlacesResult('+i+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>') +
-          '</tr>'
-        ).join('') +
-        '</tbody></table></div>' +
-        (FS.nextPageToken ? '<div style="text-align:center;margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="_findLeadsLoadMore()">Load more results</button></div>' : '');
+              ? '<td><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span style="font-size:11px;color:var(--ink-40)">Added ✓</span>'+(r._prospectId?'<button onclick="enrollProspect(\''+r._prospectId+'\')" class="btn btn-primary btn-sm" style="padding:2px 7px;font-size:10px">Enroll</button>':'')+'</div></td>'
+              : '<td><button onclick="_addPlacesResult('+realIdx+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>') +
+          '</tr>';
+        }).join('') +
+        '</tbody></table></div>';
 
   body.innerHTML =
     '<div class="persona-card" style="margin-bottom:14px">' +
       '<h4>🔍 Find Leads — Google Places</h4>' +
-      '<div class="subtitle">Lead discovery for B2B personas (builders, realtors, landscapers). Returns business name + phone + website + state. <strong>Does not return email</strong> — Google Places does not provide it. You will need to find emails separately (company website, Hunter.io, etc).</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:10px">' +
+      '<div class="subtitle">Lead discovery for B2B personas (builders, realtors, landscapers). Returns business name + phone + website + state. <strong>Does not return email</strong> — Google Places does not provide it. Use <strong>🔍 Find Email</strong> on each contact after adding.</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px">' +
         '<select id="flPersona" onchange="window._findLeadsState.persona=this.value" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+personaPicker+'</select>' +
-        '<input id="flQuery" placeholder="Optional refinement (e.g. \'custom luxury\')" value="'+esc(FS.query)+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
-        '<input id="flLocation" placeholder="City, State or just State (e.g. Aspen, CO)" value="'+esc(FS.location)+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<select id="flState" onchange="window._findLeadsState.state=this.value" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+stateOpts+'</select>' +
+        '<input id="flCityQ" placeholder="City (optional, e.g. Aspen)" value="'+esc(FS.cityQ||'')+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<input id="flQuery" placeholder="Refinement (e.g. custom luxury)" value="'+esc(FS.query)+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<select id="flMinRating" onchange="window._findLeadsState.minRating=this.value;_renderProspectFind()" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+ratingOpts+'</select>' +
         '<button class="btn btn-primary btn-sm" onclick="_findLeadsRun()" '+(FS.loading?'disabled':'')+'>'+(FS.loading?'Searching…':'🔍 Search')+'</button>' +
       '</div>' +
       '<div style="font-size:11px;color:var(--ink-40);line-height:1.5">' +
-        'Setup: Settings → Edge Function. Deploy <code>supabase functions deploy places-search</code>. Set <code>GOOGLE_PLACES_API_KEY</code> as a Supabase secret. Free tier covers ~10,000 searches/month.' +
+        'Fetches all available pages automatically (up to ~60 results per search). Rating filter applies to results already loaded — no extra API call.' +
       '</div>' +
     '</div>' +
     resultsHTML;
 }
 
-async function _findLeadsRun(usePageToken) {
+async function _findLeadsRun() {
   const FS = window._findLeadsState;
   if (!_isCloudMode()) { toast('Cloud mode required — Edge Function lives in Supabase', 'error'); return; }
-  FS.persona  = (document.getElementById('flPersona')||{}).value || FS.persona;
-  FS.query    = (document.getElementById('flQuery')||{}).value   || '';
-  FS.location = (document.getElementById('flLocation')||{}).value || '';
-  if (!FS.query && !FS.persona) { toast('Pick a persona or type a query','error'); return; }
-  FS.loading = true;
-  if (!usePageToken) { FS.results = []; FS.nextPageToken = ''; }
+  FS.persona = (document.getElementById('flPersona')||{}).value || FS.persona;
+  FS.query   = (document.getElementById('flQuery')||{}).value   || '';
+  FS.state   = (document.getElementById('flState')||{}).value   || FS.state || '';
+  FS.cityQ   = (document.getElementById('flCityQ')||{}).value   || FS.cityQ || '';
+  const location = [FS.cityQ, FS.state].filter(Boolean).join(', ');
+  if (!FS.persona && !FS.query) { toast('Pick a persona or type a query','error'); return; }
+  FS.results = []; FS.pagesLoaded = 0; FS.loading = true;
   _renderProspectFind();
+  let pageToken = undefined;
   try {
-    const { data, error } = await DB.client.functions.invoke('places-search', {
-      body: {
-        persona:   FS.persona,
-        query:     FS.query,
-        location:  FS.location,
-        pageToken: usePageToken ? FS.nextPageToken : undefined,
-      },
-    });
-    if (error) throw new Error(error.message || 'Edge function error');
-    if (data && data.error) throw new Error(data.error + (data.detail ? ' — ' + JSON.stringify(data.detail).slice(0,200) : ''));
-    const newResults = data && data.results || [];
-    FS.results = usePageToken ? FS.results.concat(newResults) : newResults;
-    FS.nextPageToken = data && data.nextPageToken || '';
-    FS.lastQuery     = data && data.textQuery     || (FS.query + (FS.location ? ' in '+FS.location : ''));
-    toast(usePageToken ? '+'+newResults.length+' more results' : 'Found '+newResults.length+' result'+(newResults.length===1?'':'s'),'success');
+    do {
+      const { data, error } = await DB.client.functions.invoke('places-search', {
+        body: { persona: FS.persona, query: FS.query, location, pageToken },
+      });
+      if (error) throw new Error(error.message || 'Edge function error');
+      if (data && data.error) throw new Error(data.error + (data.detail ? ' — ' + JSON.stringify(data.detail).slice(0,200) : ''));
+      const newResults = (data && data.results) || [];
+      FS.results = FS.results.concat(newResults);
+      FS.pagesLoaded++;
+      FS.lastQuery = (data && data.textQuery) || (FS.query + (location ? ' in ' + location : ''));
+      pageToken = (data && data.nextPageToken) || null;
+      if (!newResults.length) break;
+    } while (pageToken);
   } catch(e) {
     console.error('places-search error:', e);
-    toast('Search failed: '+e.message,'error');
+    toast('Search failed: ' + e.message, 'error');
   } finally {
     FS.loading = false;
+    toast('Found ' + FS.results.length + ' result' + (FS.results.length === 1 ? '' : 's') + ' across ' + FS.pagesLoaded + ' page' + (FS.pagesLoaded === 1 ? '' : 's'), 'success');
     _renderProspectFind();
   }
 }
-
-async function _findLeadsLoadMore() { return _findLeadsRun(true); }
 
 /* Add a single Places result as a Prospects contact */
 async function _addPlacesResult(idx) {
@@ -10416,9 +10429,42 @@ async function _addPlacesResult(idx) {
     if (!confirm('No phone number on this listing. Add anyway? You will need to find both phone and email separately.')) return;
   }
   await Prospects.save(contact);
-  toast('Added '+r.name+' — find email next, then enroll', 'success');
-  // Mark this result as added so the button can disable
-  FS.results[idx] = { ...r, _added: true };
+  FS.results[idx] = { ...r, _added: true, _prospectId: contact.id };
+  toast('Added ' + r.name + ' — find email next, then enroll', 'success');
+  _renderProspectFind();
+}
+
+async function _addAllPlacesResults() {
+  const FS = window._findLeadsState;
+  const minR = parseFloat(FS.minRating) || 0;
+  const filtered = minR > 0 ? FS.results.filter(r => (r.rating || 0) >= minR) : FS.results;
+  const unadded = filtered.filter(r => !r._added);
+  if (!unadded.length) return;
+  if (!confirm('Add all ' + unadded.length + ' visible leads to Contacts?')) return;
+  let added = 0;
+  for (const r of unadded) {
+    const idx = FS.results.indexOf(r);
+    if (idx < 0) continue;
+    const contact = {
+      firstName: '', lastName: r.name, company: r.name, email: '',
+      phone:   r.phone   || '',
+      website: r.website || '',
+      persona: FS.persona || '',
+      state:   r.state   || '',
+      region:  r.state ? _stateRegion(r.state) : '',
+      source:  'Google Places',
+      notes: [
+        r.googleMapsUri ? 'Maps: '    + r.googleMapsUri : '',
+        r.rating        ? 'Rating: '  + r.rating + ' (' + r.userRatingCount + ' reviews)' : '',
+        r.address       ? 'Address: ' + r.address : '',
+      ].filter(Boolean).join('\n'),
+      status: 'active', cadenceStep: 0,
+    };
+    await Prospects.save(contact);
+    FS.results[idx] = { ...r, _added: true, _prospectId: contact.id };
+    added++;
+  }
+  toast('Added ' + added + ' leads — set emails then enroll', 'success');
   _renderProspectFind();
 }
 
@@ -10865,15 +10911,15 @@ async function _bulkEnroll() {
   let n = 0, skipped = 0;
   for (const id of ids) {
     const p = all.find(x => x.id === id); if (!p) continue;
-    if (!p.persona || !p.email) { skipped++; continue; }
-    if (p.cadenceStep > 0)      { skipped++; continue; }
+    if (!p.persona)         { skipped++; continue; }
+    if (p.cadenceStep > 0)  { skipped++; continue; }
     p.cadenceStep = 1;
     p.cadenceStartedAt = new Date().toISOString();
     p.status = 'active';
     await Prospects.save(p);
     n++;
   }
-  toast('Enrolled '+n+(skipped?' · '+skipped+' skipped (missing persona/email or already enrolled)':''),'success');
+  toast('Enrolled '+n+(skipped?' · '+skipped+' skipped (missing persona or already enrolled)':''),'success');
   window._prospectState.selected = {};
   renderProspecting();
 }
@@ -11042,7 +11088,7 @@ async function _renderProspectContacts() {
           const personaLbl = (PERSONAS.find(x => x.id === p.persona)||{}).label || '—';
           const cadCls = p.cadenceStep > 0 ? ('cadence-step-' + Math.min(5, p.cadenceStep)) : '';
           const cadTxt = p.cadenceStep > 0 ? ('Step '+p.cadenceStep+'/5') : 'Not enrolled';
-          const canEnroll  = p.persona && p.email && p.cadenceStep === 0 && p.status !== 'converted';
+          const canEnroll  = p.persona && p.cadenceStep === 0 && p.status !== 'converted';
           const canSend    = p.persona && p.email && p.cadenceStep > 0 && p.cadenceStep <= 5 && p.status === 'active';
           const canReply   = p.cadenceStep > 0 && p.status === 'active';
           const canConvert = ['replied','active'].includes(p.status) && p.email;
@@ -11693,9 +11739,11 @@ async function enrollProspect(id) {
 }
 
 async function _confirmEnrollment(id) {
+  const chosenPersona = (document.getElementById('enrollCadenceSelect')||{}).value;
   const all = await Prospects.getAll();
   const p   = all.find(x => x.id === id);
   if (!p) return;
+  if (chosenPersona) p.persona = chosenPersona;
   p.cadenceStep      = 1;
   p.cadenceStartedAt = new Date().toISOString();
   p.status           = 'active';
@@ -11708,11 +11756,16 @@ async function _confirmEnrollment(id) {
 
 function _showEnrollmentPreview(prospect) {
   const existing = document.getElementById('enrollOverlay'); if (existing) existing.remove();
+  window._enrollmentProspect = prospect;
   const cads = CADENCES[prospect.persona] || [];
-  const personaLbl = (PERSONAS.find(x=>x.id===prospect.persona)||{}).label || prospect.persona;
   const wrap = document.createElement('div');
   wrap.id = 'enrollOverlay';
   wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  const cadenceOpts = Object.keys(CADENCES).map(k => {
+    const lbl = (PERSONAS.find(x=>x.id===k)||{}).label || k;
+    return '<option value="'+k+'"'+(k===prospect.persona?' selected':'')+'>'+esc(lbl)+'</option>';
+  }).join('');
 
   const stepRows = cads.map(c => {
     const wait = CADENCE_INTERVAL_DAYS_FOR_PREVIEW[c.step];
@@ -11726,19 +11779,24 @@ function _showEnrollmentPreview(prospect) {
     '</div>';
   }).join('');
 
+  const nameStr = [prospect.firstName, prospect.lastName].filter(Boolean).join(' ');
   wrap.innerHTML =
     '<div style="background:#fff;border-radius:var(--r);max-width:680px;width:100%;max-height:90vh;overflow:auto;padding:24px">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">' +
         '<div>' +
-          '<h3 style="font-family:var(--font-display);color:var(--gold);font-size:18px;margin:0">Enroll in '+esc(personaLbl)+' cadence</h3>' +
-          '<div style="font-size:12px;color:var(--ink-40);margin-top:4px">'+esc((prospect.firstName||'')+' '+(prospect.lastName||''))+' &middot; '+esc(prospect.email||'no email')+(prospect.company?' &middot; '+esc(prospect.company):'')+'</div>' +
+          '<h3 style="font-family:var(--font-display);color:var(--gold);font-size:18px;margin:0">Enroll in cadence</h3>' +
+          '<div style="font-size:12px;color:var(--ink-40);margin-top:4px">'+esc(nameStr||'—')+(prospect.email?' &middot; '+esc(prospect.email):' &middot; <em>no email yet</em>')+(prospect.company?' &middot; '+esc(prospect.company):'')+'</div>' +
         '</div>' +
         '<button onclick="document.getElementById(\'enrollOverlay\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink-50)">×</button>' +
+      '</div>' +
+      '<div style="margin-bottom:14px">' +
+        '<label style="font-size:11px;font-weight:700;color:var(--ink-30);display:block;margin-bottom:5px;letter-spacing:.06em">SELECT CADENCE</label>' +
+        '<select id="enrollCadenceSelect" onchange="window._enrollmentProspect=Object.assign({},window._enrollmentProspect,{persona:this.value});_showEnrollmentPreview(window._enrollmentProspect)" style="width:100%;padding:8px 10px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+cadenceOpts+'</select>' +
       '</div>' +
       '<div style="padding:10px 12px;background:rgba(196,147,63,.08);border-left:3px solid var(--gold);border-radius:0 6px 6px 0;margin-bottom:14px;font-size:12px;color:#2A2622">' +
         'Five emails over roughly <strong>3 weeks</strong>. You manually fire each step — nothing sends without your click. Real send goes through your configured Resend integration.' +
       '</div>' +
-      '<div style="border:1px solid var(--ink-70);border-radius:8px;overflow:hidden;margin-bottom:16px">'+stepRows+'</div>' +
+      (cads.length ? '<div style="border:1px solid var(--ink-70);border-radius:8px;overflow:hidden;margin-bottom:16px">'+stepRows+'</div>' : '<div style="color:var(--ink-40);font-size:12px;margin-bottom:16px">No cadence steps defined for this persona yet.</div>') +
       '<div style="display:flex;gap:8px;justify-content:flex-end">' +
         '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'enrollOverlay\').remove()">Cancel</button>' +
         '<button class="btn btn-primary btn-sm" onclick="_confirmEnrollment(\''+esc(prospect.id)+'\')">Confirm enrollment →</button>' +
