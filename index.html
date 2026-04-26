@@ -1417,9 +1417,13 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
             </select></div>
           <div class="field"><label for="f-homeCallDate" data-i18n="lbl_hcdate">Home Call Date</label>
             <input id="f-homeCallDate" type="date"></div>
-          <div class="field"><label for="f-saleMade" data-i18n="lbl_sale">Sale Made?</label>
-            <select id="f-saleMade" onchange="onFieldChange()">
+          <div class="field"><label for="f-saleMade" data-i18n="lbl_sale">Sale Made? <span class="field-tip" data-tip="Auto-set from Stage. Closed Won → Yes, anything else → No.">?</span></label>
+            <select id="f-saleMade" onchange="onFieldChange()" disabled style="opacity:.7">
               <option value="">—</option><option>Yes</option><option>No</option>
+            </select></div>
+          <div class="field" id="lostReasonField" style="display:none"><label for="f-lostReason">Lost Reason *</label>
+            <select id="f-lostReason" onchange="onFieldChange()">
+              <option value="">Select reason…</option>
             </select></div>
           <div class="field"><label for="f-goldComp" data-i18n="lbl_gc">GoldComp?</label>
             <select id="f-goldComp" onchange="toggleGoldCompValue()">
@@ -2901,6 +2905,7 @@ const DB = {
       saleAmount: Number(row.saleAmount) || 0,
       cancelReason: row.cancelReason || '',
       cancelNotes: row.cancelNotes || '',
+      lostReason:   row.lost_reason  || '',
     };
   },
 
@@ -2938,6 +2943,7 @@ const DB = {
       saleAmount: Number(o.saleAmount) || 0,
       cancelReason: o.cancelReason || null,
       cancelNotes: o.cancelNotes || null,
+      lost_reason: o.lostReason   || null,
     };
   },
 
@@ -5041,6 +5047,7 @@ function initDropdowns() {
   sel('f-projectType', LOOKUP.projectTypes);
   sel('f-nextStep', LOOKUP.nextSteps);
   sel('f-leadSource', LOOKUP.leadSources);
+  sel('f-lostReason', LOOKUP.lostReasons);
   // f-probability is now a range slider, not a select dropdown
 }
 
@@ -5111,8 +5118,11 @@ async function editLead(id) {
   _sf('f-issueResult',    o.issueResult);
   _sf('f-cancelReason',   o.cancelReason);
   _sf('f-cancelNotes',    o.cancelNotes);
+  _sf('f-lostReason',     o.lostReason);
+  const _lrf = document.getElementById('lostReasonField');
+  if (_lrf) _lrf.style.display = (o.stage === 'Closed Lost') ? '' : 'none';
   const _acs = document.getElementById('activeClientSection');
-  if (_acs) _acs.style.display = (o.saleMade === 'Yes' || o.stage === 'Sale Made') ? '' : 'none';
+  if (_acs) _acs.style.display = (o.saleMade === 'Yes' || o.stage === 'Sale Made' || o.stage === 'Closed Won') ? '' : 'none';
   document.getElementById('deleteBtn').style.display = 'inline-flex';
   updateAutoFields();
   _updateCancelSection();
@@ -5389,15 +5399,35 @@ function _renderPipelineCards(list) {
 
 function onFieldChange() {
   updateAutoFields();
-  const sm  = document.getElementById('f-saleMade')?.value || '';
+
+  // Stage is the source of truth for sale-state. saleMade auto-syncs.
   const st  = document.getElementById('f-stage')?.value   || '';
+  const sma = document.getElementById('f-saleMade');
+  const psr = document.getElementById('f-probability');
+  const sd  = document.getElementById('f-saleDate');
+  const cd  = document.getElementById('f-closeDate');
+  const lrf = document.getElementById('lostReasonField');
+
+  const isWon  = st === 'Closed Won'  || st === 'Sale Made';
+  const isLost = st === 'Closed Lost' || st === 'Canceled';
+
+  if (sma) sma.value = isWon ? 'Yes' : 'No';
+  if (isWon) {
+    if (psr && Number(psr.value) < 100) { psr.value = 100; const pv = document.getElementById('probVal'); if (pv) { pv.textContent = '100%'; pv.style.color = 'var(--green)'; } }
+    if (sd && !sd.value) sd.value = todayStr();
+    if (cd && !cd.value) cd.value = todayStr();
+  }
+  if (isLost) {
+    if (psr && Number(psr.value) > 0) { psr.value = 0; const pv = document.getElementById('probVal'); if (pv) { pv.textContent = '0%'; pv.style.color = 'var(--red)'; } }
+  }
+  if (lrf) lrf.style.display = isLost ? '' : 'none';
+
   const acs = document.getElementById('activeClientSection');
-  if (acs) acs.style.display = (sm === 'Yes' || st === 'Sale Made') ? '' : 'none';
+  if (acs) acs.style.display = isWon ? '' : 'none';
   _updateCancelSection();
-  // Update probability slider display
+
   const pv = document.getElementById('probVal');
-  const ps = document.getElementById('f-probability');
-  if (pv && ps) { pv.textContent = ps.value+'%'; pv.style.color = ps.value>=70?'var(--green)':ps.value>=40?'var(--gold)':'var(--red)'; }
+  if (pv && psr) { pv.textContent = psr.value+'%'; pv.style.color = psr.value>=70?'var(--green)':psr.value>=40?'var(--gold)':'var(--red)'; }
 }
 
 function onDeliveryDateChange() {
@@ -5535,10 +5565,20 @@ async function saveLead() {
 
   const existingId  = document.getElementById('leadId').value;
   const stage       = document.getElementById('f-stage').value;
-  const saleMade    = document.getElementById('f-saleMade').value;
-  const isSold      = saleMade === 'Yes' || stage === 'Sale Made';
-  const isCanceled  = stage === 'Canceled';
+  // Stage is the source of truth. saleMade follows.
+  const isSold      = stage === 'Closed Won'  || stage === 'Sale Made';
+  const isLost      = stage === 'Closed Lost';
+  const isCanceled  = stage === 'Canceled' || isLost;
   const isPostponed = stage === 'Postponed';
+  const saleMade    = isSold ? 'Yes' : 'No';
+  const lostReason  = document.getElementById('f-lostReason')?.value || '';
+
+  // Closed Lost requires a reason
+  if (isLost && !lostReason) {
+    toast('Pick a Lost Reason — required when stage is Closed Lost', 'error');
+    document.getElementById('f-lostReason')?.focus();
+    return;
+  }
 
   // ── Postponed: ask Post30 or Post60 ──
   let postponeTarget = null;
@@ -5601,7 +5641,8 @@ async function saveLead() {
     followUpDate:   document.getElementById('f-followUpDate').value,
     homeCall:       document.getElementById('f-homeCall').value,
     homeCallDate:   document.getElementById('f-homeCallDate').value,
-    saleMade:       isSold ? 'Yes' : saleMade,
+    saleMade:       saleMade,
+    lostReason:     isLost ? lostReason : '',
     goldComp:       document.getElementById('f-goldComp').value,
     goldCompValue:  Number(document.getElementById('f-goldCompValue')?.value) || 0,
     notes:          document.getElementById('f-notes').value.trim(),
