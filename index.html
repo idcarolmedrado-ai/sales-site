@@ -10326,26 +10326,27 @@ function _renderProspectFind() {
           : '')
       : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
         '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90);display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
-          '<div><strong>'+filtered.length+'</strong>'+(minR>0?' of '+FS.results.length:'')+' results for "'+esc(FS.lastQuery)+'" · '+FS.pagesLoaded+' page'+(FS.pagesLoaded===1?'':'s')+' loaded</div>' +
+          '<div><strong>'+unadded.length+'</strong> remaining'+(filtered.length>unadded.length?' · <span style="color:#2A8B5E;font-weight:700">'+(filtered.length-unadded.length)+' added</span>':'')+' · '+FS.pagesLoaded+' page'+(FS.pagesLoaded===1?'':'s')+' loaded</div>' +
           (unadded.length > 0 ? '<button onclick="_addAllPlacesResults()" class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px">+ Add all ('+unadded.length+')</button>' : '<span style="color:#2A8B5E;font-size:11px;font-weight:700">All added ✓</span>') +
         '</div>' +
-        '<table class="contact-table"><thead><tr><th>Business</th><th>State</th><th>Phone</th><th>Website</th><th>Rating</th><th></th></tr></thead><tbody>' +
-        filtered.map((r, i) => {
-          const realIdx = FS.results.indexOf(r);
-          return '<tr>' +
-            '<td><strong>'+esc(r.name)+'</strong>' +
-              '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address || '')+'</div>' +
-            '</td>' +
-            '<td><span style="font-size:11px;font-weight:700;color:#4472CA">'+esc(r.state||'—')+'</span></td>' +
-            '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-            '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-            '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-            (r._added
-              ? '<td><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><span style="font-size:11px;color:var(--ink-40)">Added ✓</span>'+(r._prospectId?'<button onclick="enrollProspect(\''+r._prospectId+'\')" class="btn btn-primary btn-sm" style="padding:2px 7px;font-size:10px">Enroll</button>':'')+'</div></td>'
-              : '<td><button onclick="_addPlacesResult('+realIdx+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>') +
-          '</tr>';
-        }).join('') +
-        '</tbody></table></div>';
+        (unadded.length === 0
+          ? '<div style="padding:24px;text-align:center;font-size:12px;color:var(--ink-40)">All results added — check Contacts to enroll them.</div>'
+          : '<table class="contact-table"><thead><tr><th>Business</th><th>State</th><th>Phone</th><th>Website</th><th>Rating</th><th></th></tr></thead><tbody>' +
+            unadded.map(r => {
+              const realIdx = FS.results.indexOf(r);
+              return '<tr>' +
+                '<td><strong>'+esc(r.name)+'</strong>' +
+                  '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address || '')+'</div>' +
+                '</td>' +
+                '<td><span style="font-size:11px;font-weight:700;color:#4472CA">'+esc(r.state||'—')+'</span></td>' +
+                '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                '<td><button onclick="_addPlacesResult('+realIdx+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody></table>') +
+        '</div>';
 
   body.innerHTML =
     '<div class="persona-card" style="margin-bottom:14px">' +
