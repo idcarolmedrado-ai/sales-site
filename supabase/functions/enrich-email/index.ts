@@ -88,7 +88,7 @@ function extractDomain(url: string): string | null {
 // Tightened: 4s timeout (down from 8s), 100KB cap (down from 500KB).
 // The vast majority of contact pages are <30KB — large pages are usually
 // JS-heavy SPAs where scraping won't help anyway.
-async function fetchWithTimeout(url: string, ms = 4000): Promise<string | null> {
+async function fetchWithTimeout(url: string, ms = 3000): Promise<string | null> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), ms);
   try {
@@ -103,12 +103,13 @@ async function fetchWithTimeout(url: string, ms = 4000): Promise<string | null> 
     if (!res.ok) return null;
     const ct = res.headers.get("content-type") || "";
     if (!ct.includes("text") && !ct.includes("xml")) return null;
-    // Stream-read up to 100KB then bail. Avoids loading 5MB pages into memory.
+    // Stream up to 50KB then bail. Real contact pages fit in 30KB; bigger
+    // sites are SPA-heavy and won't yield plaintext emails anyway.
     const reader = res.body?.getReader();
     if (!reader) return null;
     const chunks: Uint8Array[] = [];
     let total = 0;
-    const MAX_BYTES = 100_000;
+    const MAX_BYTES = 50_000;
     while (total < MAX_BYTES) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -129,6 +130,17 @@ async function fetchWithTimeout(url: string, ms = 4000): Promise<string | null> 
   }
 }
 
+// Strip <script> and <style> blocks before regex. Some sites embed
+// hundreds of KB of inline JS/CSS that contains no useful email text
+// but slows regex scans dramatically. This single op is often the
+// difference between worker timeout and clean response.
+function stripScriptsAndStyles(html: string): string {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ");
+}
+
 function decodeHtmlEntities(s: string): string {
   // Common email obfuscations: &#64; for @, &#46; for .
   return s
@@ -143,7 +155,7 @@ function decodeHtmlEntities(s: string): string {
 
 function extractEmails(html: string, allowedDomain: string): Set<string> {
   const found = new Set<string>();
-  const decoded = decodeHtmlEntities(html);
+  const decoded = decodeHtmlEntities(stripScriptsAndStyles(html));
 
   // mailto: links first (highest signal)
   let m: RegExpExecArray | null;
@@ -226,14 +238,18 @@ serve(async (req: Request): Promise<Response> => {
     ? website.replace(/\/+$/, "")
     : "https://" + domain;
 
-  // Fetch pages SERIALLY with early-exit. Stops at the first page that
-  // yields any emails — keeps the function well under Supabase's free-tier
-  // worker resource limit. Order matters: high-yield paths (/contact) first.
+  // Fetch pages SERIALLY with early-exit + overall budget tracker.
+  // Hard wall-clock budget protects Supabase free-tier workers from
+  // pathologically slow sites. Order matters: high-yield paths first.
+  const startedAt = Date.now();
+  const TOTAL_BUDGET_MS = 12_000;
   const urls = COMMON_PATHS.map(p => baseUrl + p);
   const allFound = new Set<string>();
   const sources: Record<string, string[]> = {};
   let pagesScraped = 0;
+  let timedOut = false;
   for (const u of urls) {
+    if (Date.now() - startedAt > TOTAL_BUDGET_MS) { timedOut = true; break; }
     const html = await fetchWithTimeout(u);
     if (!html) continue;
     pagesScraped++;
@@ -241,9 +257,7 @@ serve(async (req: Request): Promise<Response> => {
     if (emails.size) {
       sources[u] = Array.from(emails);
       for (const e of emails) allFound.add(e);
-      // Early exit — we got what we came for. Don't burn compute on /about
-      // and homepage if /contact already gave us info@.
-      break;
+      break; // Got what we came for
     }
   }
 
@@ -257,11 +271,14 @@ serve(async (req: Request): Promise<Response> => {
     patterns,
     sources,
     pagesScraped,
+    timedOut,
     notes:
-      pagesScraped === 0
-        ? "No pages reachable. Site may block scrapers, be JS-only (React SPA), or be down. Try the website link manually."
-        : found.length === 0
-          ? "Pages reachable but no emails in plaintext. Try the patterns below — most B2B emails follow these formats."
-          : "Scraped emails are highest signal. Patterns are fallback candidates.",
+      timedOut
+        ? "Site responded slowly — gave up after 12s to avoid worker timeout. Try the patterns below or visit the website manually."
+        : pagesScraped === 0
+          ? "No pages reachable. Site may block scrapers, be JS-only (React SPA), or be down. Try the website link manually."
+          : found.length === 0
+            ? "Pages reachable but no emails in plaintext. Try the patterns below — most B2B emails follow these formats."
+            : "Scraped emails are highest signal. Patterns are fallback candidates.",
   });
 });
