@@ -88,7 +88,7 @@ function extractDomain(url: string): string | null {
 // Tightened: 4s timeout (down from 8s), 100KB cap (down from 500KB).
 // The vast majority of contact pages are <30KB — large pages are usually
 // JS-heavy SPAs where scraping won't help anyway.
-async function fetchWithTimeout(url: string, ms = 3000): Promise<string | null> {
+async function fetchWithTimeout(url: string, ms = 4000): Promise<string | null> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), ms);
   try {
@@ -103,13 +103,15 @@ async function fetchWithTimeout(url: string, ms = 3000): Promise<string | null> 
     if (!res.ok) return null;
     const ct = res.headers.get("content-type") || "";
     if (!ct.includes("text") && !ct.includes("xml")) return null;
-    // Stream up to 50KB then bail. Real contact pages fit in 30KB; bigger
-    // sites are SPA-heavy and won't yield plaintext emails anyway.
+    // Stream up to 200KB. The strip-scripts pass in extractEmails removes
+    // the bulk of script/style noise, so regex stays fast even on this size.
+    // Smaller caps were missing emails on sites with heavy navigation HTML
+    // (shbuilt.com case — email lived past the 50KB raw mark).
     const reader = res.body?.getReader();
     if (!reader) return null;
     const chunks: Uint8Array[] = [];
     let total = 0;
-    const MAX_BYTES = 50_000;
+    const MAX_BYTES = 200_000;
     while (total < MAX_BYTES) {
       const { value, done } = await reader.read();
       if (done) break;
