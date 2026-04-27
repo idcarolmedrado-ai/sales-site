@@ -1,5 +1,4 @@
 const CACHE_NAME = 'ea-sales-v30';
-const SHELL_URL  = '/sales-site/index.html';
 const ASSETS = [
   '/sales-site/',
   '/sales-site/index.html',
