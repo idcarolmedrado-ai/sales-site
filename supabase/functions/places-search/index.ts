@@ -5,10 +5,12 @@
 // Places API directly (CORS + key exposure).
 //
 // PURPOSE
-// Lead discovery for B2B prospects: builders, realtors, landscapers.
+// Lead discovery for B2B prospects: builders, realtors, landscapers,
+// architects, home stagers, luxury developers, property managers,
+// boutique hotels/vacation rentals, and new home communities.
 // Google Places returns business listings (name, phone, website,
 // address) but NOT email addresses. Email enrichment is a separate
-// step (Hunter.io etc) — not included in this function.
+// step — not included in this function.
 //
 // DEPLOY
 //   supabase functions deploy places-search
@@ -20,7 +22,7 @@
 //   {
 //     query:    "luxury home builders",     // required, free-text
 //     location: "Aspen, CO" | "Florida",    // optional, narrows results
-//     persona:  "builders" | "realtors" | "landscaping",  // optional, used for default queries
+//     persona:  "builders"|"realtors"|"landscaping"|"architects"|"home-stagers"|"developers"|"property-mgmt"|"hospitality"|"homebuyers",  // optional
 //     pageToken: "..."                      // optional, for paging
 //   }
 //
@@ -59,9 +61,15 @@ function json(body: unknown, status = 200): Response {
 
 // Persona → default query stem if user gives none
 const PERSONA_QUERIES: Record<string, string> = {
-  builders:    "luxury home builders",
-  realtors:    "luxury real estate brokerage",
-  landscaping: "landscape design build firm",
+  builders:      "luxury home builders",
+  realtors:      "luxury real estate brokerage",
+  landscaping:   "landscape design build firm",
+  architects:    "residential architecture firm",
+  "home-stagers":"home staging company",
+  developers:    "luxury residential real estate developer",
+  "property-mgmt":"residential property management company",
+  hospitality:   "boutique hotel bed and breakfast vacation rental",
+  homebuyers:    "new home community new construction homes",
 };
 
 interface AddressComponent { longText?: string; shortText?: string; types?: string[]; }
