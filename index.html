@@ -9851,7 +9851,7 @@ async function launchDemoMode() {
        id text primary key,
        first_name text, last_name text,
        email text, phone text, company text,
-       persona text,        -- builders|realtors|sellers|couples|landscaping
+       persona text,        -- builders|realtors|sellers|couples|landscaping|architects|home-stagers|developers|property-mgmt|hospitality|homebuyers|past-customers|cold-leads
        source text, notes text,
        cadence_step int default 0,
        cadence_started_at timestamptz,
@@ -9886,11 +9886,19 @@ const US_REGIONS = ['Northeast','Midwest','South','West'];
 function _stateRegion(code) { const r = US_STATES.find(s => s[0] === code); return r ? r[2] : ''; }
 
 const PERSONAS = [
-  { id:'builders',    label:'Builders / Contractors' },
-  { id:'realtors',    label:'Realtors' },
-  { id:'sellers',     label:'Home Sellers' },
-  { id:'couples',     label:'Couples 40+' },
-  { id:'landscaping', label:'Landscaping Companies' },
+  { id:'builders',       label:'Builders / Contractors' },
+  { id:'realtors',       label:'Realtors' },
+  { id:'sellers',        label:'Home Sellers' },
+  { id:'couples',        label:'Couples 40+' },
+  { id:'landscaping',    label:'Landscaping Companies' },
+  { id:'architects',     label:'Architects' },
+  { id:'home-stagers',   label:'Home Stagers' },
+  { id:'developers',     label:'Luxury Developers' },
+  { id:'property-mgmt',  label:'Property Managers' },
+  { id:'hospitality',    label:'Boutique Hotels & Vacation Rentals' },
+  { id:'homebuyers',     label:'New Homeowners' },
+  { id:'past-customers', label:'Past Customers' },
+  { id:'cold-leads',     label:'Cancelled / Stalled Leads' },
 ];
 
 const Prospects = {
@@ -10015,6 +10023,7 @@ function _csvHeaderMap(headers) {
     persona:   find('persona','segment','type','category'),
     source:    find('source','leadsource','origin'),
     notes:     find('notes','note','comment','comments'),
+    website:   find('website','url','web','siteurl'),
     state:     find('state','st','statecode'),
     region:    find('region','area','territory'),
   };
@@ -10204,7 +10213,7 @@ async function _renderProspectToday() {
     '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:hidden;margin-bottom:14px">' +
       '<div style="padding:12px 14px;background:rgba(196,147,63,.08);border-bottom:1px solid var(--ink-70);font-size:13px;font-weight:800;color:var(--gold)">REPLIED — FOLLOW UP <span style="font-weight:600;color:var(--ink-50)">— '+replied.length+'</span></div>' +
       (replied.length === 0 ? sectionEmpty : replied.map(p => renderRow(p,
-        '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();convertToOpp(\''+esc(p.id)+'\')" style="padding:4px 10px;font-size:11px">Convert →</button>'
+        '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();markReplied(\''+esc(p.id)+'\')" style="padding:4px 10px;font-size:11px">Handle reply →</button>'
       )).join('')) +
     '</div>' +
 
@@ -10294,97 +10303,114 @@ async function _renderProspectArchive() {
    Places API does not provide it.
 ══════════════════════════════════════════════════ */
 window._findLeadsState = window._findLeadsState || {
-  persona:'builders', query:'', location:'', results:[], loading:false,
-  nextPageToken:'', lastQuery:''
+  persona:'builders', query:'', state:'', cityQ:'', results:[], loading:false,
+  pagesLoaded:0, lastQuery:''
 };
 
 function _renderProspectFind() {
   const body = document.getElementById('prospectBody'); if (!body) return;
   const FS = window._findLeadsState;
 
-  const personaPicker = PERSONAS.filter(p => ['builders','realtors','landscaping'].includes(p.id))
+  const FL_PERSONAS = ['builders','realtors','landscaping','architects','home-stagers','developers','property-mgmt','hospitality','homebuyers'];
+  const personaPicker = PERSONAS.filter(p => FL_PERSONAS.includes(p.id))
     .map(p => '<option value="'+p.id+'"'+(FS.persona===p.id?' selected':'')+'>'+esc(p.label)+'</option>').join('');
-  const stateOpts = US_STATES.map(s => '<option value="'+s[0]+'">'+s[0]+' · '+esc(s[1])+'</option>').join('');
+  const stateOpts = '<option value="">— All states —</option>' +
+    US_STATES.map(s => '<option value="'+s[0]+'"'+(FS.state===s[0]?' selected':'')+'>'+s[0]+' · '+esc(s[1])+'</option>').join('');
+  const ratingOpts = ['','3','3.5','4','4.5'].map(v =>
+    '<option value="'+v+'"'+(String(FS.minRating||'')===v?' selected':'')+'>'+
+    (v ? '⭐ '+v+'+ stars' : 'Any rating')+'</option>').join('');
+
+  // Apply rating filter to results
+  const minR = parseFloat(FS.minRating) || 0;
+  const filtered = minR > 0
+    ? FS.results.filter(r => (r.rating || 0) >= minR)
+    : FS.results;
+  const unadded = filtered.filter(r => !r._added);
 
   const resultsHTML = FS.loading
-    ? '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Searching Google Places…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">First call usually takes 1–2 seconds.</div></div>'
+    ? '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Searching Google Places…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Fetching all available pages — this may take a few seconds.</div></div>'
     : FS.results.length === 0
       ? (FS.lastQuery
-          ? '<div class="empty-state" style="padding:40px"><div class="icon">🔍</div><p>No results for "'+esc(FS.lastQuery)+'". Try a different region or query.</p></div>'
+          ? '<div class="empty-state" style="padding:40px"><div class="icon">🔍</div><p>No results for "'+esc(FS.lastQuery)+'". Try a different state or query.</p></div>'
           : '')
       : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
-        '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90)">' +
-          '<strong>'+FS.results.length+' results</strong> for "'+esc(FS.lastQuery)+'" — phone + website only. Click <strong>Add</strong> to save as contact (you will need to find the email separately).' +
+        '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90);display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+          '<div><strong>'+unadded.length+'</strong> remaining'+(filtered.length>unadded.length?' · <span style="color:#2A8B5E;font-weight:700">'+(filtered.length-unadded.length)+' added</span>':'')+' · '+FS.pagesLoaded+' page'+(FS.pagesLoaded===1?'':'s')+' loaded</div>' +
+          (unadded.length > 0 ? '<button onclick="_addAllPlacesResults()" class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px">+ Add all ('+unadded.length+')</button>' : '<span style="color:#2A8B5E;font-size:11px;font-weight:700">All added ✓</span>') +
         '</div>' +
-        '<table class="contact-table"><thead><tr><th>Business</th><th>State</th><th>Phone</th><th>Website</th><th>Rating</th><th></th></tr></thead><tbody>' +
-        FS.results.map((r, i) =>
-          '<tr>' +
-            '<td><strong>'+esc(r.name)+'</strong>' +
-              '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address || '')+'</div>' +
-            '</td>' +
-            '<td><span style="font-size:11px;font-weight:700;color:#4472CA">'+esc(r.state||'—')+'</span></td>' +
-            '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-            '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-            '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-            '<td><button onclick="_addPlacesResult('+i+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>' +
-          '</tr>'
-        ).join('') +
-        '</tbody></table></div>' +
-        (FS.nextPageToken ? '<div style="text-align:center;margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="_findLeadsLoadMore()">Load more results</button></div>' : '');
+        (unadded.length === 0
+          ? '<div style="padding:24px;text-align:center;font-size:12px;color:var(--ink-40)">All results added — check Contacts to enroll them.</div>'
+          : '<table class="contact-table"><thead><tr><th>Business</th><th>State</th><th>Phone</th><th>Website</th><th>Rating</th><th></th></tr></thead><tbody>' +
+            unadded.map(r => {
+              const realIdx = FS.results.indexOf(r);
+              return '<tr>' +
+                '<td><strong>'+esc(r.name)+'</strong>' +
+                  '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address || '')+'</div>' +
+                '</td>' +
+                '<td><span style="font-size:11px;font-weight:700;color:#4472CA">'+esc(r.state||'—')+'</span></td>' +
+                '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                '<td><button onclick="_addPlacesResult('+realIdx+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody></table>') +
+        '</div>';
 
   body.innerHTML =
     '<div class="persona-card" style="margin-bottom:14px">' +
       '<h4>🔍 Find Leads — Google Places</h4>' +
-      '<div class="subtitle">Lead discovery for B2B personas (builders, realtors, landscapers). Returns business name + phone + website + state. <strong>Does not return email</strong> — Google Places does not provide it. You will need to find emails separately (company website, Hunter.io, etc).</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:10px">' +
+      '<div class="subtitle">Lead discovery via Google Places — builders, realtors, landscapers, architects, stagers, developers, property managers, hotels, vacation rentals, and new home communities. Returns business name + phone + website + state. <strong>Does not return email</strong> — use <strong>🔍 Find Email</strong> on each contact after adding.' + (FS.persona === 'homebuyers' ? ' <strong>Note:</strong> For individual homebuyers, import a CSV exported from Zillow, Redfin, or county public records instead.' : '') + '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px">' +
         '<select id="flPersona" onchange="window._findLeadsState.persona=this.value" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+personaPicker+'</select>' +
-        '<input id="flQuery" placeholder="Optional refinement (e.g. \'custom luxury\')" value="'+esc(FS.query)+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
-        '<input id="flLocation" placeholder="City, State or just State (e.g. Aspen, CO)" value="'+esc(FS.location)+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<select id="flState" onchange="window._findLeadsState.state=this.value" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+stateOpts+'</select>' +
+        '<input id="flCityQ" placeholder="City (optional, e.g. Aspen)" value="'+esc(FS.cityQ||'')+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<input id="flQuery" placeholder="Refinement (e.g. custom luxury)" value="'+esc(FS.query)+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+        '<select id="flMinRating" onchange="window._findLeadsState.minRating=this.value;_renderProspectFind()" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+ratingOpts+'</select>' +
         '<button class="btn btn-primary btn-sm" onclick="_findLeadsRun()" '+(FS.loading?'disabled':'')+'>'+(FS.loading?'Searching…':'🔍 Search')+'</button>' +
       '</div>' +
       '<div style="font-size:11px;color:var(--ink-40);line-height:1.5">' +
-        'Setup: Settings → Edge Function. Deploy <code>supabase functions deploy places-search</code>. Set <code>GOOGLE_PLACES_API_KEY</code> as a Supabase secret. Free tier covers ~10,000 searches/month.' +
+        'Fetches all available pages automatically (up to ~60 results per search). Rating filter applies to results already loaded — no extra API call.' +
       '</div>' +
     '</div>' +
     resultsHTML;
 }
 
-async function _findLeadsRun(usePageToken) {
+async function _findLeadsRun() {
   const FS = window._findLeadsState;
   if (!_isCloudMode()) { toast('Cloud mode required — Edge Function lives in Supabase', 'error'); return; }
-  FS.persona  = (document.getElementById('flPersona')||{}).value || FS.persona;
-  FS.query    = (document.getElementById('flQuery')||{}).value   || '';
-  FS.location = (document.getElementById('flLocation')||{}).value || '';
-  if (!FS.query && !FS.persona) { toast('Pick a persona or type a query','error'); return; }
-  FS.loading = true;
-  if (!usePageToken) { FS.results = []; FS.nextPageToken = ''; }
+  FS.persona = (document.getElementById('flPersona')||{}).value || FS.persona;
+  FS.query   = (document.getElementById('flQuery')||{}).value   || '';
+  FS.state   = (document.getElementById('flState')||{}).value   || FS.state || '';
+  FS.cityQ   = (document.getElementById('flCityQ')||{}).value   || FS.cityQ || '';
+  const location = [FS.cityQ, FS.state].filter(Boolean).join(', ');
+  if (!FS.persona && !FS.query) { toast('Pick a persona or type a query','error'); return; }
+  FS.results = []; FS.pagesLoaded = 0; FS.loading = true;
   _renderProspectFind();
+  let pageToken = undefined;
   try {
-    const { data, error } = await DB.client.functions.invoke('places-search', {
-      body: {
-        persona:   FS.persona,
-        query:     FS.query,
-        location:  FS.location,
-        pageToken: usePageToken ? FS.nextPageToken : undefined,
-      },
-    });
-    if (error) throw new Error(error.message || 'Edge function error');
-    if (data && data.error) throw new Error(data.error + (data.detail ? ' — ' + JSON.stringify(data.detail).slice(0,200) : ''));
-    const newResults = data && data.results || [];
-    FS.results = usePageToken ? FS.results.concat(newResults) : newResults;
-    FS.nextPageToken = data && data.nextPageToken || '';
-    FS.lastQuery     = data && data.textQuery     || (FS.query + (FS.location ? ' in '+FS.location : ''));
-    toast(usePageToken ? '+'+newResults.length+' more results' : 'Found '+newResults.length+' result'+(newResults.length===1?'':'s'),'success');
+    do {
+      const { data, error } = await DB.client.functions.invoke('places-search', {
+        body: { persona: FS.persona, query: FS.query, location, pageToken },
+      });
+      if (error) throw new Error(error.message || 'Edge function error');
+      if (data && data.error) throw new Error(data.error + (data.detail ? ' — ' + JSON.stringify(data.detail).slice(0,200) : ''));
+      const newResults = (data && data.results) || [];
+      FS.results = FS.results.concat(newResults);
+      FS.pagesLoaded++;
+      FS.lastQuery = (data && data.textQuery) || (FS.query + (location ? ' in ' + location : ''));
+      pageToken = (data && data.nextPageToken) || null;
+      if (!newResults.length) break;
+    } while (pageToken);
   } catch(e) {
     console.error('places-search error:', e);
-    toast('Search failed: '+e.message,'error');
+    toast('Search failed: ' + e.message, 'error');
   } finally {
     FS.loading = false;
+    toast('Found ' + FS.results.length + ' result' + (FS.results.length === 1 ? '' : 's') + ' across ' + FS.pagesLoaded + ' page' + (FS.pagesLoaded === 1 ? '' : 's'), 'success');
     _renderProspectFind();
   }
 }
-
-async function _findLeadsLoadMore() { return _findLeadsRun(true); }
 
 /* Add a single Places result as a Prospects contact */
 async function _addPlacesResult(idx) {
@@ -10413,9 +10439,42 @@ async function _addPlacesResult(idx) {
     if (!confirm('No phone number on this listing. Add anyway? You will need to find both phone and email separately.')) return;
   }
   await Prospects.save(contact);
-  toast('Added '+r.name+' — find email next, then enroll', 'success');
-  // Mark this result as added so the button can disable
-  FS.results[idx] = { ...r, _added: true };
+  FS.results[idx] = { ...r, _added: true, _prospectId: contact.id };
+  toast('Added ' + r.name + ' — find email next, then enroll', 'success');
+  _renderProspectFind();
+}
+
+async function _addAllPlacesResults() {
+  const FS = window._findLeadsState;
+  const minR = parseFloat(FS.minRating) || 0;
+  const filtered = minR > 0 ? FS.results.filter(r => (r.rating || 0) >= minR) : FS.results;
+  const unadded = filtered.filter(r => !r._added);
+  if (!unadded.length) return;
+  if (!confirm('Add all ' + unadded.length + ' visible leads to Contacts?')) return;
+  let added = 0;
+  for (const r of unadded) {
+    const idx = FS.results.indexOf(r);
+    if (idx < 0) continue;
+    const contact = {
+      firstName: '', lastName: r.name, company: r.name, email: '',
+      phone:   r.phone   || '',
+      website: r.website || '',
+      persona: FS.persona || '',
+      state:   r.state   || '',
+      region:  r.state ? _stateRegion(r.state) : '',
+      source:  'Google Places',
+      notes: [
+        r.googleMapsUri ? 'Maps: '    + r.googleMapsUri : '',
+        r.rating        ? 'Rating: '  + r.rating + ' (' + r.userRatingCount + ' reviews)' : '',
+        r.address       ? 'Address: ' + r.address : '',
+      ].filter(Boolean).join('\n'),
+      status: 'active', cadenceStep: 0,
+    };
+    await Prospects.save(contact);
+    FS.results[idx] = { ...r, _added: true, _prospectId: contact.id };
+    added++;
+  }
+  toast('Added ' + added + ' leads — set emails then enroll', 'success');
   _renderProspectFind();
 }
 
@@ -10652,7 +10711,7 @@ function _showEnrichModal(p, state) {
 
   let content = '';
   if (state.loading) {
-    content = '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Scraping '+esc(p.website)+'…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Fetching contact, about, team pages in parallel.</div></div>';
+    content = '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Scraping '+esc(p.website)+'…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Checking /contact, /about, and homepage for emails.</div></div>';
   } else if (state.error) {
     content = '<div style="padding:24px;color:var(--red)"><div style="font-weight:800;margin-bottom:8px">Enrichment failed</div><div style="font-size:12px;font-family:monospace">'+esc(state.error)+'</div></div>';
   } else if (state.result) {
@@ -10752,6 +10811,7 @@ async function convertToOpp(id) {
   p.status         = 'converted';
   p.convertedOppId = opp.id;
   p.cadenceStep    = 0;
+  p.archivedAt     = new Date().toISOString();
   await Prospects.save(p);
   _appendCadenceLog({
     prospectId: p.id,
@@ -10779,8 +10839,12 @@ async function _showActivityTimeline(id) {
     const when = e.queuedAt || e.sentAt || e.repliedAt || e.convertedAt;
     let lbl = e.status;
     if (e.status === 'sent-manual')   lbl = 'Step ' + e.step + ' marked sent';
+    if (e.status === 'sent-resend')   lbl = 'Step ' + e.step + ' sent via Resend';
     if (e.status === 'replied')       lbl = 'Replied — cadence paused';
+    if (e.status === 'replied-keep')  lbl = 'Reply logged — cadence continues';
     if (e.status === 'converted')     lbl = 'Converted to opportunity';
+    if (e.status === 're-engaged')    lbl = 'Re-engaged — cadence restarted';
+    if (e.status === 'opted-out')     lbl = 'Opted out — archived';
     if ((e.status||'').includes('queued') || (e.status||'').startsWith('pending')) lbl = 'Step ' + e.step + ' queued';
     events.push({ when, label: lbl, detail: e.subject||'', color: e.status==='replied'?'var(--gold)' : e.status==='converted'?'#4472CA' : '#2A8B5E' });
   });
@@ -10857,15 +10921,15 @@ async function _bulkEnroll() {
   let n = 0, skipped = 0;
   for (const id of ids) {
     const p = all.find(x => x.id === id); if (!p) continue;
-    if (!p.persona || !p.email) { skipped++; continue; }
-    if (p.cadenceStep > 0)      { skipped++; continue; }
+    if (!p.persona)         { skipped++; continue; }
+    if (p.cadenceStep > 0)  { skipped++; continue; }
     p.cadenceStep = 1;
     p.cadenceStartedAt = new Date().toISOString();
     p.status = 'active';
     await Prospects.save(p);
     n++;
   }
-  toast('Enrolled '+n+(skipped?' · '+skipped+' skipped (missing persona/email or already enrolled)':''),'success');
+  toast('Enrolled '+n+(skipped?' · '+skipped+' skipped (missing persona or already enrolled)':''),'success');
   window._prospectState.selected = {};
   renderProspecting();
 }
@@ -10995,6 +11059,7 @@ async function _renderProspectContacts() {
         '<select id="pcState" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
           '<option value="">— State —</option>' + US_STATES.map(s => '<option value="'+s[0]+'">'+s[0]+' · '+esc(s[1])+'</option>').join('') +
         '</select>' +
+        '<input id="pcWebsite" placeholder="Website (for Find Email)" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
         '<input id="pcSource"  placeholder="Source"       style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
         '<button class="btn btn-primary btn-sm" onclick="_addProspectFromForm()" style="white-space:nowrap">+ Add</button>' +
       '</div>' +
@@ -11033,7 +11098,7 @@ async function _renderProspectContacts() {
           const personaLbl = (PERSONAS.find(x => x.id === p.persona)||{}).label || '—';
           const cadCls = p.cadenceStep > 0 ? ('cadence-step-' + Math.min(5, p.cadenceStep)) : '';
           const cadTxt = p.cadenceStep > 0 ? ('Step '+p.cadenceStep+'/5') : 'Not enrolled';
-          const canEnroll  = p.persona && p.email && p.cadenceStep === 0 && p.status !== 'converted';
+          const canEnroll  = p.persona && p.cadenceStep === 0 && p.status !== 'converted';
           const canSend    = p.persona && p.email && p.cadenceStep > 0 && p.cadenceStep <= 5 && p.status === 'active';
           const canReply   = p.cadenceStep > 0 && p.status === 'active';
           const canConvert = ['replied','active'].includes(p.status) && p.email;
@@ -11080,9 +11145,13 @@ async function _renderProspectContacts() {
 function _toggleAllSelected(checked) {
   const PS = window._prospectState;
   if (!checked) { PS.selected = {}; _renderProspectContacts(); return; }
-  // Re-derive the visible list and select all of them
-  Prospects.getAll().then(all => {
-    let list = PS.personaFilter === 'all' ? all : all.filter(p => p.persona === PS.personaFilter);
+  const _ARCHIVED_STATUSES = ['opted-out','completed','converted'];
+  Prospects.getAll().then(allRaw => {
+    let list = allRaw.filter(p => !_ARCHIVED_STATUSES.includes(p.status));
+    list = PS.personaFilter === 'all' ? list : list.filter(p => p.persona === PS.personaFilter);
+    if (PS.regionFilter && PS.regionFilter !== 'all') {
+      list = list.filter(p => (p.region || _stateRegion(p.state||'')) === PS.regionFilter);
+    }
     if (PS.searchQ) list = list.filter(p => _matchesSearch(p, PS.searchQ));
     PS.selected = {};
     list.forEach(p => { PS.selected[p.id] = true; });
@@ -11099,6 +11168,7 @@ async function _addProspectFromForm() {
     email:     g('pcEmail').trim(),
     phone:     g('pcPhone').trim(),
     company:   g('pcCompany').trim(),
+    website:   g('pcWebsite').trim(),
     persona:   g('pcPersona'),
     state:     state,
     region:    state ? _stateRegion(state) : '',
@@ -11109,7 +11179,7 @@ async function _addProspectFromForm() {
   if (!p.firstName && !p.lastName && !p.email) { toast('Need at least a name or email','error'); return; }
   if (!p.email && !p.phone)                    { toast('Need an email or phone','error');         return; }
   await Prospects.save(p);
-  ['pcFirst','pcLast','pcEmail','pcPhone','pcCompany','pcSource'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  ['pcFirst','pcLast','pcEmail','pcPhone','pcCompany','pcWebsite','pcSource'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
   const sel = document.getElementById('pcState');     if (sel) sel.value = '';
   const per = document.getElementById('pcPersona');   if (per) per.value = '';
   toast('Contact added','success');
@@ -11141,6 +11211,7 @@ function _onProspectCSV(ev) {
           email:     map.email    >=0 ? (r[map.email]    ||'').trim() : '',
           phone:     map.phone    >=0 ? (r[map.phone]    ||'').trim() : '',
           company:   map.company  >=0 ? (r[map.company]  ||'').trim() : '',
+          website:   map.website  >=0 ? (r[map.website]  ||'').trim() : '',
           persona:   map.persona  >=0 ? (r[map.persona]  ||'').trim().toLowerCase() : '',
           source:    map.source   >=0 ? (r[map.source]   ||'').trim() : 'csv-import',
           notes:     map.notes    >=0 ? (r[map.notes]    ||'').trim() : '',
@@ -11160,11 +11231,11 @@ function _onProspectCSV(ev) {
 async function _exportProspectsCSV() {
   const all = await Prospects.getAll();
   if (!all.length) { toast('No contacts to export','error'); return; }
-  const head = ['First Name','Last Name','Email','Phone','Company','Persona','Source','Notes','Cadence Step','Status','Created'];
+  const head = ['First Name','Last Name','Email','Phone','Company','Website','Persona','State','Region','Source','Notes','Cadence Step','Status','Last Reply Subject','Created'];
   const q = v => '"' + String(v||'').replace(/"/g,'""') + '"';
   const lines = [head.map(q).join(',')];
   all.forEach(p => lines.push([
-    p.firstName,p.lastName,p.email,p.phone,p.company,p.persona,p.source,p.notes,p.cadenceStep,p.status,p.createdAt
+    p.firstName,p.lastName,p.email,p.phone,p.company,p.website,p.persona,p.state,p.region,p.source,p.notes,p.cadenceStep,p.status,p.lastReplySubject,p.createdAt
   ].map(q).join(',')));
   const blob = new Blob([lines.join('\n')], { type:'text/csv' });
   const url  = URL.createObjectURL(blob);
@@ -11543,6 +11614,590 @@ const PERSONA_RESEARCH = {
       'One trusted partner is worth ten "we work with anyone" vendors',
     ],
   },
+
+  architects: {
+    label: 'Architects',
+    summary: 'Residential architects and architectural firms in luxury markets — coastal Florida, the Hamptons, Aspen, Scottsdale, Napa, Lake Tahoe, Palm Beach, Nashville. They specify interiors in drawings but rarely source or install FF&E. The best referral relationship begins at design development, before the builder breaks ground.',
+    valueProp: 'Be the interior partner architects name in every schematic — FF&E specified to the millwork, on-site coordination through punch-out, and a design voice that never competes for the client relationship.',
+    pillars: [
+      'FF&E specified to match architectural drawings — not retrofitted after CO',
+      'Interior coordination from schematic through punch-out',
+      'Design voice that reinforces, never competes with, the architectural intent',
+      'Co-branded portfolio photography credited to both firms',
+      'Referral terms in writing — client relationship always belongs to the architect',
+    ],
+    needs: [
+      'An interior partner who reads and works from construction drawings',
+      'FF&E specified at design development — not sourced retail at CO',
+      'A coordinated design voice that matches the architectural concept',
+      'COI and liability coverage aligned with the general contractor',
+      'On-site coordination during rough-in and finish phases',
+      'Lighting plans that integrate with the architectural electrical drawings',
+      'Delivery schedules that align with the construction Gantt',
+      'A partner who communicates with the super without creating confusion',
+      'Photography that credits the architect prominently',
+      'Referral terms that protect the client relationship throughout',
+    ],
+    pains: [
+      'Clients source furniture post-CO and the design looks incoherent at walkthrough',
+      'Interior vendors arrive late and clash with the architectural intent',
+      'Finish selections not coordinated with FF&E create color mismatches',
+      'Last-minute deliveries scratch new floors and damage walls during install',
+      'Multiple vendors create communication chaos during punch-out',
+      'Client budget exhausted at interior phase after over-spending on construction',
+      'Interior designer hired independently undercuts the architectural concept',
+      'No portfolio photography of the finished space after two years of work',
+      'Referral relationships that turn competitive for the client',
+      'Projects where the furniture was never on the same design wavelength as the architecture',
+    ],
+    desires: [
+      'A project where the interior and the architecture look like one person designed both',
+      'A photography day where both firms are credited in portfolio-grade images',
+      'An interior partner who reads RCP and finish schedules without being taught',
+      'A client who says "the two firms worked as one"',
+      'Referral income that does not require the architect to manage the introduction',
+      'Interior specifications delivered during design development, not at CO',
+      'A partner who attends the OAC meeting without being asked',
+      'FF&E delivered and installed without a single floor scratch during punch-out',
+      'An interior voice that strengthens, not dilutes, the architectural narrative',
+      'Long-term partnership across multiple projects with the same client base',
+    ],
+    priorities: [
+      'Protect the design concept from inconsistent interior execution',
+      'Deliver photography that fills the firm\'s AIA and project portfolio',
+      'Protect the client relationship through every phase of the project',
+      'Minimize site-coordination headaches during construction admin',
+      'Build a trusted vendor roster that wins repeat referrals',
+      'Specify interiors at design development — not at CO',
+      'Ensure FF&E budget is realistic against the construction pro forma',
+      'Cover COI and contractor alignment before the GC starts work',
+      'Deliver on schedule without impacting the construction critical path',
+      'Create a portfolio story that generates new client inquiries',
+    ],
+    worldview: [
+      'The interior is an extension of the architecture — not decoration applied after the fact',
+      'The client experience of the space begins at the first click, not the last punch-out item',
+      'Vendors who read drawings win; vendors who guess lose',
+      'Referrals flow toward partners who protect the design narrative',
+      'Photography is the lasting legacy of a project — make it portfolio-grade',
+      'The OAC meeting where every vendor is aligned is the rarest thing in construction',
+      'Budget discipline at the interior phase is a structural problem, not a design problem',
+      'A partner who respects the architectural lead earns the next project',
+      'Punch-out is the design moment — who is in the room matters',
+      'The best projects look like one person designed everything',
+    ],
+  },
+
+  'home-stagers': {
+    label: 'Home Stagers',
+    summary: 'Home staging firms and solo stagers in active luxury markets — Miami, Palm Beach, Greenwich, Scottsdale, Newport Beach, Nashville, Charleston. They style homes for photography and showings but rarely have the inventory depth for listings over $700K. The high-end listing that needs a full design voice — not furniture rental — is the growth ceiling every staging firm faces.',
+    valueProp: 'Be the design partner stagers call when the listing outgrows their inventory — co-branded photography, collaborative billing, and a design voice that elevates both brands without ever touching the agent relationship.',
+    pillars: [
+      'High-end design and inventory for listings above the stager\'s current tier',
+      'Co-branded photography — stager keeps the credit and the agent relationship',
+      'Collaborative billing that protects the stager\'s margin on every deal',
+      'Seven-day photo-ready install for urgent listing timelines',
+      'Referral income on full-service clients who convert beyond staging',
+    ],
+    needs: [
+      'Access to luxury inventory and design voice above their price tier',
+      'A design partner who will not approach the real estate agent independently',
+      'Co-branding on photography so market visibility stays with the stager',
+      'Collaborative billing structure that preserves the stager\'s margin',
+      'Fast turnaround — seven days or less from brief to install',
+      'Climate-appropriate selections for the specific listing market',
+      'Overflow capacity during peak seasons without permanent overhead',
+      'A design eye that elevates a dated floor plan into a lifestyle image',
+      'Referral income on future clients who want full-service design',
+      'Photography coordination so install and photo day align without gaps',
+    ],
+    pains: [
+      'Listings that exceed their inventory depth go to competitor stagers or designers',
+      'High-end clients who want full-service design instead of staging rental',
+      'Peak season overwhelm — too many listings, not enough capacity to cover all',
+      'Agents who bypass the stager and hire a designer directly on luxury listings',
+      'Dated inventory that photographs below the listing price tier',
+      'No referral income when clients convert from staging to full interior design',
+      'Climate-specific furniture wear — coastal salt, desert UV, Northeast humidity',
+      'Last-minute listing briefs with impossible install timelines',
+      'Co-branding disputes when a high-end vendor takes over the listing narrative',
+      'Clients who love the staging look and want it permanently — with no path to fulfill it',
+    ],
+    desires: [
+      'A design partner for the high-end listing who never threatens the agent relationship',
+      'Referral income from clients who want to move beyond staging',
+      'Peak-season overflow capacity without adding permanent staff',
+      'Co-branded photography on every collaboration — both names on every image',
+      'A design voice that elevates their brand into the luxury market tier',
+      'Clients who say "I want this as my permanent home" with a clear referral path',
+      'A partner who knows how to work fast — quote to install to photo in seven days',
+      'Inventory at a design-firm level for listings where their own stock falls short',
+      'A trusted partner on call for the urgent Saturday listing brief',
+      'Long-term referral partnership that grows both businesses year over year',
+    ],
+    priorities: [
+      'Protect the agent and seller relationship on every listing — without exception',
+      'Maintain co-branding so market visibility stays attributed to the stager',
+      'Deliver within the listing timeline — seven days is the ceiling',
+      'Grow the high-end tier of the staging business without sacrificing margin',
+      'Build overflow capacity for peak season without permanent cost',
+      'Convert staging clients into full-service design referrals',
+      'Protect market reputation in the luxury listing segment',
+      'Ensure photography reflects the stager\'s best work, not a generic look',
+      'Maintain billing control on every project they introduce',
+      'Build a long-term partnership that generates recurring referral income',
+    ],
+    worldview: [
+      'The staging photo is everything — it fills open houses and drives offers',
+      'The client relationship is sacred — any partner that threatens it is gone',
+      'High-end listings need a design voice above what standard staging inventory can deliver',
+      'Co-branding on every image is non-negotiable — visibility is the business model',
+      'Peak season is won in February and lost by May if capacity is not locked in advance',
+      'The best partner in staging respects who owns the client relationship at all times',
+      'A referral into full design is the highest-value outcome of a staging relationship',
+      'Speed is the competitive advantage — the stager who installs first wins the listing',
+      'Inventory quality is the ceiling on listing quality — raise the ceiling to grow',
+      'Every luxury listing is an audition for the next one in the same zip code',
+    ],
+  },
+
+  developers: {
+    label: 'Luxury Developers',
+    summary: 'Real estate developers building luxury condominiums, townhome communities, and mixed-use residential in premium markets — South Florida, New York metro, the Hamptons, Palm Beach, Nashville, Austin, Scottsdale, and coastal California. Model units and amenity spaces are the close tool that drives presale velocity. The interior is the sales argument.',
+    valueProp: 'Make the model unit and amenity space the reason buyers sign tonight — phased delivery tied to your draw schedule, per-floor-plan kit pricing, and a design narrative matched to the community\'s brand positioning and buyer demographic.',
+    pillars: [
+      'Model unit and amenity-space design that drives presale velocity at the VIP launch event',
+      'Per-floor-plan kit pricing — packages, not project-by-project proposals',
+      'Draw-schedule-aligned delivery — never the variable that delays the sales event',
+      'Design narrative tailored to the community\'s buyer demographic and price tier',
+      'Photography and VR-ready staging for presale marketing decks and broker walks',
+    ],
+    needs: [
+      'Model unit design that closes buyers at the VIP sales event, not at a price reduction',
+      'Per-floor-plan kit pricing that integrates with the development pro forma',
+      'Delivery aligned with the construction draw schedule without friction',
+      'Amenity space design — lobby, fitness, pool, co-working — matched to the community brand',
+      'Photography-ready staging for presale marketing and the property website',
+      'VR and Matterport-compatible staging for remote buyer tours',
+      'A design partner who understands buyer demographics at each price tier',
+      'COI and contractor alignment that satisfies the development lender',
+      'A single PO across all units in the building — not multi-vendor chaos',
+      'Refresh kits for model units after six months of buyer tour traffic',
+    ],
+    pains: [
+      'Model units staged generically that fail to justify the price per square foot',
+      'Design vendors who miss the VIP sales event date — presale velocity suffers immediately',
+      'Amenity spaces that look midscale despite a luxury price tag',
+      'Multiple furniture vendors creating invoice and coordination chaos at the lender level',
+      'Model unit wear after twelve months of buyer tours with no refresh plan',
+      'Design that works in a 2D floor plan but looks wrong when built',
+      'Photography missed the presale launch window and the deck goes out with renderings',
+      'Interior partners who do not understand the development pro forma',
+      'Design that targets the wrong buyer demographic — wrong age, wrong aesthetic, wrong aspiration',
+      'Renderings in the presale deck that set expectations the installed design cannot meet',
+    ],
+    desires: [
+      'A VIP sales event where buyers write deposits the same night',
+      'A model unit that photographs better than every comparable in the market',
+      'A design partner who knows the difference between a $650K buyer and a $2M buyer',
+      'An amenity space that looks like a boutique hotel, not a generic gym and mailroom',
+      'Photography and video produced before the presale launch — not the week after',
+      'Kit pricing that makes interior selections a line item in the pro forma, not a negotiation',
+      'A refresh plan that keeps the model performing through phase two and three',
+      'A single vendor relationship across every unit in the building',
+      'Pre-closing buyer design appointments as a revenue event',
+      'A design narrative that earns editorial coverage in regional lifestyle media',
+    ],
+    priorities: [
+      'Hit presale velocity targets — contracts before construction completes',
+      'Protect the pro forma — interior costs must stay inside the development budget',
+      'Win the buyer at the VIP sales event, not at a price reduction six months later',
+      'Amenity photography in the launch deck — not a rendering stand-in',
+      'Manage the draw schedule and lender requirements without friction',
+      'Design that performs across the buyer demographic, not just one taste profile',
+      'Lock a model refresh cycle before traffic deteriorates the staging',
+      'Consolidate vendors — one PO, one rep, one schedule',
+      'Earn media coverage that multiplies the presale marketing investment',
+      'Build the partnership for phase two before phase one is sold out',
+    ],
+    worldview: [
+      'The model unit is the best dollar spent in the presale marketing budget',
+      'Buyers do not buy floor plans — they buy the life they picture living there',
+      'The amenity space tells the story the building price tag needs to justify',
+      'Vendors who understand draw schedules are rare and worth keeping for every project',
+      'Presale velocity is protected by design, not by price reductions',
+      'The launch window is everything — the first two weeks set the community narrative',
+      'Pro forma discipline is the first filter — partners who work within it get phase two',
+      'The buyer at $650K and the buyer at $2M have completely different emotional triggers',
+      'Photography and VR staging are presale requirements, not nice-to-haves',
+      'A development that earns editorial coverage sells faster than one that only advertises',
+    ],
+  },
+
+  'property-mgmt': {
+    label: 'Property Managers',
+    summary: 'Property management companies overseeing luxury vacation rentals, short-term rental portfolios, and concierge-residential buildings — coastal Florida, mountain resort markets, Lake Tahoe, Aspen, the Carolinas, Scottsdale, Palm Springs. They need design that earns 5-star reviews, survives commercial traffic, and can be refreshed unit-by-unit without a full redesign cycle.',
+    valueProp: 'Design that earns a 5-star review the night the guest checks in — commercial-grade furnishings with residential aesthetics, per-unit replacement pricing, and a seasonal refresh cycle that keeps occupancy rates competitive year over year.',
+    pillars: [
+      '5-star-worthy interiors that photograph for Airbnb, VRBO, and brand booking pages',
+      'Commercial-grade furniture with residential-quality aesthetics — built for guest traffic',
+      'Per-unit replacement pricing — refresh one room without redesigning the whole unit',
+      'Seasonal refresh cycles timed to pre-peak delivery windows',
+      'Single-vendor portfolio program — one account, one rep, one invoice across all properties',
+    ],
+    needs: [
+      'Furniture that survives commercial guest traffic without visible wear in twelve months',
+      'Per-unit replacement pricing — single pieces, not full redesigns when something fails',
+      'Interiors that photograph for Airbnb, VRBO, and brand listing pages',
+      'Seasonal refresh schedule timed to pre-peak delivery',
+      'COI aligned with the property management company\'s insurance requirements',
+      'Design that works across multiple unit types in the same portfolio',
+      'A vendor who understands rental-grade durability, not just aesthetic appeal',
+      'Climate-graded materials for the property\'s specific market — coastal, mountain, desert',
+      'Fast delivery for units that need to go live before booking season opens',
+      'A single vendor account across a multi-property portfolio',
+    ],
+    pains: [
+      'Furniture that wears visibly within eighteen months of guest traffic',
+      'Units that photograph poorly and lose search ranking to better-staged competitors',
+      'Full redesign required when only a few pieces have failed — no piece-by-piece replacement',
+      'Guest reviews about dated or mismatched furniture lowering the property\'s score',
+      'Peak-season delivery failures that take units offline during the highest-rate weeks',
+      'Multiple vendors for different units creating invoice and coordination chaos',
+      'No design consistency across a portfolio — each unit looks like a different brand',
+      'Climate damage — salt corrosion, UV fading, freeze-thaw cycles on outdoor furniture',
+      'Interior decisions made by property managers without design expertise',
+      'Properties that look great in person but fail the listing photo — lower booking rates',
+    ],
+    desires: [
+      'A portfolio with consistent, photographic design that books at premium rates',
+      'Furniture that still looks good at year three without full replacement',
+      'A design partner who understands RevPAR economics, not just aesthetics',
+      'Units that rank at the top of Airbnb and VRBO search because of photo quality',
+      'A single vendor who manages the entire portfolio as one account',
+      'Pre-season refresh delivery that requires no on-site involvement from the PM team',
+      'Guest reviews that mention the design and drive repeat bookings',
+      'Per-unit replacement kits priced as a maintenance line item, not a capital expense',
+      'Design voice consistent enough that the brand is recognizable across all properties',
+      'Editorial features that position the portfolio as a destination, not accommodation',
+    ],
+    priorities: [
+      'Maximize occupancy rate and average nightly rate across the full portfolio',
+      'Protect the 5-star review score on every booking platform',
+      'Minimize off-market days for furniture replacement and repair',
+      'Deliver seasonal refreshes before peak booking season opens',
+      'Maintain design consistency as the portfolio grows',
+      'Protect the company\'s insurance and liability position on every install',
+      'Consolidate vendors — one account, one rep, one delivery schedule',
+      'Price furniture replacement as recurring operational cost, not a capital event',
+      'Build booking rate premium through photography and design quality',
+      'Scale the program as the portfolio grows without redesigning from scratch',
+    ],
+    worldview: [
+      'A 5-star review on Airbnb is worth more than a month of paid advertising spend',
+      'The listing photo either books the night or loses it — there is no middle position',
+      'Rental-grade durability and design-grade aesthetics are not mutually exclusive',
+      'RevPAR is the metric — design is the lever that moves it',
+      'Peak season is won or lost by the decisions made in the off-season',
+      'A portfolio with consistent design commands a rate premium over random unit aesthetics',
+      'Vendor consolidation saves more than price negotiation — one rep saves weeks per year',
+      'The guest who mentions the interior design in the review is the guest who rebooks',
+      'Climate damage is a predictable cost — build the replacement cycle in before it happens',
+      'The portfolio that photographs best in every market dominates the search result page',
+    ],
+  },
+
+  hospitality: {
+    label: 'Boutique Hotels & Vacation Rentals',
+    summary: 'Owner-operated boutique hotels, bed-and-breakfasts, and luxury vacation rental owners managing one to five properties — coastal Florida, Charleston, Savannah, Napa, the Berkshires, Aspen, Park City, Lake Tahoe, Hudson Valley. They compete entirely on atmosphere, photography, and guest experience. Every Condé Nast Traveler mention or Airbnb review is a guest-acquisition event.',
+    valueProp: 'Make the lobby the photograph that fills the calendar — atmosphere-led design for boutique properties, photo-grade staging of hero rooms and amenity spaces, and a design voice that becomes the social media content strategy.',
+    pillars: [
+      'Atmosphere-led design that photographs for editorial publications and booking platforms',
+      'Hero room and lobby staging that defines the property\'s visual identity',
+      'Social-media-native design — every corner a potential IG moment',
+      'Climate and region-authentic sourcing — the property should feel like nowhere else',
+      'Seasonal refresh that gives loyal guests a reason to return and post again',
+    ],
+    needs: [
+      'Design that photographs for editorial — Condé Nast Traveler, Travel + Leisure, Afar',
+      'A visual identity immediately recognizable on Instagram and booking platforms',
+      'Hero room and lobby design that anchors the property\'s brand',
+      'Climate-appropriate and regionally authentic materials — not generic hotel sourcing',
+      'Seasonal styling updates to give repeat guests a fresh experience each visit',
+      'Commercial-grade furniture that survives guest use without visible wear',
+      'Outdoor design for patios, terraces, and pool areas that extend the atmosphere',
+      'A design partner who understands the marketing value behind every design decision',
+      'Photography coordination — design, photographer, and property all aligned',
+      'Design consultation before renovation decisions are made, not after',
+    ],
+    pains: [
+      'Generic hospitality sourcing that makes the property look like every other boutique',
+      'No consistent visual identity — the property looks different in every guest photo',
+      'Outdoor furniture that fails in the specific climate within one season',
+      'Hero rooms that photograph poorly and are never featured in media or social',
+      'Design decisions made mid-renovation that clash with the original concept',
+      'No seasonal refresh — loyal guests see the same space on every return visit',
+      'Guest photos that look unflattering — the property loses organic social reach',
+      'Visible furniture wear in guest photos posted to Airbnb reviews',
+      'Design that does not reflect the property\'s regional character or sense of place',
+      'Editorial photography scheduled before the design work is finalized',
+    ],
+    desires: [
+      'A property photograph that gets shared on Instagram without any prompting',
+      'An editorial feature in a regional or national travel publication',
+      'Guest reviews that say "the design alone made the trip worth it"',
+      'A lobby corner that becomes the property\'s most-tagged IG location',
+      'Seasonal updates that give returning guests a reason to mention it in their review',
+      'A design identity so strong guests recognize the property before they see the name',
+      'A hero room that books at a rate premium over every other room',
+      'Outdoor spaces that extend the atmosphere from check-in through the evening',
+      'A photographer partnership that produces editorial content on every collaboration',
+      'A design partner who helps tell the property\'s story, not just style it',
+    ],
+    priorities: [
+      'Build a visual identity that drives organic IG reach without paid promotion',
+      'Earn editorial coverage in travel media to reduce paid acquisition cost',
+      'Design hero rooms that command a rate premium and drive direct bookings',
+      'Extend the design atmosphere outdoors — patio, pool, terrace, garden',
+      'Protect the property\'s sense of place against generic commercial sourcing',
+      'Create seasonal refresh cycles that keep loyal guests returning',
+      'Ensure every design decision supports the booking photography',
+      'Build commercial durability into an atmosphere-driven design concept',
+      'Use design to generate organic content that replaces paid social spend',
+      'Position the property as a design destination — not just accommodation',
+    ],
+    worldview: [
+      'Every guest is a potential reviewer — and every review is a marketing asset',
+      'The property is a brand — and the design is the brand\'s most visible expression',
+      'The IG post a guest takes at checkout is worth more than a week of paid advertising',
+      'Editorial coverage in travel media changes the booking trajectory permanently',
+      'Atmosphere is not furniture — it is the feeling you cannot describe but remember for years',
+      'The boutique property that looks like everywhere else competes only on price',
+      'A hero room that photographs at double the rate is the most profitable space in the building',
+      'Seasonal refresh is guest retention strategy — not design indulgence',
+      'Climate-appropriate and regionally authentic design beats "boutique hotel generic" every time',
+      'The guest who feels transported by the design is the guest who tells ten people',
+    ],
+  },
+
+  homebuyers: {
+    label: 'New Homeowners',
+    summary: 'Individuals and couples who recently purchased a home — within 0 to 18 months — in a luxury or aspirational price tier. Simultaneously exhilarated and overwhelmed: the house is theirs, the rooms are empty, and every decision feels permanent. The highest-intent interior design prospect in any market, typically in the first 90 days post-close.',
+    valueProp: 'Turn the house you just bought into the home you always imagined — room-by-room packages with transparent all-in pricing, a single design voice from concept to delivery, and a timeline built around your move-in reality.',
+    pillars: [
+      'Room-by-room packages with transparent, all-in pricing — no hidden sourcing fees',
+      'A single point of contact from first consultation through final install',
+      'Design that feels personal — not staged for resale, designed for your actual life',
+      'Timeline built around move-in reality — not a two-year design calendar',
+      'Budget-range guidance so every decision is made with confidence, not anxiety',
+    ],
+    needs: [
+      'A starting point — most do not know where to begin, only what they want to avoid',
+      'Room prioritization help — what to address first with a finite budget',
+      'Transparent pricing — no hidden sourcing fees or markup surprises at delivery',
+      'A single trusted voice across all decisions, not a committee of vendors',
+      'Color palette and finish guidance before any paint orders are placed',
+      'Window treatment guidance — the most expensive single mistake category',
+      'Furniture scaled correctly to the room proportions of their specific home',
+      'A timeline that works around a moving family, not around a design studio calendar',
+      'Confidence that every decision will still be right in five years',
+      'A partner who will say no when something will not work — not just agree',
+    ],
+    pains: [
+      'Analysis paralysis — thousands of saved images, decisions still not made',
+      'Buying furniture that does not fit the room scale or the proportions of the home',
+      'Choosing paint colors before the furniture arrives — the color is now wrong',
+      'Window treatments ordered incorrect — wrong scale, wrong opacity, wrong style',
+      'Spending the budget on the wrong room first and running out before the priority spaces',
+      'Rooms that feel like a hotel, not a home — designed for a photo, not a life',
+      'Partners who agree with everything and create an incoherent result',
+      'Delivery chaos — ten vendors, ten timelines, nothing arrives in the right sequence',
+      'Realizing twelve months in that the furniture plan was not thought through',
+      'Feeling embarrassed to invite guests while the home is still "unfinished"',
+    ],
+    desires: [
+      'Walking into their home and feeling like it is exactly them — nothing out of place',
+      'The moment a guest says "this looks like it was designed specifically for you"',
+      'One partner they trust completely — not a rotating cast of vendors',
+      'Room-by-room completion that feels like momentum, not endless waiting',
+      'A color palette they never have to second-guess after it is established',
+      'Furniture that still looks right when the family grows or the life changes',
+      'A home they are proud to show before every room is finished',
+      'A design process that fits a real life — not a renovation show production',
+      'Transparent pricing so every decision is made with full confidence',
+      'A finished room that photographs beautifully — even if only one room is done',
+    ],
+    priorities: [
+      'Start with the rooms they use every day — living room, main bedroom, kitchen',
+      'Establish the color palette before any orders are placed',
+      'Furniture plan finalized before deliveries begin — not retail-by-retail over two years',
+      'Window treatments — the highest-impact, highest-mistake category addressed first',
+      'Lighting — often the last decision, but the one that transforms everything',
+      'Budget allocated across rooms before spending starts anywhere',
+      'Move-in-compatible timeline — the design cannot take longer than they live in boxes',
+      'A partner decision they will not regret at the six-month mark',
+      'Children\'s rooms and guest rooms after the primary spaces are done',
+      'One complete room that photographs beautifully as the starting proof of concept',
+    ],
+    worldview: [
+      'My home is the most personal investment I will ever make in my life',
+      'Design should feel effortless to live in — not effortful to look at every morning',
+      'I bought the house for the life it represents, not the square footage',
+      'I want to feel proud of every room, even the ones I have not touched yet',
+      'Good design is not about spending more — it is about spending in the right order',
+      'I have a vision but I cannot execute it alone, and I know it',
+      'The right partner makes the process feel like collaboration, not assignment',
+      'I do not want a showroom — I want a home that feels unmistakably like mine',
+      'Every design decision should still make sense in ten years and two life changes',
+      'My home is where the people I love should feel most welcome and most at ease',
+    ],
+  },
+
+  'past-customers': {
+    label: 'Past Customers',
+    summary: 'Former clients who completed a project 1 to 5 years ago — the highest-conversion reactivation prospect in any design practice. Trust is established, the design relationship is proven, and they are overdue for a refresh, a new room, a seasonal update, or a life-change redesign. The reactivation sequence is the highest-ROI outreach in the portfolio.',
+    valueProp: 'Pick up exactly where we left off — no re-introduction, no proposal process, just a fresh eye on what has changed and a plan for what is next.',
+    pillars: [
+      'Returning-client pricing — no new-client sourcing markup on any reactivation project',
+      'No re-introduction required — the style file and preferences are already on record',
+      'Complimentary fresh-eye walkthrough with no commitment required',
+      'First access to new arrivals and collections before they open to new inquiries',
+      'Priority scheduling during peak-demand periods — returning clients go first',
+    ],
+    needs: [
+      'A reason to re-engage that feels personal and relational, not transactional',
+      'An update on what has changed in design since their project wrapped',
+      'A no-pressure entry point — a walkthrough, not a new proposal',
+      'Confidence that the relationship is still intact after the gap in time',
+      'Pricing clarity before any commitment — returning-client rates, not new-client rates',
+      'Priority scheduling so they do not wait behind new inquiries',
+      'Trend awareness — what is current versus what will date their existing design',
+      'Guidance on the rooms left undone or outgrown by life changes since the project',
+      'A partner who remembers their style preferences without needing a full re-brief',
+      'A seamless re-entry that honors the investment the relationship already represents',
+    ],
+    pains: [
+      'Rooms left undone from the original project that still bother them every day',
+      'Furniture that has aged, been damaged, or simply needs replacing',
+      'Life changes — new family member, grown children, home office needs, downsizing',
+      'Designs that felt right in prior years but now read as dated',
+      'Not knowing how to re-engage without it feeling awkward or like starting over',
+      'Fear that re-engaging will lead to a large unexpected financial commitment',
+      'Rooms now staged for a life stage they are no longer in',
+      'Seasonal wear — window treatments faded, outdoor furniture damaged by climate',
+      'Guest rooms repurposed as offices that now need a proper design plan',
+      'Curiosity about new collections and trends with no clear connection to access them',
+    ],
+    desires: [
+      'A first message that feels like picking up a conversation, not receiving a pitch',
+      'A walkthrough where someone sees the space with fresh eyes and a plan forms naturally',
+      'A returning-client rate that makes re-engaging feel valued, not marketed to',
+      'A completed room that finally closes out the project they never quite finished',
+      'An update to a space that now reflects who they are at this life stage',
+      'First access to an arrival or collection before it opens to the general inquiry list',
+      'A design plan that requires minimal involvement — the trust is already earned',
+      'The feeling that their home is growing with them, not falling behind',
+      'A quick win — one room refreshed — that opens the conversation for the rest',
+      'To tell a friend: "she still had my file — it was like we never stopped"',
+    ],
+    priorities: [
+      'Re-engage in a way that feels like reconnection, not a sales call',
+      'Identify the rooms or pieces highest on their mind — start there, not with the full scope',
+      'Offer returning-client pricing up front to remove the hesitation before it forms',
+      'Provide a trend update that makes the first visit feel educational, not commercial',
+      'Protect the design relationship through a low-commitment first step',
+      'Move quickly — reactivated clients who do not hear back within a week often restart elsewhere',
+      'Offer priority scheduling to signal that the relationship is valued',
+      'Use the re-engagement to understand how their life has changed since the last project',
+      'Find the quick win that re-establishes the design rhythm between both parties',
+      'Establish what the full scope could be — without requiring a commitment to it upfront',
+    ],
+    worldview: [
+      'Once I find a person I trust with my home, I do not want to start the process over',
+      'My home keeps changing even when the design does not — something always needs attention',
+      'A returning-client relationship should feel different from a new-client relationship — and it should',
+      'Design is not one project — it is a relationship across the life of the house',
+      'The best vendors remember you without needing to be reminded of who you are',
+      'I am overdue for a refresh and I know it — I just need a reason to make the call',
+      'Returning-client pricing is a sign of respect, not a discount tactic',
+      'The home I designed a few years ago is the starting point, not the final answer',
+      'A walkthrough with no commitment is the lowest-risk first step — and I will say yes to it',
+      'The partner who reaches out first is the one who wins the re-engagement',
+    ],
+  },
+
+  'cold-leads': {
+    label: 'Cancelled / Stalled Leads',
+    summary: 'Individuals who inquired, attended a consultation, or received a proposal within the last 1 to 3 years but did not move forward. Most common reasons: budget timing, a life event, an unresolved hesitation, or inertia. The design desire was real. The obstacle was temporary. Reactivation with trend relevance and a no-pressure re-entry converts at higher rates than cold outreach to new contacts.',
+    valueProp: 'The design you imagined is still possible — and the market, the materials, and the options have all shifted in ways worth a fifteen-minute conversation.',
+    pillars: [
+      'No-pressure re-entry — a trend update or visual preview, not a re-delivered proposal',
+      'New arrivals and design shifts since the original consultation to show something has changed',
+      'Free re-consultation to revisit the original brief with current context',
+      'Phase-first options that make the full scope feel accessible, not all-at-once',
+      'A design snapshot — a visual brief showing what the space could look like today',
+    ],
+    needs: [
+      'A low-pressure reason to re-engage that does not feel like a sales follow-up call',
+      'Evidence that something has genuinely changed — new products, new pricing, new thinking',
+      'Proof that the original design vision is still achievable with current offerings',
+      'A financially accessible entry point — one room, one consultation, one brief',
+      'Confidence that the project will not spiral past the original budget concerns',
+      'A reminder that the design desire was real and remains unmet',
+      'Financing or phase options that make the scope more manageable than before',
+      'A no-commitment first step — a visual brief or a fifteen-minute call',
+      'An acknowledgment that life happens and re-engaging requires no explanation',
+      'A partner who picks up the conversation without asking them to start over from scratch',
+    ],
+    pains: [
+      'The project they postponed still bothers them on some level — the room is still unfinished',
+      'The original budget concern has not disappeared — it has just been set aside',
+      'Design inertia — once the momentum stopped, restarting felt harder than continuing',
+      'Other home expenses consumed the budget that was originally earmarked for the project',
+      'A life event — relocation, job change, family change — disrupted the original timeline',
+      'Fear that re-engaging means re-explaining the entire brief from the beginning',
+      'Uncertainty about whether the original proposal is still relevant or has expired',
+      'Not knowing whether the original design direction still fits their current life',
+      'Embarrassment about not following through — hesitation to re-initiate the conversation',
+      'The conviction that now is probably not the right time either',
+    ],
+    desires: [
+      'A message that makes re-engaging feel easy, natural, and entirely judgment-free',
+      'Proof that the timing and options are meaningfully better now than before',
+      'A design update that shows what has changed — not a re-delivery of the original proposal',
+      'A single room as a starting point — not the whole project all at once',
+      'A conversation that picks up exactly where the original one left off',
+      'A partner who acknowledges the gap without making it the focus of the conversation',
+      'Financing or phase-planning that makes the full scope feel achievable in stages',
+      'A new arrival or collection that reignites the excitement from the original consultation',
+      'A design snapshot — a visual preview of what the space could look like right now',
+      'The feeling that they did not miss their moment — that the opportunity is still there',
+    ],
+    priorities: [
+      'Reignite the original design desire with new visual or product evidence — not words',
+      'Lower the re-entry barrier to the absolute minimum: one room, one call, one next step',
+      'Acknowledge the timing gap without making it the focus of the re-engagement',
+      'Introduce something new — a collection, a trend, a before-after — that makes it feel fresh',
+      'Offer a design snapshot or visual brief that proves the vision is still achievable',
+      'Reference the original brief naturally — show you remember without requiring repetition',
+      'Provide phase options that address the original budget concern directly',
+      'Close with one small ask — a fifteen-minute call, not a full re-proposal',
+      'Move quickly — cold leads who engage on step one convert within two weeks or not at all',
+      'Treat the re-engagement as a human conversation, not a prospect follow-up sequence',
+    ],
+    worldview: [
+      'The project I postponed is still unfinished in my mind — I just stopped talking about it',
+      'Design desire does not expire — it waits for the right moment and the right message',
+      'I will re-engage with the partner who reaches me first with something actually worth seeing',
+      'A message that makes me feel like a person, not a lapsed prospect, wins the conversation',
+      'The best re-engagement shows that something has changed — not just that time has passed',
+      'I know what I want — I just need the right reason to make the call again',
+      'A single room as a starting point is a yes I can say without hesitation or commitment',
+      'The partner who picks up where we left off without requiring a restart wins every time',
+      'Timing was the obstacle — not desire, not vision, not trust in the designer',
+      'The design I imagined before is still the design I want — I just need to see it again',
+    ],
+  },
 };
 
 /* ══════════════════════════════════════════════════
@@ -11646,6 +12301,150 @@ const CADENCES = {
       subject:'{{firstName}}, who is finishing your fall reveals this year?',
       body:'Last note from me.\n\nFall is when the reveal photos that travel into your spring proposal deck get taken. The projects you finish before the holiday slowdown are the ones your next year is built on.\n\nPartner-program intake closes end of summer for fall reveals. After that the photo schedule and install crews are locked through November.\n\nIf you have projects finishing between now and October, send me the project list. I will block install windows for each one and price the referral terms in writing.\n\nIf timing is off, I will reach back at the start of next year. Either is fine.\n\n— Carol' },
   ],
+
+  architects: [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, does your interior finish the story the architecture starts?',
+      body:'{{firstName}},\n\nYour architecture sets up a promise — light, proportion, materiality, the way a room feels the moment someone steps in. Interior design is where that promise either pays off or quietly disappoints.\n\nMost clients who commission an architect expect the interior to carry the same intention. When it does not, the architecture gets the blame even when it should get the credit.\n\nI work exclusively as an interior design partner to architects — no competing for the client relationship, no redesigning your structure, no changing the spec unless you initiate it. My work layers finish materials, furnishings, and lighting onto your framework so the interior reads like an extension of the architecture, not an afterthought.\n\nWould a conversation about how that collaboration works be useful? I can show you two or three projects where the pairing changed the final photo dramatically.\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, when a client takes the interior in a different direction, what happens to the project?',
+      body:'{{firstName}},\n\nA question I hear often from architects: the client loved the building, then handed the interior to a family member or a discount furniture store, and the reveal hurt more than it helped.\n\nThe photography suffered. The portfolio entry was weaker than the design deserved. The referral the project could have generated did not happen because the interior did not match the story.\n\nWhat does that mean for your firm? One weaker portfolio photo per year can shift the caliber of the next year\'s inquiries more than most firms realize.\n\nI co-scope the interior budget as early as schematic design so clients see the full picture before decisions are locked. The architecture and the interior land together or not at all.\n\nDo you have a project in DD or CD right now where the interior direction is still open? Worth a quick call.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, interior design as the final layer of the architecture — is that the model?',
+      body:'{{firstName}},\n\nThe firms I admire most treat interior design not as a separate discipline but as the final expressive layer of the architecture itself. Same proportional logic, same material language, same philosophy carried from structure to furniture to lighting to hardware.\n\nThat is the model I was trained in and the model I bring to every collaboration. I do not impose a style — I decode yours and extend it through finish selections, custom millwork coordination, furniture placement, and lighting design.\n\nIf that resonates with how you think about completeness in a project, I would like to show you the work. A fifteen-minute screen share — three projects, the before-after, and how the collaboration actually ran.\n\nWould that be worth your time?\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, one thing the architects in our program said changed their practice',
+      body:'{{firstName}},\n\nThe architects I collaborate with most closely say the same thing after the first joint project: "I wish we had started this earlier."\n\nNot because the interior changed their fees — it did not. But because the final photography improved, the client experience during the reveal improved, and the referrals from those projects came in stronger and faster.\n\nWhen architecture and interior land together the result is coherent in a way clients cannot fully describe but absolutely feel. They tell their friends not just that the house is beautiful but that the whole experience was different.\n\nI have capacity for two new architect partnerships this quarter. If you have a residential or mixed-use project in the design phase, I would love to bring one to completion together.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, last note — two architecture partnerships still open this quarter',
+      body:'{{firstName}},\n\nLast note from me on this.\n\nI keep a small number of active architect partnerships so the collaboration stays close — shared site visits, real-time finish coordination, and a photo session at reveal.\n\nTwo openings remain this quarter. Once they fill I will be at capacity until next year.\n\nIf you have a project in any phase of design where the interior direction is still unresolved — or where the client has been resisting a budget for interior — reply today and I will send the collaboration brief.\n\nIf the timing is not right now, no pressure. I will check in when your next project cycle opens.\n\n— Carol' },
+  ],
+
+  'home-stagers': [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, staged today — what happens after the sale?',
+      body:'{{firstName}},\n\nYou stage a home, it sells in days, the buyer walks in and loves how it feels. Then you pull your inventory and they are left with four empty rooms and the memory of what it looked like.\n\nThat is a referral sitting on the table.\n\nI partner with stagers to offer buyers a design consultation at the moment they are most motivated to spend — right after the contract signs. You make the introduction, I handle the design service, and you receive a referral fee for every project that closes from your pipeline.\n\nNo inventory risk for you. No competition with your staging business. Just a natural next step for buyers who experienced a beautifully staged home and want to recreate it in their own style.\n\nWould this be worth a quick conversation?\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, what do buyers ask you after the sale closes?',
+      body:'{{firstName}},\n\nI am curious — after a home you staged sells and the buyer moves in, do they ever reach back asking where the furniture came from or how to replicate the look?\n\nMost stagers hear that question at least a few times a year. The buyer fell in love with the staged aesthetic and now they need help sourcing the actual pieces — the ones they can own, not rent.\n\nEvery time that conversation happens without a referral channel in place, you are leaving revenue and goodwill on the table. The buyer would happily work with someone you trusted to do the staging.\n\nI have a referral program specifically for staging professionals: no minimums, tracked to your pipeline, paid within thirty days of project close. Happy to walk you through how it works.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, staging sells the lifestyle — so does the design that follows',
+      body:'{{firstName}},\n\nStaging works because it sells a feeling before it sells a floor plan. Buyers are not buying square footage — they are buying the life they imagine living in that light, in that layout, at that price point.\n\nInterior design for those same buyers after close is the exact same logic carried forward. They want to preserve the feeling the staging created and make it theirs. The difference is permanence — real furniture, their art, their palette.\n\nI work in that space. And the stager who introduced them to the lifestyle is the most natural referral source for the designer who delivers it permanently.\n\nIf that feels like a fit for the buyers you are already serving, I would love to show you how the referral relationship works in practice.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, three stagers in our network closed referral fees this quarter',
+      body:'{{firstName}},\n\nThree staging professionals in our referral network closed design-service referral fees this quarter — no extra work on their end, just a warm introduction at the right moment.\n\nThe average referral fee per closed project was meaningful, and in each case the buyer came in as a warm, motivated lead who had already experienced the caliber of work at the staged home.\n\nYou are already doing the hard part — creating the experience that makes buyers fall in love with a space. I would like to be the designer who continues that work after the keys change hands.\n\nTwo referral slots still open in my program. Would you like the details?\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, final note — referral program closes to new stagers end of month',
+      body:'{{firstName}},\n\nLast note from me.\n\nI limit the referral network to stagers I know well enough to introduce confidently to buyers. Two open spots remain before I close intake this month.\n\nIf you stage in a market where buyers spend on interior design — any suburb or urban neighborhood with median home prices above four hundred thousand — this pipeline is almost certainly worth the fifteen-minute conversation to understand it.\n\nReply today and I will send the full program details plus the current referral fee schedule.\n\nIf the timing is off, no problem — I will reach back next quarter when the network opens again.\n\n— Carol' },
+  ],
+
+  developers: [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, does your model home close the deal or start one?',
+      body:'{{firstName}},\n\nThe model home is not a tour — it is a conversion event. Buyers who walk through a model and feel the life it is selling will pay more, decide faster, and refer others. Buyers who walk through a model and see furniture that does not match the architecture go home and think about it.\n\nFor luxury developments, the interior design of the model unit is one of the highest-ROI decisions in the whole project. It is the one thing buyers directly compare when they are choosing between your building and the one across the street.\n\nI specialize in model home and model unit design for luxury residential and mixed-use developments. My work is calibrated to price point, buyer profile, and your brand — not to a generic high-end aesthetic.\n\nWould it make sense to walk through what that looks like on your next phase?\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, when the model underperforms, what does that cost the absorption rate?',
+      body:'{{firstName}},\n\nA direct question: when a model home or model unit tour ends in "we need to think about it" instead of a reservation deposit, what is the cost to the project?\n\nFor most developers in the luxury segment, one extra month of carrying cost across an unsold floor is a number that makes a well-designed model look very inexpensive in comparison. The model is either accelerating sales velocity or creating friction — there is no neutral.\n\nI have worked with developers to redesign models mid-sell-out when traffic was strong but conversion was not. In each case the issue was the same: the furniture and staging communicated a different price point than the architecture promised. Buyers felt the gap even when they could not name it.\n\nDo you have a model opening in the next six months where the interior is still being scoped? I would like to be in that conversation early.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, luxury lives in the details buyers touch, not the ones they photograph',
+      body:'{{firstName}},\n\nYou already know this: luxury buyers make their decision in the first sixty seconds of a model tour, and they ratify it by touching things — the drawer pull, the countertop edge, the fabric weight on the sofa. The photographs close the interest; the physical experience closes the contract.\n\nThat is exactly the level I design to. Not aspirational photos. Tactile decisions — the material grades, the furniture scale, the lighting color temperature, the scent of the air. Every element that communicates a price point through sensation rather than signage.\n\nIf that precision matters to how you bring your developments to market, I would like to show you the work. Three model projects — before the redesign and after — and the absorption data that followed.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, one developer we worked with moved from 4% to 11% monthly absorption',
+      body:'{{firstName}},\n\nA developer we partnered with on a thirty-two-unit luxury townhome project had strong traffic in the first quarter — buyers were touring, just not converting.\n\nWe redesigned the model unit over a three-week period. New furniture scale, adjusted lighting color temperature, upgraded soft goods to match the buyer profile, and resequenced the tour path to lead with the outdoor terrace instead of the kitchen.\n\nAbsorption rate moved from four percent to eleven percent in the following quarter. Same traffic. Same price point. Different conversion.\n\nIf your current sellout is running slower than your pro forma, a model redesign conversation might be the highest-leverage use of a single afternoon.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, pre-construction design slots — two remaining for Q3',
+      body:'{{firstName}},\n\nLast note from me on this.\n\nFor new developments targeting a Q3 or Q4 model opening, the window to start interior design and still meet the certificate of occupancy furniture schedule is closing. Lead times on the furniture grades that read as luxury in a model are running twelve to sixteen weeks at the moment.\n\nTwo pre-construction design slots remain in my Q3 calendar. After that the next availability is Q4 for projects opening in early next year.\n\nIf you have a phase opening in the next twelve months and the interior is still unscoped, reply today with the project details and I will send a scope and timeline within forty-eight hours.\n\n— Carol' },
+  ],
+
+  'property-mgmt': [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, does your best unit command the best rent — or is it leaving money on the table?',
+      body:'{{firstName}},\n\nIn a competitive rental market, design is a pricing lever. The unit that photographs well, shows well, and communicates a lifestyle — not just square footage — commands a rental premium that compounds every time the lease renews.\n\nMost property managers think of interior design as an expense. The ones growing fastest treat it as a yield investment: a one-time design upgrade that recovers its cost in three to six months of premium rent and then runs pure margin for years.\n\nI work with property management companies to design units and common areas that attract the tenant profile you are trying to keep — and keep them longer.\n\nWould a conversation about the math behind one unit makeover be useful?\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, what does a thirty-day vacancy actually cost your portfolio?',
+      body:'{{firstName}},\n\nA question worth running: what does a thirty-day extended vacancy cost across your portfolio? Not just the lost rent — the turnover prep, the leasing commission, the carry during the gap.\n\nFor most portfolios the number is larger than expected. And in most cases the gap between a quick-lease unit and a slow-lease unit is not location or price — it is presentation. The quick-lease unit looks designed. The slow-lease unit looks generic.\n\nI help property managers upgrade the units that keep sitting — a focused refresh that brings them in line with what the market is actually leasing. No renovation, no contractor coordination. Furniture, lighting, and staging that changes the perception inside a week.\n\nDo you have a unit or a building that keeps leasing later than the rest of your portfolio? I would start there.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, the portfolio that attracts long-term tenants looks different from the one that keeps churning',
+      body:'{{firstName}},\n\nHere is what the data shows in every market: the properties with the lowest vacancy and highest tenant retention look like someone thought carefully about how a person actually lives in that space — not just that the appliances are updated and the walls are painted.\n\nThe tenant who renews year after year is not renewing because rent stayed flat. They are renewing because leaving feels like giving something up. That feeling is design.\n\nI work with property managers to create that feeling in units and common areas — at price points that work for the rental market, not for a custom home. Durable, scalable, photographable, and buildable without a general contractor.\n\nIf that is the direction you are trying to move your portfolio, I would like to show you what it looks like in practice.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, a portfolio redesign that paid back in six months',
+      body:'{{firstName}},\n\nA property management client came to us with twelve units in a mid-tier building that were leasing twenty-one days slower than comparable buildings in the same zip code.\n\nWe designed a uniform refresh package — same furniture program, same accent wall treatment, same lighting kit — installed across all twelve units over three weeks. The leasing photography was updated the week installations completed.\n\nAverage days-to-lease dropped from thirty-one to nine. Average rent per unit increased by eighty dollars per month. The entire design investment paid back in under six months on rent delta alone.\n\nIf your portfolio has units that keep sitting, I would like to run that math for your specific situation. Reply with the unit count and average market rent and I will model it out.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, spring leasing season — design now or compete on price',
+      body:'{{firstName}},\n\nLast note from me.\n\nSpring is the strongest leasing season in most markets, and the window to have a refresh installed and photographed before peak traffic opens is about six weeks away.\n\nProperty managers who invest in presentation before spring compete on desirability. Everyone else competes on price.\n\nIf you have units that need to perform better this season, reply today. I will prioritize the scope and send a refresh package proposal within forty-eight hours.\n\nIf the timing is off, I will follow up at the start of next quarter.\n\n— Carol' },
+  ],
+
+  hospitality: [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, do your guests come back because of the location — or because of the room?',
+      body:'{{firstName}},\n\nTravelers can book a location anywhere. What makes them rebook your specific property — and write the review that drives the next booking — is the experience inside the room.\n\nFor boutique hotels and vacation rentals, interior design is the product. The photography is the marketing. And the two are inseparable: a thoughtfully designed space photographs in a way that generic furniture never will, and every great photo is selling the next stay.\n\nI specialize in interior design for boutique hospitality — hotels, B&Bs, short-term rentals, and glamping properties. My work is built around the guest experience that generates five-star reviews and direct rebookings, not just beautiful rooms.\n\nWould a conversation about what that looks like for your property be worth fifteen minutes?\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, when guests leave a 4-star instead of 5-star — what is the common complaint?',
+      body:'{{firstName}},\n\nA question for you: when your property receives a four-star review instead of five, what does the feedback say? In my experience with hospitality clients the answer is almost never location, cleanliness, or amenities.\n\nIt is usually something about the room feeling outdated, the furniture not matching the photos, or the space feeling smaller than expected. All three of those are design problems — and all three are solvable without renovation.\n\nA single interior refresh can move a property from four-star average to five-star average within one review cycle. The impact on pricing power and occupancy is immediate and compounding.\n\nDo you have a property — or a specific room type — where reviews are consistently lagging? I would start there.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, the properties guests photograph are the ones they return to',
+      body:'{{firstName}},\n\nThe hospitality properties that drive the strongest occupancy today share one thing: guests photograph them. Not just the view — the actual room. The corner nook, the styled vanity, the reading chair by the window.\n\nWhen a guest photographs a room and posts it, they are doing your marketing. Every share is a booking inquiry from someone in their network who sees the post and feels the experience. That is the organic loop every boutique property wants and most do not know how to create.\n\nI design spaces that get photographed. That is a specific skill — understanding where the light falls, where the guest\'s eye lands, which moments in a room are instagrammable and which feel flat. \n\nIf your property is not generating the organic content loop it should, I would like to show you the work.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, a vacation rental that raised ADR by 22% after a design refresh',
+      body:'{{firstName}},\n\nA vacation rental client in a competitive mountain market had strong occupancy but flat ADR — guests were booking but paying below-market rates because the photos did not justify a premium.\n\nWe redesigned two of the three bedrooms and the main living area. New photography followed the week the installation was complete.\n\nADR increased twenty-two percent within the first booking cycle. Occupancy held. The owner recovered the design investment in eleven weeks on ADR delta alone, and the property now consistently ranks in the top ten percent of comparable listings in the area.\n\nIf your occupancy is strong but your pricing is soft, the room design is almost certainly the constraint. Would love to walk you through the numbers.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, summer booking window — last call for pre-season design',
+      body:'{{firstName}},\n\nLast note from me.\n\nSummer bookings at most short-term rental and boutique hotel properties are set during the spring browsing window — guests are scrolling listings right now, and the properties with the best photography are capturing the best dates.\n\nFurniture lead times mean any design work that needs to be installed before summer peak needs to start within the next three to four weeks.\n\nI have two hospitality project slots open for pre-summer completion. After that the install schedule is full through July.\n\nIf your property needs new photography before summer bookings lock in, reply today with the property details and I will send a scope within forty-eight hours.\n\n— Carol' },
+  ],
+
+  homebuyers: [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, the house is yours — now make it feel like home',
+      body:'{{firstName}},\n\nCongratulations on the new home. The closing is done, the keys are in your hand, and now comes the part most buyers are not quite prepared for: making four or five or six empty rooms feel like the life you imagined when you bought the place.\n\nMost people spend months buying a home and very little time planning what happens after the move-in truck leaves. The result is furniture bought in a rush that does not quite fit, rooms that stay half-decorated for years, and a space that never fully becomes the home they dreamed of.\n\nI help new homeowners skip that part. A single design consultation gives you a clear plan — what to buy, what to skip, how to sequence the rooms, and how to make every space feel intentional from the start.\n\nWould a conversation be useful? New homeowner consultations are complimentary for the first thirty days.\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, which room are you avoiding decorating first?',
+      body:'{{firstName}},\n\nA question most new homeowners are thinking about: which room is the one you keep looking at, knowing something needs to happen, but not quite knowing where to start?\n\nFor most people it is the living room — too much pressure, too many decisions, the one room everyone sees. So it stays in a holding pattern while the rest of the house gets sorted around it.\n\nThe furniture decisions you make in the first six months of owning a home set the visual tone for everything that follows. Getting them right — scale, proportion, material, color palette — saves years of replacing pieces that never worked.\n\nI offer a room-by-room plan for new homeowners: a clear sequence for what to tackle first, how to budget across rooms, and what to buy versus wait on. One consultation, and you have a roadmap.\n\nInterested?\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, decorating your new home the way you actually want to live in it',
+      body:'{{firstName}},\n\nThe homes people are most proud of five years after moving in are not the ones where they bought everything at once and tried to match it perfectly. They are the ones where someone made a few considered decisions early — the anchor pieces, the palette, the lighting plan — and then let the rest arrive over time.\n\nThat first layer of considered decisions is exactly where I help. Not a complete furnishing package. Not a renovation. Just the strategic choices that make everything else easy: what the rooms need to function the way you want to live, what the anchor pieces are, and what can wait.\n\nIf you want to approach your new home that way — thoughtfully, not exhaustingly — I would love to do a walkthrough and put together a plan.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, new homeowners in our design program say the same thing six months in',
+      body:'{{firstName}},\n\nEvery new homeowner we work with says the same thing six months into the process: "I wish I had done this before I bought anything."\n\nNot because they spent more than they would have — they almost always spend less, because they stop buying things that do not work and replacing them. But because having a clear plan from the start meant every room came together instead of just accumulating furniture.\n\nThe new homeowner design program runs over three months: an initial consultation and room-by-room plan, a sourcing session for anchor pieces, and a follow-up review when the main rooms are set. Flat fee, no commissions on purchases.\n\nIf you are in the first ninety days of owning your home, this is the right time to start. Would you like to schedule the first session?\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, the window for the new homeowner program closes at 90 days',
+      body:'{{firstName}},\n\nLast note from me.\n\nThe new homeowner consultation program I offer is designed for the first ninety days of ownership — that window when you are making decisions anyway and the rooms are still flexible enough to get right the first time.\n\nAfter the ninety-day mark, the decisions people make in a hurry tend to be locked in for years. The sofa that was supposed to be temporary. The rug that never quite worked. The bedroom that never got the lighting right.\n\nIf you are still in that first ninety-day window, reply today and I will set up the complimentary walkthrough this week.\n\nIf you are past it, that is fine too — design help is useful at any stage, and the first conversation is always free.\n\n— Carol' },
+  ],
+
+  'past-customers': [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, it has been a while — your home has probably changed too',
+      body:'{{firstName}},\n\nIt was genuinely great working with you on your home. I still think about that project.\n\nI am reaching out because a few years changes things — your space, your life, your sense of what you want a room to feel like. What worked then may feel like it needs a new chapter. A room that was perfect for one season of life sometimes calls for a refresh as the next one starts.\n\nI am not reaching out to sell you a full redesign. I am reaching out because past clients who come back for a single room or a focused refresh often find it is exactly the right moment — and because working with someone who already knows your home, your taste, and how you live is a different experience than starting from zero.\n\nWould a check-in conversation be welcome? No agenda — just reconnecting to see where things stand.\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, is there a room that has never quite come together?',
+      body:'{{firstName}},\n\nI have been thinking about your project and wanted to ask — is there a room in the house that never fully landed the way you hoped? Most clients who complete a major project have one: the guest room that stayed unfinished, the study that never got addressed, the primary bedroom that always felt like it needed one more thing.\n\nThose rooms have a way of sitting in the background for years. Not urgent enough to tackle, but always there when you walk past.\n\nSometimes the right moment to finish them is when life settles into a new rhythm — kids older, a new job, a milestone worth celebrating.\n\nIf you have a room like that, I would love to close it out with you. A focused engagement is often faster and less expensive than people expect, especially with someone who already knows the house.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, the homes I love most keep evolving — yours should too',
+      body:'{{firstName}},\n\nThe homes I am most proud of working on are not the ones that were finished and left unchanged. They are the ones that kept evolving — a new room addressed, a piece swapped out, a refresh as the family changed.\n\nA home that has been lived in well looks and feels different than a showroom. It has layers. It has the things that were exactly right and the things that need a second look now that you know how you actually use the space.\n\nThat second-look phase is my favorite kind of project. It is lighter than a full engagement, it is informed by how you actually live, and it almost always unlocks something the original project could not have anticipated.\n\nIf your home is ready for that kind of evolution, I would love to be part of it.\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, what past clients tell me about coming back for a second project',
+      body:'{{firstName}},\n\nThe feedback I hear most often from clients who return for a second engagement: "This went so much faster."\n\nNot because the scope was smaller — sometimes it is larger. But because we already know each other. I know your taste, I know the light in your house, I know what you regret from the first round and what you love. The design process starts from context, not from zero.\n\nFor returning clients I offer a streamlined re-engagement format: a single walk-through, a focused proposal, and a timeline we set together. No lengthy discovery process.\n\nIf there is a room or a project in your home worth revisiting, I would love to pick up where we left off.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, returning client bookings for spring — two spots left',
+      body:'{{firstName}},\n\nLast note from me.\n\nI keep returning client projects separate from new client intake — fewer projects, closer collaboration, faster timelines. Right now I have two returning client project slots open for the spring season.\n\nIf you have been thinking about a refresh, a room that needs finishing, or a change you have been putting off, now is the right moment to reach back.\n\nReply with what you are thinking about and I will send calendar options for this week.\n\nAlways a pleasure working with you.\n\n— Carol' },
+  ],
+
+  'cold-leads': [
+    { step:1, method:'Corporate Visions',
+      subject:'{{firstName}}, design has moved — and your project can too',
+      body:'{{firstName}},\n\nWe spoke a while back about a project that did not move forward at the time. Circumstances change — budgets shift, timelines clear, the thing that was not right becomes possible.\n\nBut I am not reaching out just to revisit the conversation. I am reaching out because interior design has moved since we last talked, and what is possible now — in terms of materials, sourcing, pricing, and the overall caliber of a mid-range design engagement — is genuinely different.\n\nThe cost to create a well-designed room has dropped. The timeline has compressed. The quality of furnishings available at accessible price points has improved considerably in the last two to three years.\n\nIf the project you had in mind was cost- or timeline-constrained before, it may be worth a fresh conversation. No pressure, no assumptions — just an updated picture of what is possible.\n\n— Carol' },
+    { step:2, method:'SPIN Selling',
+      subject:'{{firstName}}, what stopped the project last time — is that still the constraint?',
+      body:'{{firstName}},\n\nA direct question: when the project paused last time, what was the main reason? Budget, timing, uncertainty about what you actually wanted, life getting in the way?\n\nI ask because the right time to revisit a stalled project depends entirely on whether the original constraint has changed. If it was budget, there are approaches now that were not viable then. If it was uncertainty about direction, that is often something a single focused conversation can resolve.\n\nMost clients who let a project sit for a year or two come back with a clearer sense of what they want — because they have had more time living in the space and knowing what bothers them.\n\nIf any of that resonates, I would love to understand where you are now and whether there is a path forward.\n\n— Carol' },
+    { step:3, method:'Mirroring',
+      subject:'{{firstName}}, the trends have shifted — and your project might fit better now',
+      body:'{{firstName}},\n\nA few things have genuinely changed in interior design since we last talked — and some of them are relevant to projects that stalled for reasons of budget or direction.\n\nMaterial trends have moved toward natural textures and warm neutrals that are both more accessible and more durable than the aesthetic that dominated a few years ago. Furniture lead times have shortened. And the design approach that resonates most with clients right now is quieter, more livable, and less dependent on expensive statement pieces.\n\nIf your project felt out of reach before because it required a certain caliber of investment to look right — that threshold has moved.\n\nWould it make sense to revisit the original brief and see how it sits in the current landscape?\n\n— Carol' },
+    { step:4, method:'Positive Selling',
+      subject:'{{firstName}}, a project that restarted after two years — what made it work',
+      body:'{{firstName}},\n\nA client came back to us after a two-year pause on a living room project that had stalled over budget and an unclear direction. The original vision had felt too ambitious; she had never found an alternative she liked better.\n\nWhen we reconvened, two things had changed: she knew exactly which two pieces she refused to compromise on, and the budget she had available was workable for a more edited approach. We built the room around those two pieces and edited everything else to fit the number.\n\nThe final room is one of my favorite projects. It would not have worked the first time — it needed the pause.\n\nIf your project has been sitting for a similar reason, I would love to revisit it with fresh eyes and see whether a more edited approach unlocks it.\n\n— Carol' },
+    { step:5, method:'Neuroscience / FOMO',
+      subject:'{{firstName}}, last note — spring project calendar is filling',
+      body:'{{firstName}},\n\nLast note from me.\n\nSpring is when most stalled projects find their moment — the energy shifts, the space feels more urgent, the decision that kept getting deferred starts to feel ready.\n\nIf your project has been on hold and this is the season it starts to feel like the right time, I want to be the person you call first. I already know the background; we do not have to start from zero.\n\nMy spring calendar has limited availability for projects starting in the next sixty days.\n\nReply with where the project stands and I will send a re-engagement proposal this week.\n\n— Carol' },
+  ],
 };
 
 /* Email-only cadences. Multi-channel companion content was removed
@@ -11678,9 +12477,11 @@ async function enrollProspect(id) {
 }
 
 async function _confirmEnrollment(id) {
+  const chosenPersona = (document.getElementById('enrollCadenceSelect')||{}).value;
   const all = await Prospects.getAll();
   const p   = all.find(x => x.id === id);
   if (!p) return;
+  if (chosenPersona) p.persona = chosenPersona;
   p.cadenceStep      = 1;
   p.cadenceStartedAt = new Date().toISOString();
   p.status           = 'active';
@@ -11693,11 +12494,16 @@ async function _confirmEnrollment(id) {
 
 function _showEnrollmentPreview(prospect) {
   const existing = document.getElementById('enrollOverlay'); if (existing) existing.remove();
+  window._enrollmentProspect = prospect;
   const cads = CADENCES[prospect.persona] || [];
-  const personaLbl = (PERSONAS.find(x=>x.id===prospect.persona)||{}).label || prospect.persona;
   const wrap = document.createElement('div');
   wrap.id = 'enrollOverlay';
   wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  const cadenceOpts = Object.keys(CADENCES).map(k => {
+    const lbl = (PERSONAS.find(x=>x.id===k)||{}).label || k;
+    return '<option value="'+k+'"'+(k===prospect.persona?' selected':'')+'>'+esc(lbl)+'</option>';
+  }).join('');
 
   const stepRows = cads.map(c => {
     const wait = CADENCE_INTERVAL_DAYS_FOR_PREVIEW[c.step];
@@ -11711,19 +12517,24 @@ function _showEnrollmentPreview(prospect) {
     '</div>';
   }).join('');
 
+  const nameStr = [prospect.firstName, prospect.lastName].filter(Boolean).join(' ');
   wrap.innerHTML =
     '<div style="background:#fff;border-radius:var(--r);max-width:680px;width:100%;max-height:90vh;overflow:auto;padding:24px">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">' +
         '<div>' +
-          '<h3 style="font-family:var(--font-display);color:var(--gold);font-size:18px;margin:0">Enroll in '+esc(personaLbl)+' cadence</h3>' +
-          '<div style="font-size:12px;color:var(--ink-40);margin-top:4px">'+esc((prospect.firstName||'')+' '+(prospect.lastName||''))+' &middot; '+esc(prospect.email||'no email')+(prospect.company?' &middot; '+esc(prospect.company):'')+'</div>' +
+          '<h3 style="font-family:var(--font-display);color:var(--gold);font-size:18px;margin:0">Enroll in cadence</h3>' +
+          '<div style="font-size:12px;color:var(--ink-40);margin-top:4px">'+esc(nameStr||'—')+(prospect.email?' &middot; '+esc(prospect.email):' &middot; <em>no email yet</em>')+(prospect.company?' &middot; '+esc(prospect.company):'')+'</div>' +
         '</div>' +
         '<button onclick="document.getElementById(\'enrollOverlay\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--ink-50)">×</button>' +
+      '</div>' +
+      '<div style="margin-bottom:14px">' +
+        '<label style="font-size:11px;font-weight:700;color:var(--ink-30);display:block;margin-bottom:5px;letter-spacing:.06em">SELECT CADENCE</label>' +
+        '<select id="enrollCadenceSelect" onchange="window._enrollmentProspect=Object.assign({},window._enrollmentProspect,{persona:this.value});_showEnrollmentPreview(window._enrollmentProspect)" style="width:100%;padding:8px 10px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+cadenceOpts+'</select>' +
       '</div>' +
       '<div style="padding:10px 12px;background:rgba(196,147,63,.08);border-left:3px solid var(--gold);border-radius:0 6px 6px 0;margin-bottom:14px;font-size:12px;color:#2A2622">' +
         'Five emails over roughly <strong>3 weeks</strong>. You manually fire each step — nothing sends without your click. Real send goes through your configured Resend integration.' +
       '</div>' +
-      '<div style="border:1px solid var(--ink-70);border-radius:8px;overflow:hidden;margin-bottom:16px">'+stepRows+'</div>' +
+      (cads.length ? '<div style="border:1px solid var(--ink-70);border-radius:8px;overflow:hidden;margin-bottom:16px">'+stepRows+'</div>' : '<div style="color:var(--ink-40);font-size:12px;margin-bottom:16px">No cadence steps defined for this persona yet.</div>') +
       '<div style="display:flex;gap:8px;justify-content:flex-end">' +
         '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'enrollOverlay\').remove()">Cancel</button>' +
         '<button class="btn btn-primary btn-sm" onclick="_confirmEnrollment(\''+esc(prospect.id)+'\')">Confirm enrollment →</button>' +
@@ -11738,8 +12549,9 @@ async function unenrollProspect(id) {
   const all = await Prospects.getAll();
   const p   = all.find(x => x.id === id);
   if (!p) return;
-  p.cadenceStep = 0;
+  p.cadenceStep      = 0;
   p.cadenceStartedAt = '';
+  p.lastContactedAt  = '';
   await Prospects.save(p);
   toast('Removed from cadence', 'success');
   renderProspecting();
@@ -11766,19 +12578,6 @@ async function sendCadenceStep(id) {
   if (cloud && key)       { status = 'ready-to-send';        detail = 'Click "Send via Resend" to fire the Edge Function. Or "Mark sent" if delivered another way.'; }
   else if (cloud && !key) { status = 'no-key';               detail = 'No Resend API key set. Add one in Setup, or click "Mark sent" to log this step manually.'; }
   else if (!cloud)        { status = 'not-cloud';            detail = 'Demo mode — Resend send needs cloud (Supabase) mode. Use "Mark sent" to log manually.'; }
-
-  _appendCadenceLog({
-    prospectId: p.id,
-    name:      ((p.firstName||'') + ' ' + (p.lastName||'')).trim(),
-    email:     p.email,
-    persona:   p.persona,
-    step:      p.cadenceStep,
-    method:    tmpl.method,
-    subject:   subject,
-    status:    status,
-    detail:    detail,
-    queuedAt:  new Date().toISOString(),
-  });
 
   _showCadencePreview(p, tmpl, subject, body, status, detail);
 }
@@ -11863,9 +12662,15 @@ async function markStepSent(id) {
     sentAt:    new Date().toISOString(),
   });
   p.lastContactedAt = new Date().toISOString();
-  if (p.cadenceStep < 5) p.cadenceStep += 1; else p.status = 'completed';
+  if (p.cadenceStep < 5) {
+    p.cadenceStep += 1;
+  } else {
+    p.status = 'completed';
+    p.archivedAt = new Date().toISOString();
+  }
   await Prospects.save(p);
-  toast('Marked sent — advanced to step ' + (p.cadenceStep > 5 ? 5 : p.cadenceStep), 'success');
+  const stepMsg = p.status === 'completed' ? 'cadence complete (5/5)' : 'advanced to step ' + p.cadenceStep;
+  toast('Marked sent — ' + stepMsg, 'success');
   const overlay = document.getElementById('cadenceOverlay'); if (overlay) overlay.remove();
   renderProspecting();
 }

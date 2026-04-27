@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ea-sales-v26';
+const CACHE_NAME = 'ea-sales-v27';
 const ASSETS = [
   '/sales-site/',
   '/sales-site/index.html',
