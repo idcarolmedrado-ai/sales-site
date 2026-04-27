@@ -3,6 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+<!-- CSP: tighten what the browser allows this page to load and connect to.
+     'unsafe-inline' is required for inline scripts/styles (app architecture).
+     connect-src limits fetch/XHR to known backends only.
+     frame-ancestors must be set via HTTP header; meta tag is ignored by spec. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+  img-src 'self' data: blob: https:;
+  connect-src 'self'
+    https://rsoukgpaqsgsdfvwrceu.supabase.co
+    https://btchluagzvhqusahfvxr.supabase.co
+    https://places.googleapis.com;
+  object-src 'none';
+  base-uri 'self';
+  worker-src 'none';
+">
 <title>Carol Medrado — Sales Intelligence</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script>
@@ -6734,7 +6752,7 @@ async function showKPIDetail(key) {
 
   const miniTable = (rows) => `<table style="width:100%;border-collapse:collapse;font-size:12px">
     ${rows.map((r,i) => `<tr style="border-bottom:1px solid var(--ink-70);${i===0?'font-weight:700;color:var(--gold)':''}">
-      ${r.map(c=>`<td style="padding:7px 8px;${typeof c==='number'||String(c).startsWith('$')?'text-align:right':''}">${c}</td>`).join('')}
+      ${r.map(c=>`<td style="padding:7px 8px;${typeof c==='number'||String(c).startsWith('$')?'text-align:right':''}">${typeof c==='number'?c:esc(String(c))}</td>`).join('')}
     </tr>`).join('')}
   </table>`;
 
