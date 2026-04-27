@@ -8110,7 +8110,7 @@ function renderSettings() {
   const el = document.getElementById('page-settings');
   if (!el) return;
   const s = _getSettings();
-  const hasPassword = !!localStorage.getItem(AUTH_KEY);
+  const hasPassword = !!window._sbAuthEmail;
 
   el.innerHTML = `
     <div class="container" style="padding-top:28px;padding-bottom:40px;max-width:640px">
@@ -8605,7 +8605,7 @@ function _inventoryLocalData() {
     inv.auditEntries = Object.values(log).reduce((sum, arr) => sum + (arr||[]).length, 0);
   } catch(e) { inv.auditEntries = 0; }
   // Password
-  inv.password = localStorage.getItem(AUTH_KEY) ? 1 : 0;
+  inv.password = window._sbAuthEmail ? 1 : 0;
   return inv;
 }
 
@@ -8760,8 +8760,6 @@ async function migrateAllToCloud() {
     if (completedActives.length) { set.attempted++; await _setCloudSetting('completed_actives', completedActives); set.succeeded++; }
     const sentMails = JSON.parse(localStorage.getItem('ea_mail_sent') || '[]');
     if (sentMails.length) { set.attempted++; await _setCloudSetting('sent_mails', sentMails); set.succeeded++; }
-    const pwHash = localStorage.getItem(AUTH_KEY);
-    if (pwHash) { set.attempted++; await _setCloudSetting('password_hash', { hash: pwHash }); set.succeeded++; }
     set.attempted++; await _setCloudSetting('profile', s); set.succeeded++;
   } catch(e) { console.error('settings:', e); set.failed = set.attempted - set.succeeded; set.error = e.message || String(e); }
 
