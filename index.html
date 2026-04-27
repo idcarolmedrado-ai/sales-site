@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
 <title>Carol Medrado — Sales Intelligence</title>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.1/dist/umd/supabase.min.js"></script>
 <script>
 // Fallback: if jsdelivr fails, try unpkg
@@ -12,6 +11,16 @@ if (!window.supabase) {
   var s = document.createElement('script');
   s.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
   document.head.appendChild(s);
+}
+// xlsx is loaded on-demand (lazy) the first time an export button is clicked
+async function _ensureXLSX() {
+  if (window.XLSX) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
 }
 </script>
 <link rel="manifest" href="manifest.json">
@@ -921,17 +930,18 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
 </head>
 <body>
 
-<!-- Auth Gate (optional — skippable) -->
+<!-- Auth Gate — Supabase email + password login -->
 <div class="auth-gate" id="authGate" style="display:none">
   <div class="auth-gate-box">
     <svg width="48" height="48" viewBox="0 0 36 36" style="margin-bottom:12px"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">CM</text></svg>
     <div class="auth-gate-logo">Carol Medrado</div>
     <div class="auth-gate-sub">Sales Intelligence</div>
-    <input id="authPassword" type="password" placeholder="Enter password" autocomplete="current-password"
-      onkeydown="if(event.key==='Enter')checkAuthGate()">
-    <button onclick="checkAuthGate()">Unlock</button>
-    <div class="auth-gate-error" id="authError">Incorrect password</div>
-    <button class="auth-gate-skip" onclick="skipAuthGate()">Continue without password</button>
+    <input id="authEmail" type="email" placeholder="Email address" autocomplete="email"
+      onkeydown="if(event.key==='Enter')document.getElementById('authPassword').focus()">
+    <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')checkAuthGate()" style="margin-top:8px">
+    <button class="auth-gate-btn" onclick="checkAuthGate()" style="margin-top:12px">Sign In</button>
+    <div class="auth-gate-error" id="authError">Incorrect email or password</div>
   </div>
 </div>
 
@@ -1065,6 +1075,12 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
       onmouseout="this.style.borderColor='var(--ink-60)';this.style.color='var(--ink-20)'">🇧🇷 PT</button>
     <span id="connBadge" class="conn-badge demo"><span class="dot"></span>Demo</span>
     <span class="nav-badge" id="overdueCount" title="Overdue follow-ups">0</span>
+    <button id="signOutBtn" onclick="signOut()" title="Sign out"
+      style="display:none;background:transparent;border:1px solid var(--ink-60);color:var(--ink-40);
+             border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;
+             transition:border-color .15s,color .15s"
+      onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'"
+      onmouseout="this.style.borderColor='var(--ink-60)';this.style.color='var(--ink-40)'">Sign Out</button>
     <div class="nav-avatar" id="navAvatar" title="Carolina Medrado" onclick="navigate('settings')" style="cursor:pointer">CM</div>
   </div>
 </nav>
@@ -2738,8 +2754,8 @@ const DB = {
   mode: 'local',
   LOCAL_KEY: 'ea_sales_v4',
 
-  initSupabase(url, key) {
-    this.client = window.supabase.createClient(url, key);
+  initSupabase(url, key, existingClient) {
+    this.client = existingClient || window.supabase.createClient(url, key);
     this.mode = 'supabase';
     this._setBadge('live');
   },
@@ -2789,19 +2805,17 @@ const DB = {
   /* ── SAVE (insert or update) ── */
   async save(opp) {
     this._invalidateCache();
-    // Ensure ID
     if (!opp.id) opp.id = uid();
 
     if (this.mode === 'supabase') {
-      const row = this._toDB(opp);
-      const isNew = !opp._isExisting;
-
+      const row    = this._toDB(opp);
+      const isNew  = !opp._isExisting;
+      let cloudErr = null;
       try {
         if (isNew) {
           const { data, error } = await this.client
             .from('opportunities').insert(row).select().single();
           if (error) throw error;
-          // Use the DB-returned id as canonical id
           opp.id = data.id;
           opp._isExisting = true;
         } else {
@@ -2810,11 +2824,14 @@ const DB = {
           if (error) throw error;
         }
       } catch(e) {
-        console.error('DB.save Supabase error:', e);
-        toast('Saved locally (Supabase error: ' + e.message + ')', 'error');
+        console.error('DB.save error:', e);
+        cloudErr = e;
       }
+      // Always mirror locally so offline resilience is preserved
+      this._localSave(opp);
+      if (cloudErr) throw cloudErr; // let saveLead show one accurate toast
+      return opp;
     }
-    // Always mirror locally for offline resilience
     this._localSave(opp);
     return opp;
   },
@@ -3071,7 +3088,7 @@ function renderClientTimeline(query) {
         +'<div style="padding:12px 18px;display:flex;align-items:center;gap:10px;background:var(--ink-80)">'
         +'<div style="font-weight:700;font-size:13px;color:var(--ink-10)">'+esc(o.lastName)+', '+esc(o.firstName)+'</div>'
         +(o.customerNumber?'<span style="font-size:11px;color:var(--gold);font-weight:700">#'+esc(o.customerNumber)+'</span>':'')
-        +'<span style="font-size:11px;color:var(--ink-50)">'+(o.projectType||'')+'</span>'
+        +'<span style="font-size:11px;color:var(--ink-50)">'+esc(o.projectType||'')+'</span>'
         +'</div>'
         +(allEvents.length ? rows : '<div style="padding:16px 20px;color:var(--ink-50);font-size:11px">No timeline events recorded yet</div>')
         +'</div>';
@@ -3174,6 +3191,7 @@ function _getExportMileageRecords() {
 }
 
 async function exportMileageExcel() {
+  await _ensureXLSX();
   if (typeof XLSX==='undefined') { toast('Excel library not loaded','error'); return; }
   const { recs: allRecs, label: periodLabel } = _getExportMileageRecords();
   if (!allRecs.length) { toast('No mileage records','error'); return; }
@@ -3227,7 +3245,7 @@ function exportMileagePDF() {
     const bg = i % 2 === 0 ? '#fff' : '#f8f6f3';
     const purpose = r.isManual ? 'Manual' : 'Home Call';
     return `<tr style="background:${bg}">
-      <td>${r.date||''}</td>
+      <td>${esc(r.date||'')}</td>
       <td>${esc(r.clientName||'')}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.address||'')}</td>
       <td style="text-align:center;font-size:12px">${r.stopHome1?'✓':''}</td>
@@ -4148,7 +4166,7 @@ async function renderPost30() {
 
     const noNew = rec.newOpportunity === 'No';
     return `<tr style="${noNew ? 'opacity:.55' : ''}">
-      <td><strong style="color:#2A2622">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:#2A2622;font-size:11px">${opp.projectType||'—'}</span></td>
+      <td><strong style="color:#2A2622">${esc(opp.lastName)}, ${esc(opp.firstName)}</strong><br><span style="color:#2A2622;font-size:11px">${esc(opp.projectType||'—')}</span></td>
       <td><span style="color:var(--gold);font-weight:700">$${(opp.estimate||0).toLocaleString()}</span></td>
       <td><input type="date" value="${delivDate}" style="width:140px"
         onchange="updatePost30('${opp.id}','deliveryDate',this.value)" /></td>
@@ -4259,7 +4277,7 @@ async function renderPost60() {
 
     const done = rec.p60_newOpportunity === 'Yes' || rec.p60_newOpportunity === 'No';
     return `<tr style="${done&&rec.p60_newOpportunity==='No'?'opacity:.5':''}">
-      <td><strong style="color:#2A2622">${opp.lastName}, ${opp.firstName}</strong><br><span style="color:#2A2622;font-size:11px">${opp.projectType||'—'}</span></td>
+      <td><strong style="color:#2A2622">${esc(opp.lastName)}, ${esc(opp.firstName)}</strong><br><span style="color:#2A2622;font-size:11px">${esc(opp.projectType||'—')}</span></td>
       <td><span style="color:var(--gold);font-weight:700">$${(opp.estimate||0).toLocaleString()}</span></td>
       <td style="color:#2A2622">${formatDateShort(rec.deliveryDate)}</td>
       <td style="color:#2A2622">${formatDateShort(followup60)}</td>
@@ -7291,6 +7309,7 @@ function printMilePage() {
    EXCEL EXPORT (SheetJS)
 ══════════════════════════════════════════════════ */
 async function exportToExcel() {
+  await _ensureXLSX();
   if (typeof XLSX === 'undefined') {
     toast('Excel library not loaded. Check your internet connection.', 'error');
     return;
@@ -7893,24 +7912,10 @@ function handleAttachDrop(e) {
 }
 
 /* ══════════════════════════════════════════════════
-   AUTH GATE (optional password protection)
-   Password hash stored in localStorage. Skippable.
+   AUTH — Supabase email + password (real auth)
+   window._sbAuthClient is set in the boot sequence
+   before this code is ever called.
 ══════════════════════════════════════════════════ */
-const AUTH_KEY = 'ea_auth_hash';
-const AUTH_SESSION = 'ea_auth_session';
-
-async function _hashPassword(pw) {
-  const str = pw + 'ea-sales-salt-2026';
-  if (window.crypto && crypto.subtle) {
-    const data = new TextEncoder().encode(str);
-    const hash = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
-  }
-  // Fallback for environments without crypto.subtle (older iOS, non-HTTPS)
-  let h = 0;
-  for (let i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; }
-  return 'fb' + Math.abs(h).toString(16).padStart(8, '0');
-}
 
 /* Fetch a user_settings row from Supabase (with localStorage fallback) */
 async function _getCloudSetting(key) {
@@ -7929,44 +7934,32 @@ async function _setCloudSetting(key, value) {
 }
 
 async function checkAuthGate() {
-  const pw = document.getElementById('authPassword')?.value;
-  if (!pw) return;
-  const hash = await _hashPassword(pw);
-  // Try cloud first, fallback to localStorage
-  let stored = null;
-  const cloudRow = await _getCloudSetting('password_hash');
-  if (cloudRow && cloudRow.hash) stored = cloudRow.hash;
-  else stored = localStorage.getItem(AUTH_KEY);
-
-  if (hash === stored) {
-    sessionStorage.setItem(AUTH_SESSION, '1');
+  const email = (document.getElementById('authEmail')?.value || '').trim();
+  const pw    = (document.getElementById('authPassword')?.value || '').trim();
+  if (!email || !pw) return;
+  const btn = document.querySelector('.auth-gate-btn');
+  const err = document.getElementById('authError');
+  if (btn) { btn.textContent = 'Signing in…'; btn.disabled = true; }
+  if (err) err.style.display = 'none';
+  try {
+    const { error } = await window._sbAuthClient.auth.signInWithPassword({ email, password: pw });
+    if (error) throw error;
     document.getElementById('authGate').style.display = 'none';
-  } else {
-    const err = document.getElementById('authError');
-    if (err) err.style.display = 'block';
+    if (window._authResolve) { window._authResolve(); window._authResolve = null; }
+  } catch(e) {
+    if (err) { err.textContent = e.message || 'Incorrect email or password'; err.style.display = 'block'; }
     document.getElementById('authPassword').value = '';
+    if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
   }
 }
-function skipAuthGate() {
-  sessionStorage.setItem(AUTH_SESSION, 'skip');
-  document.getElementById('authGate').style.display = 'none';
+
+async function signOut() {
+  if (window._sbAuthClient) await window._sbAuthClient.auth.signOut();
+  window.location.reload();
 }
-async function initAuthGate() {
-  if (sessionStorage.getItem(AUTH_SESSION)) return;
-  // Check cloud password first, then localStorage
-  let hasPassword = false;
-  if (_isCloudMode()) {
-    const cloudRow = await _getCloudSetting('password_hash');
-    if (cloudRow && cloudRow.hash) {
-      hasPassword = true;
-      // Mirror to localStorage for offline use
-      localStorage.setItem(AUTH_KEY, cloudRow.hash);
-    }
-  }
-  if (!hasPassword) hasPassword = !!localStorage.getItem(AUTH_KEY);
-  if (!hasPassword) return;
-  document.getElementById('authGate').style.display = 'flex';
-}
+
+// no-op — auth is now handled in the boot sequence via _sbAuthClient
+function initAuthGate() {}
 
 /* ══════════════════════════════════════════════════
    SETTINGS PAGE — cloud-synced via user_settings table
@@ -8042,14 +8035,14 @@ function renderSettings() {
       </div>
 
       <div class="tab-section" style="margin-top:20px">
-        <h3>🔒 Password Protection</h3>
+        <h3>🔒 Account</h3>
         <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">
-          ${hasPassword ? 'Password is set. The app will ask for it on each new session.' : 'No password set. Anyone with the URL can access the app.'}
+          Signed in as <strong>${esc(window._sbAuthClient?.email || window._sbAuthEmail || '—')}</strong>. Change your password below or sign out.
         </p>
         <div class="form-grid">
           <div class="field">
             <label for="set-pw-new">New Password</label>
-            <input id="set-pw-new" type="password" placeholder="Enter new password" autocomplete="new-password">
+            <input id="set-pw-new" type="password" placeholder="Enter new password (min 8 chars)" autocomplete="new-password">
           </div>
           <div class="field">
             <label for="set-pw-confirm">Confirm Password</label>
@@ -8057,8 +8050,8 @@ function renderSettings() {
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:12px">
-          <button onclick="setPassword()" class="btn btn-primary btn-sm">${hasPassword ? 'Update Password' : 'Set Password'}</button>
-          ${hasPassword ? '<button onclick="removePassword()" class="btn btn-danger btn-sm">Remove Password</button>' : ''}
+          <button onclick="setPassword()" class="btn btn-primary btn-sm">Update Password</button>
+          <button onclick="signOut()" class="btn btn-danger btn-sm">Sign Out</button>
         </div>
       </div>
 
@@ -8311,26 +8304,19 @@ function saveProfile() {
   toast('Profile saved', 'success');
 }
 async function setPassword() {
-  const pw = document.getElementById('set-pw-new')?.value;
-  const confirm = document.getElementById('set-pw-confirm')?.value;
-  if (!pw || pw.length < 4) { toast('Password must be at least 4 characters', 'error'); return; }
+  const pw      = document.getElementById('set-pw-new')?.value || '';
+  const confirm = document.getElementById('set-pw-confirm')?.value || '';
+  if (pw.length < 8) { toast('Password must be at least 8 characters', 'error'); return; }
   if (pw !== confirm) { toast('Passwords do not match', 'error'); return; }
-  const hash = await _hashPassword(pw);
-  localStorage.setItem(AUTH_KEY, hash);
-  await _setCloudSetting('password_hash', { hash });
-  sessionStorage.setItem(AUTH_SESSION, '1');
-  toast(_isCloudMode() ? 'Password saved to cloud' : 'Password set (local only)', 'success');
-  renderSettings();
-}
-async function removePassword() {
-  if (!window.confirm('Remove password protection?')) return;
-  localStorage.removeItem(AUTH_KEY);
-  sessionStorage.removeItem(AUTH_SESSION);
-  if (_isCloudMode()) {
-    try { await DB.client.from('user_settings').delete().eq('key_name', 'password_hash'); } catch(e) {}
+  try {
+    const { error } = await DB.client.auth.updateUser({ password: pw });
+    if (error) throw error;
+    toast('Password updated', 'success');
+    document.getElementById('set-pw-new').value = '';
+    document.getElementById('set-pw-confirm').value = '';
+  } catch(e) {
+    toast('Failed: ' + e.message, 'error');
   }
-  toast('Password removed', 'info');
-  renderSettings();
 }
 function exportLocalData() {
   const data = {};
@@ -9299,7 +9285,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const SB_URL = "https://rsoukgpaqsgsdfvwrceu.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzb3VrZ3BhcXNnc2RmdndyY2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMDYzMTIsImV4cCI6MjA4ODU4MjMxMn0.akKmWJfNncLA-Fxq38gDCXvSuIk_L95zdj1p0_ylqAY";
 
-  initAuthGate();
   _applyProfile();
   initDropdowns();
   document.getElementById('configScreen').style.display = 'flex'; // show loading state
@@ -9360,11 +9345,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (msg.includes('permission denied') || msg.includes('row level security')) {
       return {
         title: 'Database Permission Denied',
-        msg: 'Row Level Security is blocking access. The anon policy needs to be applied.',
+        msg: 'Row Level Security is blocking access. You may need to sign in or re-apply RLS policies.',
         steps: [
-          '1. Go to Supabase → SQL Editor',
-          '2. Run: CREATE POLICY "anon_all" ON opportunities FOR ALL TO anon USING (true) WITH CHECK (true);',
-          '3. Or re-run the full schema_final.sql',
+          '1. Sign out and sign back in — your session may have expired',
+          '2. Go to Supabase → Authentication → Users and confirm your account exists',
+          '3. Go to Supabase → SQL Editor and re-run the RLS section of supabase_schema.sql',
           '4. Click "Retry Connection"'
         ]
       };
@@ -9424,9 +9409,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  /* ── Create one shared client for both auth and data ── */
+  const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
+  window._sbAuthClient = sbClient;
+
+  /* ── Check auth session — show login gate if not signed in ── */
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session) {
+    document.getElementById('configScreen').style.display = 'none';
+    document.getElementById('authGate').style.display = 'flex';
+    document.getElementById('authEmail').focus();
+    await new Promise(resolve => { window._authResolve = resolve; });
+    document.getElementById('configScreen').style.display = 'flex';
+  }
+
+  /* Store email for Settings display, show Sign Out button */
+  const { data: { user } } = await sbClient.auth.getUser();
+  window._sbAuthEmail = user?.email || '';
+  const soBtn = document.getElementById('signOutBtn');
+  if (soBtn) soBtn.style.display = '';
+
   /* ── Connection with retry (handles Supabase cold-start / free-tier sleep) ── */
   const RETRIES = 3;
-  const DELAYS  = [0, 3000, 8000]; // immediate, 3s, 8s
+  const DELAYS  = [0, 3000, 8000];
   let lastErr = null;
 
   for (let attempt = 0; attempt < RETRIES; attempt++) {
@@ -9435,22 +9440,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       const msgEl = document.getElementById('cfg-loading-msg');
       if (msgEl) {
         msgEl.textContent = attempt === 1
-          ? 'Waking up database… (Supabase free tier may take 30s)' 
+          ? 'Waking up database… (Supabase free tier may take 30s)'
           : 'Retrying connection (' + attempt + '/' + (RETRIES-1) + ')…';
       }
       await new Promise(r => setTimeout(r, wait));
     }
 
     try {
-      const client = window.supabase.createClient(SB_URL, SB_KEY);
-      // Use Promise.race with a 15s timeout per attempt
-      const testQuery = client.from('opportunities').select('id').limit(1);
+      // Reuse the already-authenticated client — no second createClient
+      const testQuery = sbClient.from('opportunities').select('id').limit(1);
       const timeout   = new Promise((_, rej) => setTimeout(() => rej(new Error('Request timed out after 15s')), 15000));
       const { data, error } = await Promise.race([testQuery, timeout]);
       if (error) throw Object.assign(new Error(error.message), { code: error.code });
       // ✅ Success
       document.getElementById('configScreen').style.display = 'none';
-      DB.initSupabase(SB_URL, SB_KEY);
+      DB.initSupabase(SB_URL, SB_KEY, sbClient);
       await launchApp(true);
       return;
     } catch(e) {
@@ -9532,7 +9536,41 @@ document.addEventListener('keydown', function(e) {
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
+
+  // Listen for "new version cached" signal from SW
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SW_UPDATED') {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);' +
+        'background:#2A2622;color:#FAF8F5;padding:10px 20px;border-radius:8px;font-size:13px;' +
+        'z-index:99999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+      banner.innerHTML = '⬆ New version available &nbsp;' +
+        '<button onclick="window.location.reload()" style="background:var(--gold);color:#fff;' +
+        'border:none;border-radius:5px;padding:4px 12px;cursor:pointer;font-size:12px">Reload</button>' +
+        '<button onclick="this.parentNode.remove()" style="background:transparent;border:none;' +
+        'color:var(--ink-60);cursor:pointer;font-size:16px;line-height:1">✕</button>';
+      document.body.appendChild(banner);
+    }
+  });
 }
+
+// Wire offline/online banner
+window.addEventListener('offline', () => {
+  const b = document.getElementById('offlineBanner') || (() => {
+    const el = document.createElement('div');
+    el.id = 'offlineBanner';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;background:var(--red);color:#fff;' +
+      'text-align:center;font-size:12px;padding:6px;z-index:99998;font-weight:600';
+    el.textContent = '⚠ You are offline — changes save locally and will sync when reconnected';
+    document.body.prepend(el);
+    return el;
+  })();
+  b.style.display = 'block';
+});
+window.addEventListener('online', () => {
+  const b = document.getElementById('offlineBanner');
+  if (b) b.style.display = 'none';
+});
 </script>
 
 </body>
