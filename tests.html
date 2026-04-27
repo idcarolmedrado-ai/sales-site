@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EA Sales — Unit Tests</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #f5f5f5; color: #222; }
+  header { background: #2A2622; color: #C4933F; padding: 16px 24px; font-size: 18px; font-weight: 700; }
+  #summary { padding: 12px 24px; font-size: 14px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 24px; background: #e8e8e8; font-size: 11px; letter-spacing: .06em; color: #555; }
+  td { padding: 8px 24px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  tr.pass td:first-child { color: #1e7a52; font-weight: 700; }
+  tr.fail td:first-child { color: #c0392b; font-weight: 700; }
+  .suite { padding: 14px 24px 4px; font-size: 12px; font-weight: 800; color: #C4933F;
+           letter-spacing: .08em; border-top: 2px solid #C4933F; margin-top: 8px; }
+  td.detail { font-size: 11px; color: #888; font-family: monospace; }
+</style>
+</head>
+<body>
+<header>EA Sales Intelligence — Unit Tests</header>
+<div id="summary">Running…</div>
+<table>
+  <thead><tr><th width="60">Status</th><th width="280">Test</th><th>Detail</th></tr></thead>
+  <tbody id="results"></tbody>
+</table>
+
+<script>
+// ─── Tiny test runner ────────────────────────────────────────────────────────
+const _results = [];
+let _suite = '';
+
+function suite(name) {
+  _suite = name;
+  const row = document.createElement('tr');
+  row.innerHTML = '<td colspan="3" class="suite">'+name+'</td>';
+  document.getElementById('results').appendChild(row);
+}
+
+function assert(label, actual, expected) {
+  const pass = JSON.stringify(actual) === JSON.stringify(expected);
+  _results.push(pass);
+  const tr = document.createElement('tr');
+  tr.className = pass ? 'pass' : 'fail';
+  const detail = pass
+    ? '<span style="color:#888">'+JSON.stringify(actual)+'</span>'
+    : '<span style="color:#c0392b">got: <strong>'+JSON.stringify(actual)+'</strong> — expected: '+JSON.stringify(expected)+'</span>';
+  tr.innerHTML = '<td>'+(pass?'✓ PASS':'✗ FAIL')+'</td><td>'+label+'</td><td class="detail">'+detail+'</td>';
+  document.getElementById('results').appendChild(tr);
+}
+
+function assertContains(label, haystack, needle) {
+  const pass = String(haystack).includes(needle);
+  _results.push(pass);
+  const tr = document.createElement('tr');
+  tr.className = pass ? 'pass' : 'fail';
+  const detail = pass
+    ? '<span style="color:#888">contains "'+needle+'"</span>'
+    : '<span style="color:#c0392b">missing "'+needle+'" in: '+JSON.stringify(haystack)+'</span>';
+  tr.innerHTML = '<td>'+(pass?'✓ PASS':'✗ FAIL')+'</td><td>'+label+'</td><td class="detail">'+detail+'</td>';
+  document.getElementById('results').appendChild(tr);
+}
+
+function assertNotContains(label, haystack, needle) {
+  const pass = !String(haystack).includes(needle);
+  _results.push(pass);
+  const tr = document.createElement('tr');
+  tr.className = pass ? 'pass' : 'fail';
+  const detail = pass
+    ? '<span style="color:#888">correctly absent: "'+needle+'"</span>'
+    : '<span style="color:#c0392b">should NOT contain "'+needle+'" but does</span>';
+  tr.innerHTML = '<td>'+(pass?'✓ PASS':'✗ FAIL')+'</td><td>'+label+'</td><td class="detail">'+detail+'</td>';
+  document.getElementById('results').appendChild(tr);
+}
+
+// ─── Functions under test (copied verbatim from index.html) ─────────────────
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmt$(n, compact=false) {
+  const num = Number(n) || 0;
+  if (compact && Math.abs(num) >= 1000) {
+    const k = (num / 1000);
+    return '$' + (Number.isInteger(k) ? k : k.toFixed(1)) + 'k';
+  }
+  return num.toLocaleString('en-US', { style:'currency', currency:'USD',
+    minimumFractionDigits:0, maximumFractionDigits:0 });
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  } catch { return dateStr; }
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-'
+    + String(d.getMonth()+1).padStart(2,'0') + '-'
+    + String(d.getDate()).padStart(2,'0');
+}
+
+function localDateStr(d) {
+  const dt = d || new Date();
+  return dt.getFullYear() + '-'
+    + String(dt.getMonth()+1).padStart(2,'0') + '-'
+    + String(dt.getDate()).padStart(2,'0');
+}
+
+function _renderTemplate(t, prospect) {
+  const fn = (prospect && (prospect.firstName || '').trim()) || 'there';
+  const co = (prospect && (prospect.company   || '').trim()) || 'your company';
+  return String(t)
+    .replace(/\{\{firstName\}\}/g, fn)
+    .replace(/\{\{company\}\}/g, co);
+}
+
+// miniTable cell renderer (extracted from the template literal)
+function _cellValue(c) {
+  return typeof c === 'number' ? c : esc(String(c));
+}
+
+// enrollProspect guard logic (extracted from the function)
+function _enrollGuard(prospect) {
+  if (!prospect)           return 'not-found';
+  if (!prospect.persona)   return 'no-persona';
+  return 'ok';
+}
+
+// ─── Test suites ─────────────────────────────────────────────────────────────
+
+suite('esc() — XSS escaping');
+assert('null → empty string',            esc(null),      '');
+assert('undefined → empty string',       esc(undefined), '');
+assert('plain text unchanged',           esc('hello'),   'hello');
+assert('< escaped',                      esc('<'),        '&lt;');
+assert('> escaped',                      esc('>'),        '&gt;');
+assert('& escaped',                      esc('&'),        '&amp;');
+assert('" escaped',                      esc('"'),        '&quot;');
+assert('script tag neutralised',
+  esc('<script>alert(1)</script>'),
+  '&lt;script&gt;alert(1)&lt;/script&gt;');
+assert('number coerced to string',       esc(42),        '42');
+assert('attribute injection neutralised',
+  esc('" onmouseover="evil()'),
+  '&quot; onmouseover=&quot;evil()');
+assertNotContains('no raw < in output',  esc('<img src=x>'), '<');
+assertNotContains('no raw > in output',  esc('<img src=x>'), '>');
+assertNotContains('no raw " in output',  esc('"quoted"'),    '"');
+
+suite('fmt$() — currency');
+assert('zero',              fmt$(0),         '$0');
+assert('integer',           fmt$(1500),      '$1,500');
+assert('negative',          fmt$(-250),      '-$250');
+assert('null → 0',          fmt$(null),      '$0');
+assert('compact 1000',      fmt$(1000,true), '$1k');
+assert('compact 1500',      fmt$(1500,true), '$1.5k');
+assert('compact 2000',      fmt$(2000,true), '$2k');
+assert('compact <1000',     fmt$(500, true), '$500');
+
+suite('fmtDate() — date display');
+assert('empty → dash',         fmtDate(''),          '—');
+assert('null → dash',          fmtDate(null),        '—');
+assert('valid ISO date',       fmtDate('2025-06-15'), 'Jun 15');
+assert('Jan 1st',              fmtDate('2025-01-01'), 'Jan 1');
+assert('Dec 31st',             fmtDate('2025-12-31'), 'Dec 31');
+
+suite('todayStr() / localDateStr()');
+const today = todayStr();
+assert('format is YYYY-MM-DD (length 10)',    today.length,   10);
+assert('format has dashes at pos 4 and 7',   today[4]+today[7], '--');
+assert('year is 4 digits',                   today.slice(0,4).length, 4);
+const fixed = localDateStr(new Date(2025, 5, 3)); // June 3 2025
+assert('localDateStr fixed date',            fixed, '2025-06-03');
+
+suite('_renderTemplate() — cadence templates');
+const p = { firstName: 'Carol', company: 'EA Homes' };
+assertContains('firstName substituted',
+  _renderTemplate('Hi {{firstName}}, welcome.', p), 'Carol');
+assertNotContains('placeholder removed',
+  _renderTemplate('Hi {{firstName}}.', p), '{{firstName}}');
+assertContains('company substituted',
+  _renderTemplate('From {{company}}', p), 'EA Homes');
+assertContains('fallback firstName when missing',
+  _renderTemplate('Hi {{firstName}}', {}), 'there');
+assertContains('fallback company when missing',
+  _renderTemplate('At {{company}}', {}), 'your company');
+assertContains('both placeholders in one string',
+  _renderTemplate('Hi {{firstName}} from {{company}}', p), 'Carol');
+assertContains('both placeholders in one string',
+  _renderTemplate('Hi {{firstName}} from {{company}}', p), 'EA Homes');
+assert('null prospect uses fallbacks',
+  _renderTemplate('{{firstName}} at {{company}}', null),
+  'there at your company');
+
+suite('miniTable cell renderer — _cellValue()');
+assert('number passes through unchanged',  _cellValue(42),      42);
+assert('zero passes through unchanged',    _cellValue(0),       0);
+assert('negative number unchanged',        _cellValue(-5),      -5);
+assert('string escaped',                   _cellValue('hello'), 'hello');
+assertNotContains('XSS in string cell blocked',
+  String(_cellValue('<b>bold</b>')), '<b>');
+assert('dollar string escaped (not number)',
+  _cellValue('$1,200'), '$1,200');
+assert('null string → empty',              _cellValue(''),      '');
+
+suite('enrollProspect() guards');
+assert('no prospect → not-found',          _enrollGuard(null),               'not-found');
+assert('prospect without persona → error', _enrollGuard({id:'1'}),           'no-persona');
+assert('prospect with persona → ok',       _enrollGuard({id:'1',persona:'A'}),'ok');
+assert('empty persona string → error',     _enrollGuard({id:'1',persona:''}), 'no-persona');
+
+// ─── Summary ─────────────────────────────────────────────────────────────────
+const passed = _results.filter(Boolean).length;
+const total  = _results.length;
+const pct    = Math.round(passed / total * 100);
+const el     = document.getElementById('summary');
+el.style.color    = passed === total ? '#1e7a52' : '#c0392b';
+el.style.background = passed === total ? 'rgba(42,139,94,.08)' : 'rgba(192,57,43,.08)';
+el.style.padding  = '10px 24px';
+el.textContent    = passed === total
+  ? `✓ All ${total} tests passed`
+  : `✗ ${total - passed} of ${total} tests FAILED`;
+</script>
+</body>
+</html>
