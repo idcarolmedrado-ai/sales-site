@@ -3153,10 +3153,10 @@ function getSentMails()         { try{return JSON.parse(localStorage.getItem('ea
 function saveSentMails(a)       { localStorage.setItem('ea_mail_sent',JSON.stringify(a)); _setCloudSetting && _setCloudSetting('sent_mails', a); }
 function clearSentMails()       { if(!confirm('Clear sent list?')) return; localStorage.removeItem('ea_mail_sent'); _setCloudSetting && _setCloudSetting('sent_mails', []); renderMailing(); }
 async function markMailSent(oppId) {
-  var opps=await DB.getAll(), o=opps.find(function(x){return x.id===oppId;});
+  var opps=await DB.getAll(), o=opps.find(function(x){return String(x.id)===String(oppId);});
   if (!o) { toast('Contact not found','error'); return; }
   var sent=getSentMails();
-  if (sent.find(function(s){return s.oppId===oppId;})) { toast('Already marked sent','error'); return; }
+  if (sent.find(function(s){return String(s.oppId)===String(oppId);})) { toast('Already marked sent','error'); return; }
   var em=BL.generatePersuasionEmail(o);
   sent.push({oppId:oppId,name:(o.firstName+' '+o.lastName).trim(),email:o.email||'',subject:em.subject,sentAt:new Date().toISOString()});
   saveSentMails(sent); toast('Marked as sent','success'); renderMailing();
@@ -4846,15 +4846,15 @@ async function renderMailing() {
      <button class="filter-chip ${state.mailFilter==='sold'?'active':''}" onclick="setMailFilter('sold')">Sold (${all.filter(o=>o.saleMade==='Yes').length})</button>
      <button class="filter-chip ${state.mailFilter==='nurture'?'active':''}" onclick="setMailFilter('nurture')">Nurture (${all.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)<50).length})</button>`;
 
-  const _sentIds = new Set(getSentMails().map(function(s){return s.oppId;}));
-  let list = all.filter(function(o){return !_sentIds.has(o.id);});
+  const _sentIds = new Set(getSentMails().map(function(s){return String(s.oppId);}));
+  let list = all.filter(function(o){return !_sentIds.has(String(o.id));});
   if (state.mailFilter==='overdue') list = list.filter(o=>BL.isOverdue(o));
   if (state.mailFilter==='high')    list = list.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)>=75);
   if (state.mailFilter==='sold')    list = list.filter(o=>o.saleMade==='Yes');
   if (state.mailFilter==='nurture') list = list.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)<50);
 
   const grid = document.getElementById('mailingGrid');
-  if (!list.length) { grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon"></div><p>No contacts in this segment</p></div>'; return; }
+  if (!list.length) { grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon"></div><p>No contacts in this segment</p></div>' + _buildSentBox(); return; }
 
   grid.innerHTML = list.map(o=>{
     const email  = BL.generatePersuasionEmail(o);
