@@ -10330,6 +10330,27 @@ function _renderProspectFind() {
     ? FS.results.filter(r => (r.rating || 0) >= minR)
     : FS.results;
   const unadded = filtered.filter(r => !r._added);
+  const added   = filtered.filter(r => r._added);
+
+  const addedSection = added.length === 0 ? '' :
+    '<div style="margin-top:10px;background:#fff;border:1px solid rgba(42,139,94,.35);border-radius:var(--r);overflow:auto">' +
+      '<div style="padding:10px 14px;border-bottom:1px solid rgba(42,139,94,.2);font-size:12px;color:#1e7a52;font-weight:700;background:rgba(42,139,94,.05);display:flex;align-items:center;gap:8px">' +
+        '✓ Added ('+added.length+')' +
+        '<span style="font-weight:400;color:var(--ink-40);font-size:11px">— enroll now or find email first</span>' +
+      '</div>' +
+      '<table class="contact-table"><thead><tr><th>Business</th><th>Phone</th><th>Website</th><th></th></tr></thead><tbody>' +
+      added.map(r =>
+        '<tr>' +
+          '<td><strong>'+esc(r.name)+'</strong><div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address||'')+'</div></td>' +
+          '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+          '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/,'').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+          '<td style="white-space:nowrap">' +
+            (r._prospectId ? '<button onclick="enrollProspect(\''+esc(r._prospectId)+'\')" style="padding:3px 10px;background:rgba(196,147,63,.15);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:11px;font-weight:700;cursor:pointer">Enroll →</button>' : '') +
+          '</td>' +
+        '</tr>'
+      ).join('') +
+      '</tbody></table>' +
+    '</div>';
 
   const resultsHTML = FS.loading
     ? '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Searching Google Places…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Fetching all available pages — this may take a few seconds.</div></div>'
@@ -10337,28 +10358,31 @@ function _renderProspectFind() {
       ? (FS.lastQuery
           ? '<div class="empty-state" style="padding:40px"><div class="icon">🔍</div><p>No results for "'+esc(FS.lastQuery)+'". Try a different state or query.</p></div>'
           : '')
-      : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
-        '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90);display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
-          '<div><strong>'+unadded.length+'</strong> remaining'+(filtered.length>unadded.length?' · <span style="color:#2A8B5E;font-weight:700">'+(filtered.length-unadded.length)+' added</span>':'')+' · '+FS.pagesLoaded+' page'+(FS.pagesLoaded===1?'':'s')+' loaded</div>' +
-          (unadded.length > 0 ? '<button onclick="_addAllPlacesResults()" class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px">+ Add all ('+unadded.length+')</button>' : '<span style="color:#2A8B5E;font-size:11px;font-weight:700">All added ✓</span>') +
-        '</div>' +
-        (unadded.length === 0
-          ? '<div style="padding:24px;text-align:center;font-size:12px;color:var(--ink-40)">All results added — check Contacts to enroll them.</div>'
-          : '<table class="contact-table"><thead><tr><th>Business</th><th>State</th><th>Phone</th><th>Website</th><th>Rating</th><th></th></tr></thead><tbody>' +
-            unadded.map(r => {
-              const realIdx = FS.results.indexOf(r);
-              return '<tr>' +
-                '<td><strong>'+esc(r.name)+'</strong>' +
-                  '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address || '')+'</div>' +
-                '</td>' +
-                '<td><span style="font-size:11px;font-weight:700;color:#4472CA">'+esc(r.state||'—')+'</span></td>' +
-                '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-                '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-                '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-                '<td><button onclick="_addPlacesResult('+realIdx+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>' +
-              '</tr>';
-            }).join('') +
-          '</tbody></table>') +
+      : '<div>' +
+          '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
+            '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90);display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+              '<div><strong>'+unadded.length+'</strong> remaining'+(added.length?' · <span style="color:#2A8B5E;font-weight:700">'+added.length+' added</span>':'')+' · '+FS.pagesLoaded+' page'+(FS.pagesLoaded===1?'':'s')+' loaded</div>' +
+              (unadded.length > 0 ? '<button onclick="_addAllPlacesResults()" class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px">+ Add all ('+unadded.length+')</button>' : '<span style="color:#2A8B5E;font-size:11px;font-weight:700">All added ✓</span>') +
+            '</div>' +
+            (unadded.length === 0
+              ? '<div style="padding:20px;text-align:center;font-size:12px;color:var(--ink-40)">All results added — enroll them below.</div>'
+              : '<table class="contact-table"><thead><tr><th>Business</th><th>State</th><th>Phone</th><th>Website</th><th>Rating</th><th></th></tr></thead><tbody>' +
+                unadded.map(r => {
+                  const realIdx = FS.results.indexOf(r);
+                  return '<tr>' +
+                    '<td><strong>'+esc(r.name)+'</strong>' +
+                      '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address || '')+'</div>' +
+                    '</td>' +
+                    '<td><span style="font-size:11px;font-weight:700;color:#4472CA">'+esc(r.state||'—')+'</span></td>' +
+                    '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                    '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                    '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                    '<td><button onclick="_addPlacesResult('+realIdx+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>' +
+                  '</tr>';
+                }).join('') +
+              '</tbody></table>') +
+          '</div>' +
+          addedSection +
         '</div>';
 
   body.innerHTML =
@@ -10444,7 +10468,7 @@ async function _addPlacesResult(idx) {
   }
   await Prospects.save(contact);
   FS.results[idx] = { ...r, _added: true, _prospectId: contact.id };
-  toast('Added ' + r.name + ' — find email next, then enroll', 'success');
+  toast('Added ' + r.name + ' — enroll below or find email first', 'success');
   _renderProspectFind();
 }
 
