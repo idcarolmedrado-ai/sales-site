@@ -10320,66 +10320,117 @@ function _renderProspectFind() {
     '<option value="'+v+'"'+(String(FS.minRating||'')===v?' selected':'')+'>'+
     (v ? '⭐ '+v+'+ stars' : 'Any rating')+'</option>').join('');
 
-  // Apply rating filter to results
-  const minR = parseFloat(FS.minRating) || 0;
-  const filtered = minR > 0
-    ? FS.results.filter(r => (r.rating || 0) >= minR)
-    : FS.results;
-  const unadded = filtered.filter(r => !r._added);
+  const isHB  = FS.persona === 'homebuyers';
+  const minR  = isHB ? 0 : (parseFloat(FS.minRating) || 0);
+  const filtered = minR > 0 ? FS.results.filter(r => (r.rating || 0) >= minR) : FS.results;
+  const unadded  = filtered.filter(r => !r._added);
+  const se    = FS.searchError || null;
 
-  const resultsHTML = FS.loading
-    ? '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Searching Google Places…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Fetching all available pages — this may take a few seconds.</div></div>'
-    : FS.results.length === 0
-      ? (FS.lastQuery
-          ? '<div class="empty-state" style="padding:40px"><div class="icon">🔍</div><p>No results for "'+esc(FS.lastQuery)+'". Try a different state or query.</p></div>'
-          : '')
-      : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
-        '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90);display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
-          '<div><strong>'+unadded.length+'</strong> remaining'+(filtered.length>unadded.length?' · <span style="color:#2A8B5E;font-weight:700">'+(filtered.length-unadded.length)+' added</span>':'')+' · '+FS.pagesLoaded+' page'+(FS.pagesLoaded===1?'':'s')+' loaded</div>' +
-          (unadded.length > 0 ? '<button onclick="_addAllPlacesResults()" class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px">+ Add all ('+unadded.length+')</button>' : '<span style="color:#2A8B5E;font-size:11px;font-weight:700">All added ✓</span>') +
+  let resultsHTML;
+  if (isHB) {
+    resultsHTML = FS.loading
+      ? '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Searching Realtor.com…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Fetching homes sold in the last 30 days.</div></div>'
+      : se
+        ? '<div style="background:#fff8f0;border:1px solid #f0c060;border-radius:var(--r);padding:20px 24px;margin-top:4px">' +
+            '<div style="font-size:13px;font-weight:700;color:#7a4400;margin-bottom:6px">⚠️ '+esc(se.error||'Could not retrieve data')+'</div>' +
+            (se.tip ? '<div style="font-size:12px;color:var(--ink-30);margin-bottom:10px">'+esc(se.tip)+'</div>' : '') +
+            (se.manualUrl ? '<a href="'+esc(se.manualUrl)+'" target="_blank" class="btn btn-primary btn-sm" style="font-size:12px">Open Realtor.com ↗</a>' : '') +
+          '</div>'
+        : FS.results.length === 0
+          ? (FS.lastQuery
+              ? '<div class="empty-state" style="padding:40px"><div class="icon">🏠</div><p>No recently sold homes found in <strong>'+esc(FS.lastQuery)+'</strong>. Try a nearby larger city.</p></div>'
+              : '<div class="empty-state" style="padding:40px"><div class="icon">🏠</div><p>Enter a city and state to find homes sold in the last 30 days.</p></div>')
+          : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
+            '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90);display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+              '<div><strong>'+unadded.length+'</strong> remaining'+(filtered.length>unadded.length?' · <span style="color:#2A8B5E;font-weight:700">'+(filtered.length-unadded.length)+' added</span>':'')+' · '+FS.pagesLoaded+' page'+(FS.pagesLoaded===1?'':'s')+' loaded</div>' +
+              (unadded.length > 0 ? '<button onclick="_addAllHomebuyerResults()" class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px">+ Add all ('+unadded.length+')</button>' : '<span style="color:#2A8B5E;font-size:11px;font-weight:700">All added ✓</span>') +
+            '</div>' +
+            (unadded.length === 0
+              ? '<div style="padding:24px;text-align:center;font-size:12px;color:var(--ink-40)">All added — direct mail or skip-trace for contact info.</div>'
+              : '<table class="contact-table"><thead><tr><th>Address</th><th>Sale Price</th><th>Sold Date</th><th>Details</th><th></th></tr></thead><tbody>' +
+                unadded.map(r => {
+                  const realIdx = FS.results.indexOf(r);
+                  const priceStr = r.price ? '$'+Number(r.price).toLocaleString() : '—';
+                  const det = [r.beds?r.beds+'bd':'',r.baths?r.baths+'ba':'',r.sqft?Number(r.sqft).toLocaleString()+'sqft':''].filter(Boolean).join(' / ')||'—';
+                  return '<tr>'+
+                    '<td><strong style="font-size:12px">'+esc(r.address)+'</strong>'+(r.url?'<div style="margin-top:2px"><a href="'+esc(r.url)+'" target="_blank" style="font-size:10px;color:var(--gold)">View ↗</a></div>':'')+'</td>'+
+                    '<td><span style="font-size:11px;font-weight:700;color:#2A8B5E">'+priceStr+'</span></td>'+
+                    '<td><span style="font-size:11px">'+esc(r.soldDate||'—')+'</span></td>'+
+                    '<td><span style="font-size:11px;color:var(--ink-40)">'+esc(det)+'</span></td>'+
+                    '<td><button onclick="_addHomebuyerResult('+realIdx+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>'+
+                  '</tr>';
+                }).join('') +
+              '</tbody></table>') +
+            '</div>';
+  } else {
+    resultsHTML = FS.loading
+      ? '<div style="padding:40px;text-align:center;color:var(--gold)"><div style="font-size:14px;font-weight:700">Searching Google Places…</div><div style="font-size:11px;color:var(--ink-50);margin-top:6px">Fetching all available pages — this may take a few seconds.</div></div>'
+      : FS.results.length === 0
+        ? (FS.lastQuery
+            ? '<div class="empty-state" style="padding:40px"><div class="icon">🔍</div><p>No results for "'+esc(FS.lastQuery)+'". Try a different state or query.</p></div>'
+            : '')
+        : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
+          '<div style="padding:10px 14px;border-bottom:1px solid var(--ink-70);font-size:12px;color:var(--ink-30);background:var(--ink-90);display:flex;align-items:center;gap:12px;flex-wrap:wrap">' +
+            '<div><strong>'+unadded.length+'</strong> remaining'+(filtered.length>unadded.length?' · <span style="color:#2A8B5E;font-weight:700">'+(filtered.length-unadded.length)+' added</span>':'')+' · '+FS.pagesLoaded+' page'+(FS.pagesLoaded===1?'':'s')+' loaded</div>' +
+            (unadded.length > 0 ? '<button onclick="_addAllPlacesResults()" class="btn btn-primary btn-sm" style="padding:4px 12px;font-size:11px">+ Add all ('+unadded.length+')</button>' : '<span style="color:#2A8B5E;font-size:11px;font-weight:700">All added ✓</span>') +
+          '</div>' +
+          (unadded.length === 0
+            ? '<div style="padding:24px;text-align:center;font-size:12px;color:var(--ink-40)">All results added — check Contacts to enroll them.</div>'
+            : '<table class="contact-table"><thead><tr><th>Business</th><th>State</th><th>Phone</th><th>Website</th><th>Rating</th><th></th></tr></thead><tbody>' +
+              unadded.map(r => {
+                const realIdx = FS.results.indexOf(r);
+                return '<tr>' +
+                  '<td><strong>'+esc(r.name)+'</strong>' +
+                    '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address || '')+'</div>' +
+                  '</td>' +
+                  '<td><span style="font-size:11px;font-weight:700;color:#4472CA">'+esc(r.state||'—')+'</span></td>' +
+                  '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                  '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                  '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
+                  '<td><button onclick="_addPlacesResult('+realIdx+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>' +
+                '</tr>';
+              }).join('') +
+            '</tbody></table>') +
+          '</div>';
+  }
+
+  const formHTML = isHB
+    ? '<div class="persona-card" style="margin-bottom:14px">' +
+        '<h4>🏠 Find New Homeowners — Recently Sold Homes</h4>' +
+        '<div class="subtitle">Finds homes sold in the last 30 days via Realtor.com. Returns property address, sale price, and details — <strong>no buyer contact info</strong> (public record limitation). Use for <strong>direct mail</strong> or export addresses to a skip-trace service (Skip Force, BatchLeads) to find contact information.</div>' +
+        '<div style="background:#fffbea;border:1px solid #f0d060;border-radius:6px;padding:9px 13px;font-size:11px;color:#6b5000;margin-bottom:10px">' +
+          '<strong>Contact info not available from public records.</strong> After adding: (1) send physical mail to the address, (2) export CSV → upload to Skip Force or BatchLeads for phone/email, or (3) target via Facebook Custom Audiences.' +
         '</div>' +
-        (unadded.length === 0
-          ? '<div style="padding:24px;text-align:center;font-size:12px;color:var(--ink-40)">All results added — check Contacts to enroll them.</div>'
-          : '<table class="contact-table"><thead><tr><th>Business</th><th>State</th><th>Phone</th><th>Website</th><th>Rating</th><th></th></tr></thead><tbody>' +
-            unadded.map(r => {
-              const realIdx = FS.results.indexOf(r);
-              return '<tr>' +
-                '<td><strong>'+esc(r.name)+'</strong>' +
-                  '<div style="font-size:10px;color:var(--ink-50);margin-top:2px">'+esc(r.address || '')+'</div>' +
-                '</td>' +
-                '<td><span style="font-size:11px;font-weight:700;color:#4472CA">'+esc(r.state||'—')+'</span></td>' +
-                '<td>'+(r.phone ? '<span style="font-size:11px">'+esc(r.phone)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-                '<td>'+(r.website ? '<a href="'+esc(r.website)+'" target="_blank" style="color:var(--gold);font-size:11px;text-decoration:none">'+esc(r.website.replace(/^https?:\/\//,'').replace(/\/$/, '').slice(0,30))+'</a>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-                '<td>'+(r.rating ? '<span style="font-size:11px">⭐ '+r.rating+' <span style="color:var(--ink-50)">('+r.userRatingCount+')</span></span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
-                '<td><button onclick="_addPlacesResult('+realIdx+')" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">+ Add</button></td>' +
-              '</tr>';
-            }).join('') +
-          '</tbody></table>') +
-        '</div>';
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:10px">' +
+          '<select id="flPersona" onchange="window._findLeadsState.persona=this.value;window._findLeadsState.results=[];window._findLeadsState.searchError=null;_renderProspectFind()" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+personaPicker+'</select>' +
+          '<input id="flCityQ" placeholder="City (required, e.g. Denver)" value="'+esc(FS.cityQ||'')+'" style="padding:8px;border:2px solid var(--gold);border-radius:6px;font-size:13px">' +
+          '<select id="flState" onchange="window._findLeadsState.state=this.value" style="padding:8px;border:2px solid var(--gold);border-radius:6px;font-size:13px">'+stateOpts+'</select>' +
+          '<button class="btn btn-primary btn-sm" onclick="_findLeadsRun()" '+(FS.loading?'disabled':'')+'>'+(FS.loading?'Searching…':'🏠 Search Recent Sales')+'</button>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--ink-40);line-height:1.5">Searches Realtor.com recently sold. Availability varies by city — larger metro areas return more data. Fixed at last 30 days.</div>' +
+      '</div>'
+    : '<div class="persona-card" style="margin-bottom:14px">' +
+        '<h4>🔍 Find Leads — Google Places</h4>' +
+        '<div class="subtitle">Lead discovery via Google Places — builders, realtors, landscapers, architects, stagers, developers, property managers, hotels, vacation rentals, and new home communities. Returns business name + phone + website + state. <strong>Does not return email</strong> — use <strong>🔍 Find Email</strong> on each contact after adding.</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px">' +
+          '<select id="flPersona" onchange="window._findLeadsState.persona=this.value;window._findLeadsState.results=[];_renderProspectFind()" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+personaPicker+'</select>' +
+          '<select id="flState" onchange="window._findLeadsState.state=this.value" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+stateOpts+'</select>' +
+          '<input id="flCityQ" placeholder="City (optional, e.g. Aspen)" value="'+esc(FS.cityQ||'')+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+          '<input id="flQuery" placeholder="Refinement (e.g. custom luxury)" value="'+esc(FS.query)+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
+          '<select id="flMinRating" onchange="window._findLeadsState.minRating=this.value;_renderProspectFind()" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+ratingOpts+'</select>' +
+          '<button class="btn btn-primary btn-sm" onclick="_findLeadsRun()" '+(FS.loading?'disabled':'')+'>'+(FS.loading?'Searching…':'🔍 Search')+'</button>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--ink-40);line-height:1.5">Fetches all available pages automatically (up to ~60 results per search). Rating filter applies to results already loaded — no extra API call.</div>' +
+      '</div>';
 
-  body.innerHTML =
-    '<div class="persona-card" style="margin-bottom:14px">' +
-      '<h4>🔍 Find Leads — Google Places</h4>' +
-      '<div class="subtitle">Lead discovery via Google Places — builders, realtors, landscapers, architects, stagers, developers, property managers, hotels, vacation rentals, and new home communities. Returns business name + phone + website + state. <strong>Does not return email</strong> — use <strong>🔍 Find Email</strong> on each contact after adding.' + (FS.persona === 'homebuyers' ? ' <strong>Note:</strong> For individual homebuyers, import a CSV exported from Zillow, Redfin, or county public records instead.' : '') + '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px">' +
-        '<select id="flPersona" onchange="window._findLeadsState.persona=this.value" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+personaPicker+'</select>' +
-        '<select id="flState" onchange="window._findLeadsState.state=this.value" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+stateOpts+'</select>' +
-        '<input id="flCityQ" placeholder="City (optional, e.g. Aspen)" value="'+esc(FS.cityQ||'')+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
-        '<input id="flQuery" placeholder="Refinement (e.g. custom luxury)" value="'+esc(FS.query)+'" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">' +
-        '<select id="flMinRating" onchange="window._findLeadsState.minRating=this.value;_renderProspectFind()" style="padding:8px;border:1px solid var(--ink-60);border-radius:6px;font-size:13px">'+ratingOpts+'</select>' +
-        '<button class="btn btn-primary btn-sm" onclick="_findLeadsRun()" '+(FS.loading?'disabled':'')+'>'+(FS.loading?'Searching…':'🔍 Search')+'</button>' +
-      '</div>' +
-      '<div style="font-size:11px;color:var(--ink-40);line-height:1.5">' +
-        'Fetches all available pages automatically (up to ~60 results per search). Rating filter applies to results already loaded — no extra API call.' +
-      '</div>' +
-    '</div>' +
-    resultsHTML;
+  body.innerHTML = formHTML + resultsHTML;
 }
 
 async function _findLeadsRun() {
   const FS = window._findLeadsState;
   if (!_isCloudMode()) { toast('Cloud mode required — Edge Function lives in Supabase', 'error'); return; }
   FS.persona = (document.getElementById('flPersona')||{}).value || FS.persona;
+  if (FS.persona === 'homebuyers') return _findRecentlySoldRun();
   FS.query   = (document.getElementById('flQuery')||{}).value   || '';
   FS.state   = (document.getElementById('flState')||{}).value   || FS.state || '';
   FS.cityQ   = (document.getElementById('flCityQ')||{}).value   || FS.cityQ || '';
@@ -10475,6 +10526,105 @@ async function _addAllPlacesResults() {
     added++;
   }
   toast('Added ' + added + ' leads — set emails then enroll', 'success');
+  _renderProspectFind();
+}
+
+async function _findRecentlySoldRun() {
+  const FS = window._findLeadsState;
+  if (!_isCloudMode()) { toast('Cloud mode required — Edge Function lives in Supabase', 'error'); return; }
+  FS.cityQ  = (document.getElementById('flCityQ')||{}).value || FS.cityQ || '';
+  FS.state  = (document.getElementById('flState')||{}).value || FS.state || '';
+  if (!FS.cityQ) { toast('City is required for homeowner search', 'error'); return; }
+  if (!FS.state) { toast('State is required for homeowner search', 'error'); return; }
+  FS.results = []; FS.pagesLoaded = 0; FS.loading = true; FS.searchError = null; FS.lastQuery = '';
+  _renderProspectFind();
+  try {
+    const { data, error } = await DB.client.functions.invoke('recent-home-sales', {
+      body: { city: FS.cityQ, state: FS.state, days: 30 },
+    });
+    if (error) throw new Error(error.message || 'Edge function error');
+    FS.lastQuery = FS.cityQ + ', ' + FS.state;
+    if (!data.ok) {
+      FS.searchError = { error: data.error, manualUrl: data.manualUrl, tip: data.tip };
+    } else {
+      FS.results = data.results || [];
+      FS.pagesLoaded = 1;
+      toast('Found ' + FS.results.length + ' recently sold propert' + (FS.results.length === 1 ? 'y' : 'ies'), 'success');
+    }
+  } catch(e) {
+    console.error('recent-home-sales error:', e);
+    FS.searchError = { error: e.message || 'Search failed', manualUrl: null, tip: 'Check the browser console for details.' };
+    FS.lastQuery = FS.cityQ + ', ' + FS.state;
+  } finally {
+    FS.loading = false;
+    _renderProspectFind();
+  }
+}
+
+async function _addHomebuyerResult(idx) {
+  const FS = window._findLeadsState;
+  const r = FS.results[idx]; if (!r) return;
+  const priceStr = r.price ? '$' + Number(r.price).toLocaleString() : '';
+  const det = [r.beds?r.beds+'bd':'',r.baths?r.baths+'ba':'',r.sqft?Number(r.sqft).toLocaleString()+'sqft':''].filter(Boolean).join(' / ');
+  const contact = {
+    firstName: 'New', lastName: 'Homeowner',
+    company:   r.address,
+    email: '', phone: '',
+    website:   r.url || '',
+    persona:   'homebuyers',
+    state:     FS.state || '',
+    region:    FS.state ? _stateRegion(FS.state) : '',
+    source:    'Realtor.com Recently Sold',
+    notes:     [
+      'Address: ' + r.address,
+      priceStr    ? 'Sale price: ' + priceStr : '',
+      r.soldDate  ? 'Sold: ' + r.soldDate    : '',
+      det         ? 'Details: ' + det        : '',
+      r.url       ? 'Listing: ' + r.url      : '',
+      'Next step: direct mail or skip-trace for contact info.',
+    ].filter(Boolean).join('\n'),
+    status: 'active', cadenceStep: 0,
+  };
+  await Prospects.save(contact);
+  FS.results[idx] = { ...r, _added: true };
+  toast('Added — send direct mail or skip-trace for contact info', 'success');
+  _renderProspectFind();
+}
+
+async function _addAllHomebuyerResults() {
+  const FS = window._findLeadsState;
+  const unadded = FS.results.filter(r => !r._added);
+  if (!unadded.length) return;
+  if (!confirm('Add all ' + unadded.length + ' homeowner leads to Contacts?')) return;
+  let added = 0;
+  for (const r of unadded) {
+    const idx = FS.results.indexOf(r); if (idx < 0) continue;
+    const priceStr = r.price ? '$' + Number(r.price).toLocaleString() : '';
+    const det = [r.beds?r.beds+'bd':'',r.baths?r.baths+'ba':'',r.sqft?Number(r.sqft).toLocaleString()+'sqft':''].filter(Boolean).join(' / ');
+    const contact = {
+      firstName: 'New', lastName: 'Homeowner',
+      company:   r.address,
+      email: '', phone: '',
+      website:   r.url || '',
+      persona:   'homebuyers',
+      state:     FS.state || '',
+      region:    FS.state ? _stateRegion(FS.state) : '',
+      source:    'Realtor.com Recently Sold',
+      notes:     [
+        'Address: ' + r.address,
+        priceStr   ? 'Sale price: ' + priceStr : '',
+        r.soldDate ? 'Sold: ' + r.soldDate    : '',
+        det        ? 'Details: ' + det        : '',
+        r.url      ? 'Listing: ' + r.url      : '',
+        'Next step: direct mail or skip-trace for contact info.',
+      ].filter(Boolean).join('\n'),
+      status: 'active', cadenceStep: 0,
+    };
+    await Prospects.save(contact);
+    FS.results[idx] = { ...r, _added: true };
+    added++;
+  }
+  toast('Added ' + added + ' homeowner leads', 'success');
   _renderProspectFind();
 }
 
