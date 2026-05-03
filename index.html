@@ -1162,7 +1162,16 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
   <div id="yoyComparison"></div>
 
   <!-- Insights -->
-  <div class="label" style="padding:0 24px;max-width:1320px;margin:0 auto 10px"><span data-i18n="insights_title">💡 Insights & Recommendations</span></div>
+  <div style="padding:0 24px;max-width:1320px;margin:0 auto 10px;display:flex;align-items:center;justify-content:space-between">
+    <span class="label" data-i18n="insights_title">💡 Insights & Recommendations</span>
+    <button id="insightsRefreshBtn" onclick="refreshInsights()"
+      title="Refresh insights and restore dismissed cards"
+      style="background:var(--ink-75);border:1px solid var(--ink-60);color:var(--gold);border-radius:8px;
+             padding:5px 13px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.05em;
+             display:flex;align-items:center;gap:5px">
+      🔄 Refresh
+    </button>
+  </div>
   <div class="insights-grid" id="insightsGrid"></div>
 
   <div class="dash-grid container">
@@ -2072,8 +2081,9 @@ const LOOKUP = {
    Backwards compatible with legacy 'Sale Made' / 'Canceled' rows. */
 function isClosedWon(opp) {
   if (!opp) return false;
-  return opp.stage === 'Closed Won' || opp.stage === 'Sale Made'
-    || (opp.saleMade === 'Yes' && (opp.stage === 'Closed Won' || opp.stage === 'Sale Made'));
+  // 'Sale Made' = legacy stage name. saleMade === 'Yes' covers records that were marked
+  // sold without the stage being updated (import/migration artefacts).
+  return opp.stage === 'Closed Won' || opp.stage === 'Sale Made' || opp.saleMade === 'Yes';
 }
 function isClosedLost(opp) {
   if (!opp) return false;
@@ -2189,14 +2199,18 @@ const BL = {
 
   /* Month auto — from home_call_date or follow_up_date */
   getMonthAuto(opp) {
-    // For sold opps: use close/sale date for correct month assignment
-    // For pipeline opps: use homeCallDate or followUpDate for tracking
-    const src = opp.saleMade === 'Yes'
-      ? (opp.closeDate || opp.saleDate || opp.homeCallDate || opp.followUpDate || opp.createdAt || '')
+    // Sold opps: actual saleDate takes priority — closeDate is the *expected* close date
+    // (set before the sale), so using it puts deals in the wrong month when the deal
+    // closes later than forecast.  saleDate is auto-populated on save when Closed Won.
+    // Pipeline opps: use homeCallDate → followUpDate → createdAt for tracking.
+    const isSold = opp.saleMade === 'Yes' || opp.stage === 'Closed Won' || opp.stage === 'Sale Made';
+    const src = isSold
+      ? (opp.saleDate || opp.closeDate || opp.homeCallDate || opp.followUpDate || opp.createdAt || '')
       : (opp.homeCallDate || opp.followUpDate || opp.createdAt || '');
     if (!src) return '';
     try {
       const d = new Date(src + 'T12:00:00');
+      if (isNaN(d.getTime())) return '';
       return LOOKUP.months[d.getMonth()] + ' ' + d.getFullYear();
     } catch { return ''; }
   },
@@ -2459,11 +2473,11 @@ Interior Design Consultant | Ethan Allen`
   /* KPIs (mirrors Dashboard sheet) */
   calcKPIs(opps, monthFilter=null) {
     const src = monthFilter ? opps.filter(o => this.getMonthAuto(o) === monthFilter) : opps;
-    const sold   = src.filter(o => o.saleMade === 'Yes');
-    const active = src.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+    const sold   = src.filter(o => isClosedWon(o));
+    const active = src.filter(o => !isClosedWon(o) && o.stage !== 'Canceled');
     const overdue = opps.filter(o => this.isOverdue(o));
     const dueToday = opps.filter(o => this.isDueToday(o));
-    const hot = opps.filter(o => o.saleMade !== 'Yes' && (Number(o.probability)||0) >= 75);
+    const hot = opps.filter(o => !isClosedWon(o) && (Number(o.probability)||0) >= 75);
 
     const totalSales   = sold.reduce((s,o) => s + (Number(o.estimate)||0), 0);
     const gcSales      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
@@ -2474,7 +2488,7 @@ Interior Design Consultant | Ethan Allen`
     const convRate     = src.length ? (sold.length/src.length)*100 : 0;
     const gcPct        = totalSales ? (gcSales/totalSales)*100 : 0;
     const avgProb      = active.length ? active.reduce((s,o)=>s+(Number(o.probability)||0),0)/active.length : 0;
-    const winRate      = opps.length ? (opps.filter(o=>o.saleMade==='Yes').length/opps.length)*100 : 0;
+    const winRate      = opps.length ? (opps.filter(o=>isClosedWon(o)).length/opps.length)*100 : 0;
 
     return {
       opps: src.length, sold: sold.length, active: active.length,
@@ -2492,8 +2506,8 @@ Interior Design Consultant | Ethan Allen`
     return LOOKUP.months.map((m, i) => {
       const key  = m + ' ' + year;
       const src  = opps.filter(o => this.getMonthAuto(o) === key);
-      const sold = src.filter(o => o.saleMade === 'Yes');
-      const active = src.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+      const sold = src.filter(o => isClosedWon(o));
+      const active = src.filter(o => !isClosedWon(o) && o.stage !== 'Canceled');
       const totalSales  = sold.reduce((s,o) => s+(Number(o.estimate)||0), 0);
       const gcSales     = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
       const weightedPipe= active.reduce((s,o)=>s+this.getWeighted(o),0);
@@ -2514,7 +2528,7 @@ Interior Design Consultant | Ethan Allen`
 
   salesByProjectType(opps, monthFilter=null) {
     const src  = monthFilter ? opps.filter(o=>this.getMonthAuto(o)===monthFilter) : opps;
-    const sold = src.filter(o=>o.saleMade==='Yes');
+    const sold = src.filter(o=>isClosedWon(o));
     return LOOKUP.projectTypes.map(pt => ({
       pt,
       val: sold.filter(o=>o.projectType===pt).reduce((s,o)=>s+(Number(o.estimate)||0),0)
@@ -2544,7 +2558,7 @@ Interior Design Consultant | Ethan Allen`
   monthlyRevenue(opps) {
     return LOOKUP.months.map((m,i) => {
       const key = `${m} ${new Date().getFullYear()}`;
-      const sold = opps.filter(o=>o.saleMade==='Yes' && this.getMonthAuto(o)===key);
+      const sold = opps.filter(o=>isClosedWon(o) && this.getMonthAuto(o)===key);
       const yr = new Date().getFullYear(); return { month:m, short:MONTHS_SHORT[i], full:`${m} ${yr}`, revenue:sold.reduce((s,o)=>s+(Number(o.estimate)||0),0), goal:getGoalForMonth(i), count:sold.length };
     });
   },
@@ -3189,6 +3203,140 @@ function saveCompletedActives(a){ localStorage.setItem('ea_completed_actives',JS
 function markActiveComplete(id) { var d=getCompletedActives(); if(!d.includes(id)){d.push(id);saveCompletedActives(d);} toast('Marked complete','success'); renderActive(); }
 async function deleteActive(id) { if(!confirm('Delete this record?')) return; await DB.delete(id); toast('Deleted','success'); renderActive(); }
 function restoreActive(id)      { var d=getCompletedActives(); saveCompletedActives(d.filter(function(x){return x!==id;})); renderActive(); }
+
+/* ── Cancel Order (post-sale cancellation) ──────────────────────────────
+   Shows a quick confirmation overlay so the user picks a cancel reason
+   without having to navigate the full lead modal.
+   The record stays in the DB as stage='Canceled', saleMade='No'.
+─────────────────────────────────────────────────────────────────────── */
+function cancelActiveOrder(id) {
+  // Build overlay HTML
+  const reasons = ['Budget constraints','Chose competitor','Project postponed',
+                   'No longer interested','Unable to reach client',
+                   'Design/style mismatch','Timing not right','Other'];
+  const overlay = document.createElement('div');
+  overlay.id = '_cancelOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML = `
+    <div style="background:var(--ink-85);border:1px solid var(--red);border-radius:14px;padding:24px;max-width:420px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+      <div style="font-size:13px;font-weight:700;color:var(--red);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px">⚠️ Cancel Order</div>
+      <div style="font-size:13px;color:var(--ink-20);margin-bottom:16px;line-height:1.6">
+        This will remove the sale from revenue and move the record to <strong>Canceled</strong> stage. This action can be undone by editing the lead.
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-40);margin-bottom:5px;display:block">Reason for Cancellation *</label>
+        <select id="_cancelReasonSel" style="width:100%;background:var(--ink-75);border:1px solid var(--ink-60);border-radius:7px;color:white;padding:8px 10px;font-size:13px">
+          <option value="">Select reason…</option>
+          ${reasons.map(r=>`<option>${r}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:18px">
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-40);margin-bottom:5px;display:block">Additional Notes (optional)</label>
+        <input id="_cancelNotesInp" type="text" placeholder="Any details about this cancellation…"
+          style="width:100%;background:var(--ink-75);border:1px solid var(--ink-60);border-radius:7px;color:white;padding:8px 10px;font-size:13px;box-sizing:border-box">
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="document.getElementById('_cancelOverlay').remove()"
+          style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-20);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Keep</button>
+        <button onclick="_confirmCancelOrder('${id}')"
+          style="background:rgba(224,92,92,.15);border:1px solid var(--red);color:var(--red);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Cancel Order</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function _confirmCancelOrder(id) {
+  const reason = document.getElementById('_cancelReasonSel')?.value;
+  const notes  = document.getElementById('_cancelNotesInp')?.value?.trim() || '';
+  if (!reason) { toast('Please select a reason', 'warn'); return; }
+  document.getElementById('_cancelOverlay')?.remove();
+
+  const opps = await DB.getAll();
+  const opp  = opps.find(x => x.id === id);
+  if (!opp) { toast('Record not found', 'error'); return; }
+
+  const updated = { ...opp, stage: 'Canceled', saleMade: 'No', cancelReason: reason, cancelNotes: notes };
+  await DB.save(updated);
+  _logActivity(id, 'cancel', 'Order canceled — ' + reason + (notes ? ' · ' + notes : ''));
+  toast('Order canceled. Record moved to Canceled stage.', 'info');
+  renderActive();
+  renderDashboard();
+}
+function editOrderValue(id) {
+  const overlay = document.createElement('div');
+  overlay.id = '_editValOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  // Resolve current estimate async then fill inputs
+  DB.getAll().then(opps => {
+    const o = opps.find(x => x.id === id);
+    if (!o) { toast('Record not found', 'error'); overlay.remove(); return; }
+    const oldVal = Number(o.estimate) || 0;
+    const fmtCur = v => v.toLocaleString('en-US', {style:'currency',currency:'USD',minimumFractionDigits:0,maximumFractionDigits:0});
+    overlay.innerHTML = `
+      <div style="background:var(--ink-85);border:1px solid var(--gold-dk);border-radius:14px;padding:24px;max-width:400px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+        <div style="font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">✏️ Edit Order Value</div>
+        <div style="font-size:12px;color:var(--ink-40);margin-bottom:16px">${(o.firstName||'')} ${(o.lastName||'')} — ${(o.projectType||'')}</div>
+        <div style="display:flex;gap:12px;margin-bottom:12px">
+          <div style="flex:1">
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-40);margin-bottom:5px;display:block">Current Value</label>
+            <div style="background:var(--ink-75);border:1px solid var(--ink-60);border-radius:7px;color:var(--ink-20);padding:8px 10px;font-size:13px;font-weight:700">${oldVal > 0 ? fmtCur(oldVal) : '—'}</div>
+          </div>
+          <div style="flex:1">
+            <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-40);margin-bottom:5px;display:block">New Value ($) *</label>
+            <input id="_editValInp" type="number" min="0" step="100" value="${oldVal || ''}" placeholder="0"
+              style="width:100%;background:var(--ink-75);border:1px solid var(--gold-dk);border-radius:7px;color:white;padding:8px 10px;font-size:13px;font-weight:700;box-sizing:border-box">
+          </div>
+        </div>
+        <div id="_editValDelta" style="text-align:center;font-size:13px;font-weight:700;letter-spacing:.05em;margin-bottom:16px;min-height:22px"></div>
+        <div class="field" style="margin-bottom:18px">
+          <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-40);margin-bottom:5px;display:block">Reason / Notes (optional)</label>
+          <input id="_editValNotes" type="text" placeholder="e.g. Scope change, client added feature…"
+            style="width:100%;background:var(--ink-75);border:1px solid var(--ink-60);border-radius:7px;color:white;padding:8px 10px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="document.getElementById('_editValOverlay').remove()"
+            style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-20);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Cancel</button>
+          <button onclick="_confirmEditOrderValue('${id}', ${oldVal})"
+            style="background:rgba(212,175,55,.15);border:1px solid var(--gold-dk);color:var(--gold);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Save Value</button>
+        </div>
+      </div>`;
+    // Live delta calculation
+    const inp   = overlay.querySelector('#_editValInp');
+    const delta = overlay.querySelector('#_editValDelta');
+    const fmtDelta = () => {
+      const nv  = Number(inp.value) || 0;
+      const diff = nv - oldVal;
+      if (nv === oldVal || inp.value === '') { delta.textContent = ''; return; }
+      const sign  = diff > 0 ? '+' : '';
+      const color = diff > 0 ? 'var(--green)' : 'var(--red)';
+      delta.innerHTML = `Δ <span style="color:${color}">${sign}${fmtCur(diff)}</span> from current value`;
+    };
+    inp.addEventListener('input', fmtDelta);
+    fmtDelta();
+    setTimeout(() => inp.focus(), 50);
+  });
+  document.body.appendChild(overlay);
+}
+async function _confirmEditOrderValue(id, oldVal) {
+  const inp   = document.getElementById('_editValInp');
+  const notes = document.getElementById('_editValNotes')?.value?.trim() || '';
+  const newVal = Number(inp?.value);
+  if (!inp || isNaN(newVal) || newVal < 0) { toast('Please enter a valid value', 'warn'); return; }
+  document.getElementById('_editValOverlay')?.remove();
+  const opps = await DB.getAll();
+  const opp  = opps.find(x => x.id === id);
+  if (!opp) { toast('Record not found', 'error'); return; }
+  const diff   = newVal - oldVal;
+  const sign   = diff >= 0 ? '+' : '';
+  const fmtCur = v => v.toLocaleString('en-US', {style:'currency',currency:'USD',minimumFractionDigits:0,maximumFractionDigits:0});
+  const updated = { ...opp, estimate: String(newVal) };
+  await DB.save(updated);
+  const logMsg = `Order value updated: ${fmtCur(oldVal)} → ${fmtCur(newVal)} (Δ ${sign}${fmtCur(diff)})` + (notes ? ' · ' + notes : '');
+  _logActivity(id, 'edit', logMsg);
+  toast(`Value updated to ${fmtCur(newVal)} (Δ ${sign}${fmtCur(diff)})`, diff >= 0 ? 'success' : 'info');
+  renderActive();
+  renderDashboard();
+}
 function getSentMails()         { try{return JSON.parse(localStorage.getItem('ea_mail_sent')||'[]');}catch(e){return[];} }
 function saveSentMails(a)       { localStorage.setItem('ea_mail_sent',JSON.stringify(a)); _setCloudSetting && _setCloudSetting('sent_mails', a); }
 function clearSentMails()       { if(!confirm('Clear sent list?')) return; localStorage.removeItem('ea_mail_sent'); _setCloudSetting && _setCloudSetting('sent_mails', []); renderMailing(); }
@@ -3491,6 +3639,33 @@ function _insToggle(i) {
   if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
 }
 
+/* ── Insight dismiss / refresh ──────────────────── */
+const _DISMISSED_INS_KEY = 'ea_dismissed_insights';
+
+function _getDismissedInsights() {
+  try {
+    const raw = localStorage.getItem(_DISMISSED_INS_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
+
+function _saveDismissedInsights(set) {
+  try { localStorage.setItem(_DISMISSED_INS_KEY, JSON.stringify([...set])); } catch {}
+}
+
+function dismissInsight(key) {
+  const dismissed = _getDismissedInsights();
+  dismissed.add(key);
+  _saveDismissedInsights(dismissed);
+  renderDashboard(); // re-render so the card disappears
+}
+
+function refreshInsights() {
+  localStorage.removeItem(_DISMISSED_INS_KEY);
+  renderDashboard();
+  toast('Insights refreshed — all cards restored', 'success');
+}
+
 function openGoalEditor(presetMonthIdx, presetYear) {
   const today    = new Date();
   const MONTHS   = T('months');
@@ -3729,40 +3904,70 @@ async function renderDashboard() {
   // Overdue badge in nav
   document.getElementById('overdueCount').textContent = kpis.overdue;
 
-  // Insights
-  const insights = BL.generateInsights(kpis, opps);
-  document.getElementById('insightsGrid').innerHTML = insights.map((ins, i) => {
-    const cls = [ins.type==='warn'?'warn':ins.type==='good'?'good':'', ins.isPriority1?'priority-1':''].join(' ').trim();
-    const ac  = ins.type==='warn' ? 'var(--red)' : ins.type==='good' ? 'var(--green)' : 'var(--gold)';
-    const hasExtra = !!(ins.details || ins.nextStep || ins.upsell);
-    const expandBtn = hasExtra
-      ? '<div id="ins-chev-' + i + '" style="font-size:11px;color:var(--ink-40)">▼</div>'
-      : '';
-    const expandSection = !hasExtra ? '' :
-      '<div id="ins-exp-' + i + '" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--ink-60)">'
-      + (ins.details  ? '<div style="font-size:12px;color:var(--ink-20);line-height:1.6;margin-bottom:10px">' + esc(ins.details)  + '</div>' : '')
-      + (ins.nextStep ? '<div style="font-size:11px;font-weight:700;color:' + ac + ';letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Ideal Next Step</div>'
-                       + '<div style="font-size:12px;color:var(--ink-10);background:var(--ink-70);border:1px solid var(--ink-60);border-radius:7px;padding:8px 12px;margin-bottom:10px">' + esc(ins.nextStep) + '</div>' : '')
-      + (ins.upsell   ? '<div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Growth Ideas</div>'
-                       + '<div style="font-size:12px;color:var(--ink-20);line-height:1.6">' + esc(ins.upsell) + '</div>' : '')
-      + (ins.oppId    ? '<button onclick="event.stopPropagation();editLead(\'' + ins.oppId + '\')" style="margin-top:10px;background:' + ac + ';border:none;color:#000;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">✏️ Open Opportunity</button>' : '')
+  // Insights — with dismiss-and-persist support
+  const _dismissedIns = _getDismissedInsights();
+  const allInsights   = BL.generateInsights(kpis, opps);
+  // Stable fingerprint: hash of title so dismissed state survives re-renders
+  const _insKey = title => title.replace(/\s+/g,'').toLowerCase().slice(0,40);
+  const visibleInsights = allInsights.filter(ins => !_dismissedIns.has(_insKey(ins.title)));
+
+  const insGrid = document.getElementById('insightsGrid');
+  // Update refresh button badge — show count of dismissed items
+  const _rfBtn = document.getElementById('insightsRefreshBtn');
+  if (_rfBtn) {
+    const dc = _dismissedIns.size;
+    _rfBtn.innerHTML = dc > 0
+      ? '🔄 Refresh <span style="background:var(--gold);color:var(--ink);border-radius:10px;padding:1px 6px;font-size:10px;margin-left:3px">+' + dc + '</span>'
+      : '🔄 Refresh';
+  }
+
+  if (!visibleInsights.length) {
+    insGrid.innerHTML = '<div style="padding:20px 24px;color:var(--ink-40);font-size:13px">'
+      + (allInsights.length ? '✅ All insights reviewed. Click <strong>Refresh</strong> to check for new items.' : 'No insights for current data.')
       + '</div>';
-    return '<div class="insight-card ' + cls + '" id="ins-card-' + i + '"'
-      + (hasExtra ? ' onclick="_insToggle(' + i + ')" style="cursor:pointer"' : '')
-      + '>'
-      + '<div style="display:flex;flex-direction:column;gap:4px;flex:1">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
-      + '<div style="display:flex;align-items:center;gap:8px">'
-      + '<div style="font-family:var(--font-display);font-size:18px;color:' + ac + '">' + ins.icon + '</div>'
-      + '<span style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:' + ac + '">'
-      + (ins.type==='warn' ? T('ins_urgent') : ins.type==='good' ? T('ins_great') : T('ins_note')) + '</span>'
-      + '</div>' + expandBtn + '</div>'
-      + '<div class="insight-title">' + esc(ins.title) + '</div>'
-      + '<div class="insight-body">' + esc(ins.body) + '</div>'
-      + '<div class="insight-priority-bar ' + ins.barCls + '"></div>'
-      + expandSection
-      + '</div></div>';
-  }).join('');
+  } else {
+    insGrid.innerHTML = visibleInsights.map((ins, i) => {
+      const cls = [ins.type==='warn'?'warn':ins.type==='good'?'good':'', ins.isPriority1?'priority-1':''].join(' ').trim();
+      const ac  = ins.type==='warn' ? 'var(--red)' : ins.type==='good' ? 'var(--green)' : 'var(--gold)';
+      const hasExtra = !!(ins.details || ins.nextStep || ins.upsell);
+      const key = _insKey(ins.title);
+      const expandBtn = hasExtra
+        ? '<div id="ins-chev-' + i + '" style="font-size:11px;color:var(--ink-40)">▼</div>'
+        : '';
+      const expandSection = !hasExtra ? '' :
+        '<div id="ins-exp-' + i + '" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--ink-60)">'
+        + (ins.details  ? '<div style="font-size:12px;color:var(--ink-20);line-height:1.6;margin-bottom:10px">' + esc(ins.details)  + '</div>' : '')
+        + (ins.nextStep ? '<div style="font-size:11px;font-weight:700;color:' + ac + ';letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Ideal Next Step</div>'
+                         + '<div style="font-size:12px;color:var(--ink-10);background:var(--ink-70);border:1px solid var(--ink-60);border-radius:7px;padding:8px 12px;margin-bottom:10px">' + esc(ins.nextStep) + '</div>' : '')
+        + (ins.upsell   ? '<div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Growth Ideas</div>'
+                         + '<div style="font-size:12px;color:var(--ink-20);line-height:1.6">' + esc(ins.upsell) + '</div>' : '')
+        + (ins.oppId    ? '<button onclick="event.stopPropagation();editLead(\'' + ins.oppId + '\')" style="margin-top:10px;background:' + ac + ';border:none;color:#000;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer">✏️ Open Opportunity</button>' : '')
+        + '</div>';
+      return '<div class="insight-card ' + cls + '" id="ins-card-' + i + '"'
+        + (hasExtra ? ' onclick="_insToggle(' + i + ')" style="cursor:pointer;position:relative"' : ' style="position:relative"')
+        + '>'
+        + '<div style="display:flex;flex-direction:column;gap:4px;flex:1">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+        + '<div style="display:flex;align-items:center;gap:8px">'
+        + '<div style="font-family:var(--font-display);font-size:18px;color:' + ac + '">' + ins.icon + '</div>'
+        + '<span style="font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:' + ac + '">'
+        + (ins.type==='warn' ? T('ins_urgent') : ins.type==='good' ? T('ins_great') : T('ins_note')) + '</span>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:6px">'
+        + expandBtn
+        + '<button onclick="event.stopPropagation();dismissInsight(\'' + key + '\')" '
+        + 'title="Dismiss this insight" '
+        + 'style="background:none;border:none;color:var(--ink-50);font-size:16px;line-height:1;cursor:pointer;'
+        + 'padding:2px 4px;border-radius:4px;transition:color .15s" '
+        + 'onmouseover="this.style.color=\'var(--red)\'" onmouseout="this.style.color=\'var(--ink-50)\'">×</button>'
+        + '</div></div>'
+        + '<div class="insight-title">' + esc(ins.title) + '</div>'
+        + '<div class="insight-body">' + esc(ins.body) + '</div>'
+        + '<div class="insight-priority-bar ' + ins.barCls + '"></div>'
+        + expandSection
+        + '</div></div>';
+    }).join('');
+  }
 
   // Project type chart
   const ptData = BL.salesByProjectType(opps, state.monthFilter);
@@ -7281,26 +7486,29 @@ async function showMonthDetail(monthLabel) {
   // monthLabel = "March 2026" or "March"
   const opps    = await DB.getAll();
   const year    = new Date().getFullYear();
-  const label   = monthLabel.includes(' ') ? monthLabel : `${monthLabel} ${year}`;
-  const [mName] = label.split(' ');
+  const label   = (monthLabel || '').trim();
+  const fullLabel = label.includes(' ') ? label : `${label} ${year}`;
+  const [mName]   = fullLabel.split(' ');
 
-  // All opps for this month (sold = has saleDate in this month OR was made this month)
-  const monthOpps = opps.filter(o => BL.getMonthAuto(o) === label);
-  const soldOpps  = monthOpps.filter(o => o.saleMade === 'Yes');
-  const kpis      = BL.calcKPIs(opps, label);
+  // Filter opps whose effective date falls in this month.
+  // getMonthAuto returns "Month YYYY" — compare to fullLabel for exact match.
+  const monthOpps = opps.filter(o => BL.getMonthAuto(o) === fullLabel);
+  const soldOpps  = monthOpps.filter(o => isClosedWon(o));
+  // Pass only the month's opps to calcKPIs so KPI strip matches the visible rows
+  const kpis      = BL.calcKPIs(monthOpps);
 
   const modal = document.getElementById('monthDetailModal');
   const title = document.getElementById('mdTitle');
   const body  = document.getElementById('mdBody');
-  title.textContent = `${mName.toUpperCase()} SALES DETAIL`;
+  title.textContent = `${fullLabel.toUpperCase()} — SALES DETAIL`;
 
   const goal = getGoalForMonth(LOOKUP.months.indexOf(mName)) || 0;
 
   if (!monthOpps.length) {
     body.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--ink-40)">
       <div style="font-size:32px;margin-bottom:12px">📭</div>
-      <div style="font-size:14px">No opportunities recorded for ${mName}</div>
-      <div style="font-size:12px;margin-top:6px;color:var(--ink-60)">Deals will appear here once you add opportunities with follow-up dates in ${mName}</div>
+      <div style="font-size:14px">No opportunities recorded for ${fullLabel}</div>
+      <div style="font-size:12px;margin-top:6px;color:var(--ink-60)">Deals will appear here once you add opportunities with activity dates in ${fullLabel}</div>
     </div>`;
     modal.classList.add('open');
     return;
@@ -7406,9 +7614,11 @@ async function showMonthDetail(monthLabel) {
     </div>
 
     <!-- Opportunities table -->
-    <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-                color:var(--gold);margin-bottom:10px">
-      ALL OPPORTUNITIES (${monthOpps.length}) · Click any row to edit
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)">
+        ${soldOpps.length} CLOSED DEAL${soldOpps.length!==1?'S':''} · ${monthOpps.length - soldOpps.length} IN PIPELINE · Click any row to edit
+      </div>
+      <div style="font-size:11px;color:var(--ink-40)">${fullLabel}</div>
     </div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -7859,7 +8069,7 @@ function _buildTasks(opps) {
         });
       }
     }
-    if (o.issueFlag === 'Yes' && o.issueResult !== 'Yes') {
+    if (o.issueFlag === 'Yes' && o.issueResult !== 'Done') {
       addTask({
         id: o.id + '_iss', oppId: o.id,
         type: 'overdue', priority: 50,
@@ -9085,20 +9295,20 @@ async function renderAnalytics() {
   // View state
   if (!window._anaState) window._anaState = { year: today.getFullYear(), month: null };
   var AS = window._anaState;
-  var _allYears=[...new Set(opps.map(function(o){return(o.closeDate||o.saleDate||o.createdAt||'').slice(0,4);}).filter(function(y){return y&&y>'2020';}))].map(Number).sort(function(a,b){return b-a;});
+  var _allYears=[...new Set(opps.map(function(o){return(o.saleDate||o.closeDate||o.createdAt||'').slice(0,4);}).filter(function(y){return y&&y>'2020';}))].map(Number).sort(function(a,b){return b-a;});
   if(_allYears.length&&_allYears.indexOf(AS.year)<0) AS.year=_allYears[0];
   var MO_S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var yearChips=_allYears.map(function(y){return '<button onclick="window._anaState.year='+y+';window._anaState.month=null;renderAnalytics()" style="padding:4px 10px;border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid '+(y===AS.year?'var(--gold)':'var(--ink-60)')+';background:'+(y===AS.year?'rgba(196,147,63,.2)':'transparent')+';color:'+(y===AS.year?'var(--gold)':'var(--ink-50)')+'">'+y+'</button>';}).join('');
   var monthChips=MO_S.map(function(lbl,i){return '<button onclick="window._anaState.month=window._anaState.month==='+i+'?null:'+i+';renderAnalytics()" style="padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid '+(AS.month===i?'rgba(196,147,63,.8)':'var(--ink-70)')+';background:'+(AS.month===i?'rgba(196,147,63,.18)':'transparent')+';color:'+(AS.month===i?'var(--gold)':'var(--ink-50)')+'">'+lbl+'</button>';}).join('');
   // ── Derived data ──
-  const sold     = opps.filter(o => o.saleMade === 'Yes');
-  const active   = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+  const sold     = opps.filter(o => isClosedWon(o));
+  const active   = opps.filter(o => !isClosedWon(o) && o.stage !== 'Canceled');
   const canceled = opps.filter(o => o.stage === 'Canceled');
   const allKpis  = BL.calcKPIs(opps);
 
   // Filter sold by selected year/month for charts
   const filtSold = sold.filter(o => {
-    const d = o.closeDate || o.saleDate || '';
+    const d = o.saleDate || o.closeDate || '';
     if (!d) return AS.year === today.getFullYear(); // no date → include only in current year
     const [yr, mo] = d.split('-').map(Number);
     if (yr !== AS.year) return false;
@@ -9111,9 +9321,9 @@ async function renderAnalytics() {
   // Monthly revenue for last 12 months relative to selected year
   const monthRevMap = {};
   sold.forEach(o => {
-    const d = o.closeDate || o.saleDate || '';  // use actual sale date
+    const d = o.saleDate || o.closeDate || '';  // saleDate = actual sale; closeDate = expected close
     const key = d.slice(0,7);
-    if (key) monthRevMap[key] = (monthRevMap[key]||0) + (Number(o.estimate)||0) + (o.goldComp==='Yes'?Number(o.goldCompValue)||0:0);
+    if (key) monthRevMap[key] = (monthRevMap[key]||0) + (Number(o.estimate)||0);
   });
   const last12 = [];
   for (let i = 11; i >= 0; i--) {
@@ -9525,7 +9735,9 @@ async function renderActive() {
       /* Action buttons */
       + '<td style="padding:5px 8px;border-bottom:1px solid var(--ink-70);text-align:center">'
         + '<button onclick="event.stopPropagation();editLead(\'' + o.id + '\')" style="display:block;width:100%;background:none;border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">✏️ Edit</button>'
+        + '<button onclick="event.stopPropagation();editOrderValue(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(76,175,125,.08);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">💲 Value</button>'
         + '<button onclick="event.stopPropagation();markActiveComplete(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">✓ Done</button>'
+        + '<button onclick="event.stopPropagation();cancelActiveOrder(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(224,92,92,.08);border:1px solid rgba(224,92,92,.4);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">🚫 Cancel</button>'
         + '<button onclick="event.stopPropagation();deleteActive(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer">🗑 Del</button>'
         + '</td>'
       + '</tr>';
@@ -9560,7 +9772,7 @@ async function renderActive() {
   /* ── Summary KPIs (over all clients, not just visible month) ── */
   const totalVal  = clients.reduce((s, o) => s + (Number(o.estimate) || 0), 0);
   const gcVal     = clients.filter(o => o.goldComp === 'Yes').reduce((s, o) => s + (Number(o.estimate) || 0), 0);
-  const openIssues = clients.filter(o => o.issueFlag === 'Yes' && o.issueResult !== 'Yes').length;
+  const openIssues = clients.filter(o => o.issueFlag === 'Yes' && o.issueResult !== 'Done').length;
   const upcoming  = clients.filter(o => o.deliveryDate && daysDiff(today, o.deliveryDate) >= 0 && daysDiff(today, o.deliveryDate) <= 7).length;
   const reviewDue = clients.filter(o => o.linkReviewDate && daysDiff(today, o.linkReviewDate) <= 0).length;
 
@@ -9614,7 +9826,9 @@ async function renderActive() {
         + TD(o.notes ? '<span style="color:var(--ink-30);font-size:11px">' + esc((o.notes||'').slice(0,60)) + ((o.notes||'').length>60?'…':'') + '</span>' : '')
         + '<td style="padding:5px 8px;border-bottom:1px solid var(--ink-70);text-align:center">'
           + '<button onclick="event.stopPropagation();editLead(\'' + o.id + '\')" style="display:block;width:100%;background:none;border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">✏️ Edit</button>'
+          + '<button onclick="event.stopPropagation();editOrderValue(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(76,175,125,.08);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">💲 Value</button>'
           + '<button onclick="event.stopPropagation();markActiveComplete(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">✓ Done</button>'
+          + '<button onclick="event.stopPropagation();cancelActiveOrder(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(224,92,92,.08);border:1px solid rgba(224,92,92,.4);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">🚫 Cancel</button>'
           + '<button onclick="event.stopPropagation();deleteActive(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer">🗑 Del</button>'
           + '</td>'
         + '</tr>';
