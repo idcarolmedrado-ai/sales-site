@@ -2104,7 +2104,10 @@ function fmtDate(dateStr) {
   if (!dateStr) return '—';
   try {
     const d = new Date(dateStr + 'T12:00:00');
-    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+    const opts = d.getFullYear() !== new Date().getFullYear()
+      ? { month:'short', day:'numeric', year:'numeric' }
+      : { month:'short', day:'numeric' };
+    return d.toLocaleDateString('en-US', opts);
   } catch { return dateStr; }
 }
 
@@ -2117,14 +2120,14 @@ function localDateStr(d) {
   return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
 }
 
-function toast(msg, type='info') {
+function toast(msg, type='info', duration=3000) {
   const c = document.getElementById('toastContainer');
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   t.textContent = msg;
   c.appendChild(t);
-  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(30px)'; t.style.transition='all .3s'; }, 2800);
-  setTimeout(() => t.remove(), 3200);
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(30px)'; t.style.transition='all .3s'; }, duration - 400);
+  setTimeout(() => t.remove(), duration);
 }
 
 function esc(s) {
@@ -5319,7 +5322,7 @@ function sortTable(tableId, colIdx, type) {
       va = parseFloat(va.replace(/[$,%]/g, '')) || 0;
       vb = parseFloat(vb.replace(/[$,%]/g, '')) || 0;
     } else if (type === 'date') {
-      va = new Date(va) || 0; vb = new Date(vb) || 0;
+      va = new Date(va).getTime() || 0; vb = new Date(vb).getTime() || 0;
     }
     if (va < vb) return dir === 'asc' ? -1 : 1;
     if (va > vb) return dir === 'asc' ? 1 : -1;
@@ -9660,7 +9663,6 @@ async function renderActive() {
     + (!clients.length
         ? '<div class="empty-state"><div class="icon">📭</div><p>No active clients yet — closed deals will appear here</p></div>'
         : monthSections)
-          + '</table>')
     + '</div>';
 
   // ── CLIENT TIMELINE ─────────────────────────────────────────────────────
@@ -11369,7 +11371,10 @@ function _onProspectCSV(ev) {
         const state    = stateRaw && US_STATES.find(s => s[0] === stateRaw) ? stateRaw : '';
         const region   = state ? _stateRegion(state) : (map.region >= 0 ? (r[map.region]||'').trim() : '');
         // forcedPersona (from active filter) takes priority over CSV column
-        const csvPersona = map.persona >= 0 ? (r[map.persona]||'').trim().toLowerCase() : '';
+        const csvPersonaRaw = map.persona >= 0 ? (r[map.persona]||'').trim().toLowerCase() : '';
+        // Validate persona against known list — unknown values are cleared to avoid orphaned contacts
+        const validPersonaIds = new Set(PERSONAS.map(p => p.id));
+        const csvPersona = validPersonaIds.has(csvPersonaRaw) ? csvPersonaRaw : '';
         return {
           firstName: map.firstName>=0 ? (r[map.firstName]||'').trim() : '',
           lastName:  map.lastName >=0 ? (r[map.lastName] ||'').trim() : '',
@@ -11382,8 +11387,16 @@ function _onProspectCSV(ev) {
           notes:     map.notes    >=0 ? (r[map.notes]    ||'').trim() : '',
           state, region,
           status:    'active', cadenceStep:0,
+          _csvPersonaRaw: csvPersonaRaw, // temporary — used for warning below, stripped in bulkInsert
         };
       });
+      // Warn about unrecognised persona values
+      const invalidPersonaRows = items.filter(i => i._csvPersonaRaw && !PERSONAS.find(p=>p.id===i._csvPersonaRaw));
+      if (invalidPersonaRows.length) {
+        const uniq = [...new Set(invalidPersonaRows.map(i=>i._csvPersonaRaw))];
+        toast('⚠️ '+invalidPersonaRows.length+' row'+(invalidPersonaRows.length===1?'':'s')+' had unknown persona(s): '+uniq.join(', ')+' — persona cleared. Assign manually.','warn', 7000);
+      }
+      items.forEach(i => delete i._csvPersonaRaw);
       const added = await Prospects.bulkInsert(items);
       const personaLabel = forcedPersona ? (' → ' + (PERSONAS.find(p=>p.id===forcedPersona)||{label:forcedPersona}).label) : '';
       toast('Imported '+added+' contact'+(added===1?'':'s')+personaLabel,'success');
