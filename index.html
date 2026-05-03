@@ -1428,6 +1428,8 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
             <select id="f-projectType" onchange="onFieldChange()"><option value="">Select…</option></select></div>
           <div class="field"><label for="f-leadSource" data-i18n="lbl_source">Lead Source</label>
             <select id="f-leadSource"><option value="">Select…</option></select></div>
+          <div class="field"><label for="f-cadence">Cadence <span class="field-tip" data-tip="Assign contact to an email marketing cadence/persona">?</span></label>
+            <select id="f-cadence" onchange="onFieldChange()"><option value="">— None —</option></select></div>
           <div class="field"><label for="f-stage" data-i18n="lbl_stage">Stage</label>
             <select id="f-stage" onchange="onFieldChange()"><option value="">Select…</option></select></div>
           <div class="field"><label for="f-probability" data-i18n="lbl_prob">Probability (%)</label>
@@ -3679,12 +3681,19 @@ async function renderDashboard() {
   document.getElementById('goalFill').style.width = pct + '%';
   document.getElementById('goalPct').textContent = T('pct_of_goal')(pct);
 
-  // Month filter chips — sorted by fiscal year (Jul-Jun)
-  const _fyOrder = m => { const mo = new Date(m + '-01T12:00:00').getMonth(); return mo >= 6 ? mo - 6 : mo + 6; };
-  const months = [...new Set(opps.map(o=>BL.getMonthAuto(o)).filter(Boolean))].sort();
+  // Month filter chips — sorted chronologically
+  const _MO_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const _monthToDate = s => { const [mn, y] = (s||'').split(' '); const i = _MO_EN.indexOf(mn); return i >= 0 ? new Date(+y, i, 1) : new Date(0); };
+  const months = [...new Set(opps.map(o=>BL.getMonthAuto(o)).filter(Boolean))]
+    .sort((a, b) => _monthToDate(a) - _monthToDate(b));
 
-  // FY picker buttons
-  const _fyYears = [...new Set(months.map(m => { const [y, mo] = m.split('-').map(Number); return mo >= 7 ? y : y - 1; }))].sort();
+  // FY picker buttons — parse "Month YYYY" not "YYYY-MM"
+  const _fyYears = [...new Set(months.map(m => {
+    const [mn, yStr] = (m||'').split(' ');
+    const mo = _MO_EN.indexOf(mn) + 1;  // 1-based
+    const y  = parseInt(yStr, 10);
+    return mo >= 7 ? y : y - 1;
+  }).filter(y => !isNaN(y)))].sort();
   const fyButtons = _fyYears.map(yr => {
     const label = `FY${yr}-${String(yr+1).slice(2)}`;
     return `<button class="filter-chip ${state._fyStartYr===yr?'active':''}" onclick="setFiscalYearFilter(${yr})" style="font-size:10px">${label}</button>`;
@@ -5084,6 +5093,12 @@ function initDropdowns() {
   sel('f-nextStep', LOOKUP.nextSteps);
   sel('f-leadSource', LOOKUP.leadSources);
   sel('f-lostReason', LOOKUP.lostReasons);
+  // f-cadence — populated from PERSONAS
+  const _cadEl = document.getElementById('f-cadence');
+  if (_cadEl) {
+    _cadEl.innerHTML = '<option value="">— None —</option>';
+    PERSONAS.forEach(p => { const o=document.createElement('option'); o.value=p.id; o.textContent=p.label; _cadEl.appendChild(o); });
+  }
   // f-probability is now a range slider, not a select dropdown
 }
 
@@ -5095,7 +5110,7 @@ function openNewLead() {
   ['f-firstName','f-lastName','f-email','f-phone','f-address','f-notes'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  ['f-stage','f-projectType','f-probability','f-nextStep','f-leadSource','f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-followUpDate','f-estimate'].forEach(id => {
+  ['f-stage','f-projectType','f-probability','f-nextStep','f-leadSource','f-cadence','f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-followUpDate','f-estimate'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('deleteBtn').style.display = 'none';
@@ -5139,6 +5154,16 @@ async function editLead(id) {
   document.getElementById('f-goldComp').value     = o.goldComp    || '';
   const _gcvEl=document.getElementById('f-goldCompValue'); if(_gcvEl) _gcvEl.value=o.goldCompValue||'';
   const _gcvFld=document.getElementById('goldCompValueField'); if(_gcvFld) _gcvFld.style.display=o.goldComp==='Yes'?'':'none';
+  // Pre-fill cadence: look up prospect by email
+  const _cadFld = document.getElementById('f-cadence');
+  if (_cadFld) {
+    _cadFld.value = '';
+    if (o.email) {
+      const _allPros = await Prospects.getAll();
+      const _linked = _allPros.find(p => p.email && p.email.toLowerCase() === o.email.toLowerCase());
+      if (_linked) _cadFld.value = _linked.persona || '';
+    }
+  }
   document.getElementById('f-notes').value        = o.notes       || '';
   // Active client fields
   const _sf = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
@@ -5184,7 +5209,7 @@ function closeModal(force) {
 /* ── Unsaved changes detection ── */
 function _getFormSnapshot() {
   const fields = ['f-firstName','f-lastName','f-email','f-phone','f-address','f-projectType',
-    'f-leadSource','f-stage','f-probability','f-estimate','f-nextStep','f-followUpDate',
+    'f-leadSource','f-cadence','f-stage','f-probability','f-estimate','f-nextStep','f-followUpDate',
     'f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-notes',
     'f-customerNumber','f-saleOrderNumber','f-saleAmount'];
   return fields.map(id => (document.getElementById(id)?.value||'')).join('|');
@@ -5719,6 +5744,33 @@ async function saveLead() {
     // Auto-create link review mailing task if new delivery date set
     if (linkReviewDate && linkReviewDate !== (existingRec?.linkReviewDate || '')) {
       _scheduleReviewTask(opp, linkReviewDate);
+    }
+    // ── Cadence / Prospect sync ──
+    // If a cadence was selected in the form, create or update the prospect record.
+    // Rule: if cadence changes, the contact moves ONLY to the new list (old persona cleared).
+    const _cadenceVal = document.getElementById('f-cadence')?.value || '';
+    if (_cadenceVal && opp.email) {
+      try {
+        const _allPros = await Prospects.getAll();
+        const _existPros = _allPros.find(p => p.email && p.email.toLowerCase() === opp.email.toLowerCase());
+        if (_existPros) {
+          if (_existPros.persona !== _cadenceVal) {
+            // Move to new cadence list only — reset step
+            await Prospects.save({ ..._existPros, persona: _cadenceVal, cadenceStep: 0, cadenceStartedAt: '' });
+            _logActivity(opp.id, 'edit', 'Cadence: ' + (_existPros.persona || 'none') + ' → ' + _cadenceVal);
+          }
+        } else {
+          // Create new prospect from this lead
+          await Prospects.save({
+            id: uid(),
+            firstName: opp.firstName, lastName: opp.lastName,
+            email: opp.email, phone: opp.phone || '',
+            persona: _cadenceVal, source: opp.leadSource || '',
+            status: 'active', cadenceStep: 0,
+          });
+          _logActivity(opp.id, 'edit', 'Enrolled in cadence: ' + _cadenceVal);
+        }
+      } catch(_cadErr) { console.error('Cadence sync error:', _cadErr); }
     }
     closeModal(true);
     const msg = existingId ? 'Updated ' + firstName + ' ' + lastName : 'Added ' + firstName + ' ' + lastName;
@@ -9476,12 +9528,107 @@ async function renderActive() {
       + '</tr>';
   }).join('');
 
-  /* ── Summary KPIs ── */
+  /* ── Group clients by sale month (most recent first) ── */
+  const _saleMonthKey = o => {
+    const d = o.saleDate || o.closeDate || '';
+    if (!d) return 'Unknown';
+    const dt = new Date(d + 'T12:00:00');
+    return isNaN(dt) ? 'Unknown' : (LOOKUP.months[dt.getMonth()] + ' ' + dt.getFullYear());
+  };
+  const _mkDate = key => {
+    if (key === 'Unknown') return new Date(0);
+    const [mn, y] = key.split(' ');
+    return new Date(+y, LOOKUP.months.indexOf(mn), 1);
+  };
+  const grouped = {};
+  clients.forEach(o => {
+    const k = _saleMonthKey(o);
+    if (!grouped[k]) grouped[k] = [];
+    grouped[k].push(o);
+  });
+  const monthKeys = Object.keys(grouped).sort((a,b) => _mkDate(b) - _mkDate(a)); // newest first
+
+  /* ── Active month filter state ── */
+  if (!window._activeMonthFilter) window._activeMonthFilter = 'all';
+  const AMF = window._activeMonthFilter;
+  const visKeys = AMF === 'all' ? monthKeys : monthKeys.filter(k => k === AMF);
+  const viewClients = visKeys.flatMap(k => grouped[k] || []);
+
+  /* ── Summary KPIs (over all clients, not just visible month) ── */
   const totalVal  = clients.reduce((s, o) => s + (Number(o.estimate) || 0), 0);
   const gcVal     = clients.filter(o => o.goldComp === 'Yes').reduce((s, o) => s + (Number(o.estimate) || 0), 0);
   const openIssues = clients.filter(o => o.issueFlag === 'Yes' && o.issueResult !== 'Yes').length;
   const upcoming  = clients.filter(o => o.deliveryDate && daysDiff(today, o.deliveryDate) >= 0 && daysDiff(today, o.deliveryDate) <= 7).length;
   const reviewDue = clients.filter(o => o.linkReviewDate && daysDiff(today, o.linkReviewDate) <= 0).length;
+
+  /* ── Build month-grouped table HTML ── */
+  const tableHeader = '<thead><tr style="background:var(--ink-70)">'
+    + TH('Last Name') + TH('First Name')
+    + THR('Customer #') + THR('GoldComp<br>Yes/No') + THR('Sale Date')
+    + THR('Project Type') + THR('GoldComp Value') + THR('Project Value')
+    + TH('2 Days Before<br>Delivery','text-align:center') + TH('Delivery Date','text-align:center')
+    + TH('Follow-up / Link<br>Review','text-align:center')
+    + TH('Next Follow-up<br>(Date)','text-align:center')
+    + TH('Details') + TH('Active Phase<br>Result','text-align:center')
+    + TH('Notes')
+    + TH('','width:60px')
+    + '</tr></thead>';
+
+  const monthSections = !clients.length ? '' : visKeys.map(mk => {
+    const mClients = grouped[mk];
+    const mVal  = mClients.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+    const mGC   = mClients.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+    const mRows = mClients.map((o, i) => {
+      const rowBg = i % 2 === 0 ? 'var(--ink-90)' : 'var(--ink-80)';
+      const gcV = o.goldComp === 'Yes' ? (Number(o.estimate) || 0) : 0;
+      const twoDaysBefore = o.deliveryDate ? offsetDate(o.deliveryDate, -2) : '';
+      const twoFlag = twoDaysBefore && twoDaysBefore <= today && (!o.deliveryDate || today <= o.deliveryDate);
+      const dvDiff = o.deliveryDate ? daysDiff(today, o.deliveryDate) : null;
+      const dvColor = dvDiff === null ? 'var(--ink-60)' : dvDiff < 0 ? 'var(--red)' : dvDiff <= 2 ? 'var(--gold)' : 'var(--ink-10)';
+      const issueBg = o.issueFlag === 'Yes' ? 'rgba(231,76,60,.15)' : 'rgba(76,175,125,.1)';
+      const issueTxt = o.issueFlag === 'Yes' ? 'var(--red)' : 'var(--green)';
+      const issueLbl = o.issueFlag === 'Yes' ? 'Yes' : (o.issueFlag === 'No' ? 'No' : '—');
+      const resultBg  = o.issueResult === 'Yes' ? 'rgba(76,175,125,.15)' : 'rgba(231,76,60,.1)';
+      const resultTxt = o.issueResult === 'Yes' ? 'var(--green)' : (o.issueResult ? 'var(--red)' : 'var(--ink-60)');
+      const lrDiff   = o.linkReviewDate ? daysDiff(today, o.linkReviewDate) : null;
+      const lrColor  = lrDiff === null ? 'var(--ink-60)' : lrDiff < 0 ? 'var(--red)' : lrDiff <= 1 ? 'var(--gold)' : 'var(--ink-10)';
+      return '<tr onclick="editLead(\'' + o.id + '\')" style="cursor:pointer;background:' + rowBg + '"'
+        + ' onmouseover="this.style.background=\'rgba(196,147,63,.07)\'" onmouseout="this.style.background=\'' + rowBg + '\'">'
+        + TD('<span style="font-weight:600;color:var(--ink-10)">' + esc(o.lastName || '') + '</span>')
+        + TD(esc(o.firstName || ''))
+        + TD(o.customerNumber ? '<span style="color:var(--gold);font-weight:700;font-size:11px">' + esc(o.customerNumber) + '</span>' : '', 'background:rgba(180,50,50,.08)')
+        + TD(o.goldComp === 'Yes' ? '<span style="background:rgba(196,147,63,.18);color:var(--gold);font-weight:700;font-size:10px;padding:2px 7px;border-radius:4px">⭐ Yes</span>' : '<span style="color:var(--ink-60);font-size:11px">No</span>', 'background:rgba(180,50,50,.08)')
+        + TD(o.saleDate ? fmtDate(o.saleDate) : (o.closeDate ? fmtDate(o.closeDate) : ''), 'background:rgba(180,50,50,.08)')
+        + TD('<span style="color:var(--ink-20)">' + esc(o.projectType || '') + '</span>', 'background:rgba(180,50,50,.08)')
+        + TD(gcV > 0 ? '<span style="color:var(--gold);font-weight:700">' + fmt$(gcV) + '</span>' : '<span style="color:var(--ink-60)">—</span>', 'text-align:right;background:rgba(180,50,50,.08)')
+        + TD(o.estimate ? '<span style="color:var(--green);font-weight:700">' + fmt$(Number(o.estimate)) + '</span>' : '', 'text-align:right;background:rgba(180,50,50,.08)')
+        + TD(twoDaysBefore ? '<span style="color:' + (twoFlag ? 'var(--gold)' : 'var(--ink-40)') + ';font-size:11px">' + (twoFlag ? '🔔 ' : '') + fmtDate(twoDaysBefore) + '</span>' : '', 'text-align:center')
+        + TD(o.deliveryDate ? '<span style="color:' + dvColor + ';font-weight:700">' + fmtDate(o.deliveryDate) + (dvDiff !== null && dvDiff >= 0 ? ' <span style="font-size:10px;opacity:.7">(+' + dvDiff + 'd)</span>' : '') + '</span>' : '', 'text-align:center')
+        + TD(o.linkReviewDate ? '<span style="color:' + lrColor + '">' + (lrDiff !== null && lrDiff <= 0 ? '⭐ ' : '📋 ') + fmtDate(o.linkReviewDate) + '</span>' : '', 'text-align:center')
+        + TD(o.nextFollowUpDate ? '<span style="font-size:11px">' + fmtDate(o.nextFollowUpDate) + '</span>' : '')
+        + TD(o.issueFlag ? '<span style="background:' + issueBg + ';color:' + issueTxt + ';font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700">' + issueLbl + '</span>' : '')
+        + TD(o.issueResult ? '<span style="background:' + resultBg + ';color:' + resultTxt + ';font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700">' + (o.issueResult) + '</span>' : '')
+        + TD(o.notes ? '<span style="color:var(--ink-30);font-size:11px">' + esc((o.notes||'').slice(0,60)) + ((o.notes||'').length>60?'…':'') + '</span>' : '')
+        + '<td style="padding:5px 8px;border-bottom:1px solid var(--ink-70);text-align:center">'
+          + '<button onclick="event.stopPropagation();editLead(\'' + o.id + '\')" style="display:block;width:100%;background:none;border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">✏️ Edit</button>'
+          + '<button onclick="event.stopPropagation();markActiveComplete(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer;margin-bottom:3px">✓ Done</button>'
+          + '<button onclick="event.stopPropagation();deleteActive(\'' + o.id + '\')" style="display:block;width:100%;background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);color:var(--red);border-radius:5px;font-size:10px;font-weight:700;padding:2px 0;cursor:pointer">🗑 Del</button>'
+          + '</td>'
+        + '</tr>';
+    }).join('');
+    return '<div style="margin-bottom:28px">'
+      + '<div style="display:flex;align-items:center;gap:14px;padding:8px 0;border-bottom:2px solid var(--gold-dk);margin-bottom:0">'
+        + '<span style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--gold);text-transform:uppercase">' + esc(mk) + '</span>'
+        + '<span style="font-size:11px;color:var(--ink-40)">' + mClients.length + ' client' + (mClients.length!==1?'s':'') + '</span>'
+        + '<span style="margin-left:auto;font-size:12px;font-weight:700;color:var(--green)">' + fmt$(mVal) + '</span>'
+        + (mGC > 0 ? '<span style="font-size:11px;color:var(--gold)">GC ' + fmt$(mGC) + '</span>' : '')
+      + '</div>'
+      + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1400px;font-size:12px">'
+        + tableHeader
+        + '<tbody>' + mRows + '</tbody>'
+        + '</table></div>'
+      + '</div>';
+  }).join('');
 
   el.innerHTML =
     '<div class="section-header"><div style="padding:0 24px;max-width:1400px;margin:0 auto">'
@@ -9492,45 +9639,27 @@ async function renderActive() {
 
     /* KPI chips */
     + '<div class="container" style="margin-bottom:16px"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
-    + '<div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:8px 16px;display:flex;gap:10px;align-items:center">'
-    + '<span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40)">Clients</span>'
-    + '<span style="font-size:18px;font-weight:700;color:var(--gold)">' + clients.length + '</span></div>'
-    + '<div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:8px 16px;display:flex;gap:10px;align-items:center">'
-    + '<span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40)">Total Value</span>'
-    + '<span style="font-size:18px;font-weight:700;color:var(--green)">' + fmt$(totalVal) + '</span></div>'
-    + '<div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:8px 16px;display:flex;gap:10px;align-items:center">'
-    + '<span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40)">GoldComp</span>'
-    + '<span style="font-size:18px;font-weight:700;color:var(--gold)">' + fmt$(gcVal) + '</span></div>'
+    + '<div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:8px 16px;display:flex;gap:10px;align-items:center"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40)">Clients</span><span style="font-size:18px;font-weight:700;color:var(--gold)">' + clients.length + '</span></div>'
+    + '<div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:8px 16px;display:flex;gap:10px;align-items:center"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40)">Total Value</span><span style="font-size:18px;font-weight:700;color:var(--green)">' + fmt$(totalVal) + '</span></div>'
+    + '<div style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:8px 16px;display:flex;gap:10px;align-items:center"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-40)">GoldComp</span><span style="font-size:18px;font-weight:700;color:var(--gold)">' + fmt$(gcVal) + '</span></div>'
     + (upcoming ? '<span style="background:rgba(196,147,63,.15);color:var(--gold);font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;border:1px solid rgba(196,147,63,.3)">📦 ' + upcoming + ' Deliveries this week</span>' : '')
     + (reviewDue ? '<span style="background:rgba(196,147,63,.15);color:var(--gold);font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;border:1px solid rgba(196,147,63,.3)">⭐ ' + reviewDue + ' Review Due</span>' : '')
     + (openIssues ? '<span style="background:rgba(231,76,60,.15);color:var(--red);font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;border:1px solid rgba(231,76,60,.3)">🔴 ' + openIssues + ' Open Issues</span>' : '')
-    + (!clients.length ? '' : '')
     + '</div></div>'
 
-    /* Table */
-    + '<div class="container" style="margin-bottom:32px;overflow-x:auto;padding-bottom:2px">'
+    /* Month filter pills */
+    + (monthKeys.length > 1
+      ? '<div class="container" style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap">'
+          + '<button onclick="window._activeMonthFilter=\'all\';renderActive()" style="padding:5px 14px;border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid '+(AMF==='all'?'var(--gold)':'var(--ink-60)')+';background:'+(AMF==='all'?'rgba(196,147,63,.15)':'var(--ink-80)')+';color:'+(AMF==='all'?'var(--gold)':'var(--ink-40)')+'">All Months</button>'
+          + monthKeys.map(mk=>'<button onclick="window._activeMonthFilter=\''+mk+'\';renderActive()" style="padding:5px 14px;border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid '+(AMF===mk?'var(--gold)':'var(--ink-60)')+';background:'+(AMF===mk?'rgba(196,147,63,.15)':'var(--ink-80)')+';color:'+(AMF===mk?'var(--gold)':'var(--ink-40)')+'">'+esc(mk)+'</button>').join('')
+          + '</div>'
+      : '')
+
+    /* Month-grouped tables */
+    + '<div class="container" style="margin-bottom:32px">'
     + (!clients.length
         ? '<div class="empty-state"><div class="icon">📭</div><p>No active clients yet — closed deals will appear here</p></div>'
-        : '<table style="width:100%;border-collapse:collapse;min-width:1400px;font-size:12px">'
-          + '<thead><tr style="background:var(--ink-70)">'
-          /* A-B: white headers */
-          + TH('Last Name') + TH('First Name')
-          /* C-H: red headers */
-          + THR('Customer #') + THR('GoldComp<br>Yes/No') + THR('Sale Date')
-          + THR('Project Type') + THR('GoldComp Value') + THR('Project Value')
-          /* [I excluded] */
-          /* J-K */
-          + TH('2 Days Before<br>Delivery','text-align:center') + TH('Delivery Date','text-align:center')
-          /* [L excluded] */
-          /* M-R */
-          + TH('Follow-up / Link<br>Review','text-align:center')
-          + TH('Next Follow-up<br>(Date)','text-align:center')
-          + TH('Details') + TH('Active Phase<br>Result','text-align:center')
-          + TH('Notes')
-          /* [S, T, U excluded] */
-          + TH('','width:60px')
-          + '</tr></thead>'
-          + '<tbody>' + rows + '</tbody>'
+        : monthSections)
           + '</table>')
     + '</div>';
 
@@ -9901,6 +10030,7 @@ const PERSONAS = [
   { id:'homebuyers',     label:'New Homeowners' },
   { id:'past-customers', label:'Past Customers' },
   { id:'cold-leads',     label:'Cancelled / Stalled Leads' },
+  { id:'cm-list',        label:'CM List' },
 ];
 
 const Prospects = {
@@ -10041,6 +10171,10 @@ window._prospectState = window._prospectState || {
 
 /* Cadence interval days between sends (after send of step N, wait N days for next) */
 const CADENCE_INTERVAL_DAYS = { 1:0, 2:3, 3:4, 4:5, 5:7 };
+/* CM List sends weekly — all 35 steps */
+const CADENCE_INTERVAL_DAYS_CM = Object.fromEntries(
+  Array.from({length:35},(_,i)=>i+1).map((n,i)=>[n, i===0?0:7])
+);
 
 /* ── Lead scoring 0-100 ── */
 function _leadScore(p) {
@@ -11069,7 +11203,7 @@ async function _renderProspectContacts() {
     '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);padding:18px;margin-bottom:16px">' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">' +
         '<strong style="flex:1;min-width:180px;font-size:14px;color:#2A2622">Add contact</strong>' +
-        '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'csvFileIn\').click()">Import CSV</button>' +
+        (()=>{ const fp=PS.personaFilter&&PS.personaFilter!=='all'?PS.personaFilter:''; const lbl=fp?(PERSONAS.find(p=>p.id===fp)||{label:fp}).label:''; return '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'csvFileIn\').click()" title="'+(fp?'All contacts will be assigned to: '+lbl:'Select a persona filter above to auto-assign on import')+'">'+(fp?'Import CSV → '+lbl:'Import CSV')+'</button>'; })() +
         '<input type="file" id="csvFileIn" accept=".csv,text/csv" style="display:none" onchange="_onProspectCSV(event)">' +
         '<button class="btn btn-ghost btn-sm" onclick="_exportProspectsCSV()">Export CSV</button>' +
       '</div>' +
@@ -11221,6 +11355,9 @@ async function _deleteProspect(id) {
 
 function _onProspectCSV(ev) {
   const f = ev.target.files && ev.target.files[0]; if (!f) return;
+  // If a specific persona is selected in the filter, all imported contacts inherit it
+  const PS = window._prospectState || {};
+  const forcedPersona = (PS.personaFilter && PS.personaFilter !== 'all') ? PS.personaFilter : '';
   const r = new FileReader();
   r.onload = async e => {
     try {
@@ -11231,6 +11368,8 @@ function _onProspectCSV(ev) {
         const stateRaw = map.state >= 0 ? (r[map.state]||'').trim().toUpperCase() : '';
         const state    = stateRaw && US_STATES.find(s => s[0] === stateRaw) ? stateRaw : '';
         const region   = state ? _stateRegion(state) : (map.region >= 0 ? (r[map.region]||'').trim() : '');
+        // forcedPersona (from active filter) takes priority over CSV column
+        const csvPersona = map.persona >= 0 ? (r[map.persona]||'').trim().toLowerCase() : '';
         return {
           firstName: map.firstName>=0 ? (r[map.firstName]||'').trim() : '',
           lastName:  map.lastName >=0 ? (r[map.lastName] ||'').trim() : '',
@@ -11238,7 +11377,7 @@ function _onProspectCSV(ev) {
           phone:     map.phone    >=0 ? (r[map.phone]    ||'').trim() : '',
           company:   map.company  >=0 ? (r[map.company]  ||'').trim() : '',
           website:   map.website  >=0 ? (r[map.website]  ||'').trim() : '',
-          persona:   map.persona  >=0 ? (r[map.persona]  ||'').trim().toLowerCase() : '',
+          persona:   forcedPersona || csvPersona,
           source:    map.source   >=0 ? (r[map.source]   ||'').trim() : 'csv-import',
           notes:     map.notes    >=0 ? (r[map.notes]    ||'').trim() : '',
           state, region,
@@ -11246,7 +11385,8 @@ function _onProspectCSV(ev) {
         };
       });
       const added = await Prospects.bulkInsert(items);
-      toast('Imported '+added+' contact'+(added===1?'':'s'),'success');
+      const personaLabel = forcedPersona ? (' → ' + (PERSONAS.find(p=>p.id===forcedPersona)||{label:forcedPersona}).label) : '';
+      toast('Imported '+added+' contact'+(added===1?'':'s')+personaLabel,'success');
       ev.target.value = '';
       _renderProspectContacts();
     } catch(err) { console.error(err); toast('CSV parse error: '+err.message,'error'); }
@@ -12471,6 +12611,44 @@ const CADENCES = {
       subject:'{{firstName}}, last note — spring project calendar is filling',
       body:'{{firstName}},\n\nLast note from me.\n\nSpring is when most stalled projects find their moment — the energy shifts, the space feels more urgent, the decision that kept getting deferred starts to feel ready.\n\nIf your project has been on hold and this is the season it starts to feel like the right time, I want to be the person you call first. I already know the background; we do not have to start from zero.\n\nMy spring calendar has limited availability for projects starting in the next sixty days.\n\nReply with where the project stands and I will send a re-engagement proposal this week.\n\n— Carol' },
   ],
+
+  'cm-list': [
+    { step:1,  method:'Email', subject:"What's Trending Now in Interior Design",                         body:"Hi {{firstName}},\n\nI wanted to share what's trending right now in interior design — from materials to color palettes to the silhouettes showing up in the best rooms I'm seeing.\n\nLet me know if any of this sparks ideas for your space.\n\n— Carol" },
+    { step:2,  method:'Email', subject:'Top Outdoor Living Trends for 2026',                              body:"Hi {{firstName}},\n\nOutdoor living has become one of the most exciting areas of design right now. Here are the top trends shaping outdoor spaces in 2026 — and a few ideas worth considering for your own home.\n\n— Carol" },
+    { step:3,  method:'Email', subject:"What Designers Are Loving Right Now",                             body:"Hi {{firstName}},\n\nEvery season there are a handful of pieces, materials, and approaches that designers can't stop specifying. Here's what's on the top of the list right now.\n\n— Carol" },
+    { step:4,  method:'Email', subject:"Materials Designers Are Specifying This Month",                   body:"Hi {{firstName}},\n\nMaterials make or break a room. Here are the textures, finishes, and fabrics showing up in the most beautiful interiors right now — and why they work.\n\n— Carol" },
+    { step:5,  method:'Email', subject:"Backyard Transformations You'll Love",                            body:"Hi {{firstName}},\n\nA well-designed outdoor space can completely change how you experience your home. Here are a few backyard transformations that show what's possible.\n\n— Carol" },
+    { step:6,  method:'Email', subject:'How to Create a Resort-Style Outdoor Space',                     body:"Hi {{firstName}},\n\nThe best outdoor spaces feel like an extension of a resort — effortless, beautiful, and designed for real enjoyment. Here's how to get there.\n\n— Carol" },
+    { step:7,  method:'Email', subject:'Outdoor Spaces That Feel Like Indoors',                          body:"Hi {{firstName}},\n\nThe line between indoors and outdoors keeps getting blurrier — and that's a good thing. Here are outdoor spaces that have that warm, curated indoor feeling.\n\n— Carol" },
+    { step:8,  method:'Email', subject:'Designer Tips You Can Apply This Week',                          body:"Hi {{firstName}},\n\nNot every design improvement requires a big project. Here are a few things you can do this week to immediately improve how your home looks and feels.\n\n— Carol" },
+    { step:9,  method:'Email', subject:'How to Elevate Your Living Room Instantly',                      body:"Hi {{firstName}},\n\nThe living room sets the tone for the entire home. Here are the fastest ways to elevate yours — some require no budget at all.\n\n— Carol" },
+    { step:10, method:'Email', subject:'Small Changes That Make a Big Impact',                           body:"Hi {{firstName}},\n\nSome of the most dramatic design improvements come from small, intentional changes. Here are the ones that consistently make the biggest difference.\n\n— Carol" },
+    { step:11, method:'Email', subject:'Lighting Tricks Designers Always Use',                           body:"Hi {{firstName}},\n\nLighting is the most underestimated element in any room. Here are the tricks designers rely on to make every space feel warm, layered, and intentional.\n\n— Carol" },
+    { step:12, method:'Email', subject:'Outdoor Furniture That Lasts (and Looks Beautiful)',              body:"Hi {{firstName}},\n\nNot all outdoor furniture is created equal. Here's how to choose pieces that hold up beautifully season after season — and still look great doing it.\n\n— Carol" },
+    { step:13, method:'Email', subject:'This Material Is Everywhere Right Now',                          body:"Hi {{firstName}},\n\nOne material is showing up in virtually every beautiful room I'm seeing right now. Here's what it is, why it works, and how to use it well.\n\n— Carol" },
+    { step:14, method:'Email', subject:'What to Invest In vs. Save On',                                  body:"Hi {{firstName}},\n\nKnowing where to put your budget — and where to pull back — is one of the most valuable things a designer brings to a project. Here's my honest guide.\n\n— Carol" },
+    { step:15, method:'Email', subject:'Mixing Textures Like a Designer',                                body:"Hi {{firstName}},\n\nTexture is what gives a room depth and warmth. Here's how to mix textures the way designers do — confidently and without it looking busy.\n\n— Carol" },
+    { step:16, method:'Email', subject:'What No One Tells You Before Renovating',                        body:"Hi {{firstName}},\n\nRenovations always surface surprises. Here are the things most people wish they had known before they started — so you can plan better from the beginning.\n\n— Carol" },
+    { step:17, method:'Email', subject:'Common Design Mistakes (and How to Avoid Them)',                  body:"Hi {{firstName}},\n\nEven beautiful homes make these design mistakes. Here's how to spot them and fix them — some with just a small adjustment.\n\n— Carol" },
+    { step:18, method:'Email', subject:'Before You Start Your Project, Read This',                       body:"Hi {{firstName}},\n\nBefore you begin any design or renovation project, there are a few things worth knowing. This could save you time, money, and a lot of frustration.\n\n— Carol" },
+    { step:19, method:'Email', subject:'Design News You Should Know This Week',                          body:"Hi {{firstName}},\n\nHere's a quick roundup of the design news worth knowing this week — new collections, trends, and ideas that are shaping the conversation right now.\n\n— Carol" },
+    { step:20, method:'Email', subject:"What's Happening in the Design World",                           body:"Hi {{firstName}},\n\nA look at what's happening across the design world right now — from showrooms to trade shows to the shifts happening in how people are thinking about their homes.\n\n— Carol" },
+    { step:21, method:'Email', subject:'Top Events & Shows Worth Your Time',                             body:"Hi {{firstName}},\n\nIf you love design, here are the events and shows that are worth your time right now — including a few you might not have heard of yet.\n\n— Carol" },
+    { step:22, method:'Email', subject:"A Project We're Loving Right Now",                               body:"Hi {{firstName}},\n\nI wanted to share a project we're currently working on that I'm really excited about. The concept, the materials, the vision — it's all coming together beautifully.\n\n— Carol" },
+    { step:23, method:'Email', subject:'Before & After: A Complete Transformation',                      body:"Hi {{firstName}},\n\nBefore and afters are always the most honest look at what design can do. Here's a recent transformation that shows the full journey — and the result.\n\n— Carol" },
+    { step:24, method:'Email', subject:'From Concept to Reality',                                        body:"Hi {{firstName}},\n\nThe gap between a design concept and the finished room is where most of the real work happens. Here's a look at how that process unfolds on an actual project.\n\n— Carol" },
+    { step:25, method:'Email', subject:'Details That Make the Difference',                               body:"Hi {{firstName}},\n\nThe difference between a good room and a great one often comes down to a handful of details. Here's what to look for — and how to get them right.\n\n— Carol" },
+    { step:26, method:'Email', subject:'Where to Spend vs. Where to Save',                               body:"Hi {{firstName}},\n\nEvery project has a budget. Here's my honest breakdown of where it's worth spending more — and where saving actually makes the room better.\n\n— Carol" },
+    { step:27, method:'Email', subject:'Avoid These Costly Design Mistakes',                             body:"Hi {{firstName}},\n\nSome design mistakes are fixable. Others cost real money to undo. Here are the ones worth knowing about before you make any decisions.\n\n— Carol" },
+    { step:28, method:'Email', subject:'How to Choose the Right Pieces',                                 body:"Hi {{firstName}},\n\nChooser the right furniture and accessories is one of the hardest parts of designing a room. Here's the framework I use to make those calls with confidence.\n\n— Carol" },
+    { step:29, method:'Email', subject:'Creating Spaces You Actually Live In',                           body:"Hi {{firstName}},\n\nThe most beautifully designed rooms are also the most livable. Here's how to make sure your space looks great and works for how you actually live.\n\n— Carol" },
+    { step:30, method:'Email', subject:'Design That Feels Like You',                                     body:"Hi {{firstName}},\n\nThe best interiors feel personal — like they could only belong to the person who lives there. Here's how to achieve that quality in your own home.\n\n— Carol" },
+    { step:31, method:'Email', subject:'Why Your Home Should Tell a Story',                              body:"Hi {{firstName}},\n\nThe homes I love most are the ones that tell a story. Here's how to think about your space as a narrative — and what that changes about every design decision.\n\n— Carol" },
+    { step:32, method:'Email', subject:'Quick Question for You…',                                        body:"Hi {{firstName}},\n\nQuick question: is there a space in your home that's been on your mind — something that feels unfinished, or that you've been meaning to do something about?\n\nI'd love to hear about it.\n\n— Carol" },
+    { step:33, method:'Email', subject:'What Are You Working On Right Now?',                             body:"Hi {{firstName}},\n\nI always love hearing what projects my clients and friends are thinking about. What are you working on right now — or dreaming about?\n\nReply and let me know.\n\n— Carol" },
+    { step:34, method:'Email', subject:'Need Help With Your Space?',                                     body:"Hi {{firstName}},\n\nIf there's a space in your home that's been on your to-do list, I'd love to help you figure out the next step. Even a short conversation can unlock a lot.\n\nReply and let's talk.\n\n— Carol" },
+    { step:35, method:'Email', subject:"Let's Talk About Your Project",                                  body:"Hi {{firstName}},\n\nI've been thinking about you and wanted to reach out directly. If you have a project — big or small — that you'd like to talk through, I'm here.\n\nReply to this email and we'll set up a time.\n\n— Carol" },
+  ],
 };
 
 /* Email-only cadences. Multi-channel companion content was removed
@@ -12569,7 +12747,9 @@ function _showEnrollmentPreview(prospect) {
   document.body.appendChild(wrap);
 }
 
-const CADENCE_INTERVAL_DAYS_FOR_PREVIEW = { 1:0, 2:3, 3:4, 4:5, 5:7 };
+const CADENCE_INTERVAL_DAYS_FOR_PREVIEW = new Proxy({ 1:0, 2:3, 3:4, 4:5, 5:7 }, {
+  get(t, k) { return k in t ? t[k] : (Number(k) === 1 ? 0 : 7); } // CM List: weekly
+});
 
 async function unenrollProspect(id) {
   const all = await Prospects.getAll();
