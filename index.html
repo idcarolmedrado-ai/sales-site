@@ -7525,7 +7525,7 @@ async function showMonthDetail(monthLabel) {
                onmouseover="this.style.background='rgba(196,147,63,.08)'"
                onmouseout="this.style.background='transparent'">
       <td style="padding:10px 12px">
-        <div style="font-weight:500;color:white">${esc(o.firstName)} ${esc(o.lastName)}</div>
+        <div style="font-weight:600;color:var(--ink-10)">${esc(o.firstName)} ${esc(o.lastName)}</div>
         <div style="font-size:11px;color:var(--ink-40)">${esc(o.email||o.phone||'')}</div>
       </td>
       <td style="padding:10px 8px;font-size:12px;color:var(--ink-20)">${esc(o.projectType||'—')}</td>
@@ -7575,13 +7575,13 @@ async function showMonthDetail(monthLabel) {
       <div style="flex:1;min-width:100px;text-align:center">
         <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
                     color:var(--ink-40);margin-bottom:4px">Deals Closed</div>
-        <div style="font-size:20px;font-weight:700;color:white">${kpis.sold}</div>
+        <div style="font-size:20px;font-weight:700;color:var(--ink-10)">${kpis.sold}</div>
       </div>
       <div style="width:1px;background:var(--ink-60)"></div>
       <div style="flex:1;min-width:100px;text-align:center">
         <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
                     color:var(--ink-40);margin-bottom:4px">Active Opps</div>
-        <div style="font-size:20px;font-weight:700;color:white">${kpis.active}</div>
+        <div style="font-size:20px;font-weight:700;color:var(--ink-10)">${kpis.active}</div>
       </div>
       <div style="width:1px;background:var(--ink-60)"></div>
       <div style="flex:1;min-width:100px;text-align:center">
