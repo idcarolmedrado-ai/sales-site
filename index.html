@@ -6983,14 +6983,19 @@ async function runAllTests() {
 ══════════════════════════════════════════════════ */
 async function showKPIDetail(key) {
   const opps = await DB.getAll();
-  const kpis = BL.calcKPIs(opps, state.monthFilter);
+  // Apply the same month filter active on the dashboard so every detail view
+  // shows exactly the same period the KPI card reflects.
+  const filtered = state.monthFilter
+    ? opps.filter(o => BL.getMonthAuto(o) === state.monthFilter)
+    : opps;
+  const kpis = BL.calcKPIs(filtered);
   const modal = document.getElementById('kpiModal');
   const title = document.getElementById('kpiModalTitle');
   const body  = document.getElementById('kpiModalBody');
   modal.classList.add('open');
 
-  const sold   = opps.filter(o => o.saleMade === 'Yes');
-  const active = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
+  const sold   = filtered.filter(o => isClosedWon(o));
+  const active = filtered.filter(o => !isClosedWon(o) && o.stage !== 'Canceled');
 
   const barChart = (items, max, fmt) => items.map(x =>
     `<div class="bar-row">
@@ -7020,13 +7025,13 @@ async function showKPIDetail(key) {
     opps: {
       label: 'Opportunities',
       render: () => {
-        const byStage = LOOKUP.stages.map(s=>({label:s,val:opps.filter(o=>o.stage===s).length})).filter(x=>x.val>0);
+        const byStage = LOOKUP.stages.map(s=>({label:s,val:filtered.filter(o=>o.stage===s).length})).filter(x=>x.val>0);
         const max = Math.max(...byStage.map(x=>x.val),1);
         return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
           <div><div class="label" style="margin-bottom:12px">By Stage</div>${barChart(byStage,max,v=>v)}</div>
           <div><div class="label" style="margin-bottom:12px">By Project Type</div>
-            ${barChart(LOOKUP.projectTypes.map(pt=>({label:pt,val:opps.filter(o=>o.projectType===pt).length})).filter(x=>x.val>0),
-              Math.max(...LOOKUP.projectTypes.map(pt=>opps.filter(o=>o.projectType===pt).length),1), v=>v)}
+            ${barChart(LOOKUP.projectTypes.map(pt=>({label:pt,val:filtered.filter(o=>o.projectType===pt).length})).filter(x=>x.val>0),
+              Math.max(...LOOKUP.projectTypes.map(pt=>filtered.filter(o=>o.projectType===pt).length),1), v=>v)}
           </div></div>`;
       }
     },
@@ -7128,8 +7133,8 @@ async function showKPIDetail(key) {
         const r = Math.round(kpis.convRate);
         const bySource = LOOKUP.leadSources.map(s=>({
           label:s,
-          total: opps.filter(o=>o.leadSource===s).length,
-          sold: opps.filter(o=>o.leadSource===s&&o.saleMade==='Yes').length,
+          total: filtered.filter(o=>o.leadSource===s).length,
+          sold: filtered.filter(o=>o.leadSource===s && isClosedWon(o)).length,
         })).filter(x=>x.total>0);
         return `<div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start">
           <div style="text-align:center">${ring(r,'var(--gold)',100)}
@@ -7254,13 +7259,13 @@ async function showKPIDetail(key) {
         const r = Math.round(kpis.winRate);
         const bySource = LOOKUP.leadSources.map(s=>({
           label:s,
-          total: opps.filter(o=>o.leadSource===s).length,
-          won:   opps.filter(o=>o.leadSource===s&&o.saleMade==='Yes').length
+          total: filtered.filter(o=>o.leadSource===s).length,
+          won:   filtered.filter(o=>o.leadSource===s && isClosedWon(o)).length
         })).filter(x=>x.total>0);
         const maxWR = Math.max(...bySource.map(x=>x.total),1);
         return `<div style="display:grid;grid-template-columns:auto 1fr;gap:24px">
           <div style="text-align:center">${ring(r,'var(--green)',100)}
-            <div style="font-size:11px;color:var(--ink-40);margin-top:6px">${kpis.sold} of ${opps.length} opps</div>
+            <div style="font-size:11px;color:var(--ink-40);margin-top:6px">${kpis.sold} of ${filtered.length} opps</div>
           </div>
           <div><div class="label" style="margin-bottom:12px">Win Rate by Lead Source</div>
             ${bySource.map(x=>`<div class="bar-row">
@@ -7275,7 +7280,9 @@ async function showKPIDetail(key) {
 
   const cfg = configs[key];
   if (!cfg) { body.innerHTML='<p>No detail available.</p>'; return; }
-  title.textContent = cfg.label.toUpperCase();
+  // Show the active period in the title so it's always clear which filter is applied
+  const periodLabel = state.monthFilter ? ` — ${state.monthFilter.toUpperCase()}` : ' — ALL TIME';
+  title.textContent = cfg.label.toUpperCase() + periodLabel;
   body.innerHTML = cfg.render();
 }
 
