@@ -917,10 +917,10 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
 .cadence-email .body { font-size:13px;color:#2A2622;line-height:1.6;white-space:pre-line; }
 .cadence-email .method { font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;
   margin-top:8px;padding-top:6px;border-top:1px solid var(--ink-70); }
-.contact-table { width:100%;border-collapse:collapse;font-size:13px; }
-.contact-table th { padding:8px 10px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;
+.contact-table { width:100%;border-collapse:collapse;font-size:12px; }
+.contact-table th { padding:5px 7px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;
   letter-spacing:.06em;color:var(--ink-20);border-bottom:2px solid var(--ink-60);white-space:nowrap; }
-.contact-table td { padding:8px 10px;border-bottom:1px solid var(--ink-70);color:#2A2622; }
+.contact-table td { padding:5px 7px;border-bottom:1px solid var(--ink-70);color:#2A2622; }
 .contact-table tr:hover td { background:rgba(184,135,47,.04); }
 .cadence-badge { font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;white-space:nowrap; }
 .cadence-step-1 { background:rgba(224,82,82,.12);color:var(--red); }
@@ -11674,9 +11674,9 @@ async function _renderProspectContacts() {
     (list.length === 0
       ? '<div class="empty-state" style="padding:40px"><div class="icon">👥</div><p>'+(PS.searchQ ? 'No matches for "'+esc(PS.searchQ)+'".' : 'No contacts yet. Add one above or import a CSV.')+'</p></div>'
       : '<div style="background:#fff;border:1px solid var(--ink-60);border-radius:var(--r);overflow:auto">' +
-        '<table class="contact-table"><thead><tr>' +
+        '<table class="contact-table" style="table-layout:fixed"><thead><tr>' +
           '<th style="width:32px"><input type="checkbox" onchange="_toggleAllSelected(this.checked)" '+(selCount && selCount === list.length ? 'checked' : '')+'></th>' +
-          '<th>Score</th><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Persona</th><th>State</th><th>Cadence</th><th>Status</th><th>Actions</th>' +
+          '<th style="width:46px">Score</th><th style="width:110px">Name</th><th style="width:150px">Email</th><th style="width:95px">Phone</th><th style="width:105px">Company</th><th style="width:88px">Persona</th><th style="width:44px">State</th><th style="width:78px">Cadence</th><th style="width:56px">Status</th><th>Actions</th>' +
         '</tr></thead><tbody>' +
         list.map(p => {
           const personaLbl = (PERSONAS.find(x => x.id === p.persona)||{}).label || '—';
@@ -11691,22 +11691,22 @@ async function _renderProspectContacts() {
           const isSel = !!PS.selected[p.id];
 
           const actions = [
-            canEnrich  ? '<button onclick="event.stopPropagation();enrichContactEmail(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(160,136,224,.10);border:1px solid #A088E0;border-radius:5px;color:#A088E0;font-size:10px;font-weight:700;cursor:pointer" title="Scrape website + generate email patterns">🔍 Find email</button>' : '',
-            canEnroll  ? '<button onclick="event.stopPropagation();enrollProspect(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(196,147,63,.15);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:10px;font-weight:700;cursor:pointer">Enroll</button>' : '',
-            canSend    ? '<button onclick="event.stopPropagation();sendCadenceStep(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(42,139,94,.15);border:1px solid #2A8B5E;border-radius:5px;color:#2A8B5E;font-size:10px;font-weight:700;cursor:pointer">Send '+p.cadenceStep+'</button>' : '',
-            canReply   ? '<button onclick="event.stopPropagation();markReplied(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(196,147,63,.10);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:10px;font-weight:700;cursor:pointer" title="Mark replied — pauses cadence">Replied</button>' : '',
-            canConvert ? '<button onclick="event.stopPropagation();convertToOpp(\''+esc(p.id)+'\')" style="padding:3px 8px;background:rgba(68,114,202,.10);border:1px solid #4472CA;border-radius:5px;color:#4472CA;font-size:10px;font-weight:700;cursor:pointer" title="Convert to opportunity in Pipeline">Convert</button>' : '',
-            (p.cadenceStep > 0) ? '<button onclick="event.stopPropagation();unenrollProspect(\''+esc(p.id)+'\')" style="padding:3px 6px;background:none;border:1px solid var(--ink-60);border-radius:5px;color:var(--ink-40);font-size:10px;font-weight:700;cursor:pointer" title="Stop cadence">Stop</button>' : '',
+            canEnrich  ? '<button onclick="event.stopPropagation();enrichContactEmail(\''+esc(p.id)+'\')" style="padding:2px 6px;background:rgba(160,136,224,.10);border:1px solid #A088E0;border-radius:5px;color:#A088E0;font-size:10px;font-weight:700;cursor:pointer" title="Scrape website + generate email patterns">🔍 Find email</button>' : '',
+            canEnroll  ? '<button onclick="event.stopPropagation();enrollProspect(\''+esc(p.id)+'\')" style="padding:2px 6px;background:rgba(196,147,63,.15);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:10px;font-weight:700;cursor:pointer">Enroll</button>' : '',
+            canSend    ? '<button onclick="event.stopPropagation();sendCadenceStep(\''+esc(p.id)+'\')" style="padding:2px 6px;background:rgba(42,139,94,.15);border:1px solid #2A8B5E;border-radius:5px;color:#2A8B5E;font-size:10px;font-weight:700;cursor:pointer">Send '+p.cadenceStep+'</button>' : '',
+            canReply   ? '<button onclick="event.stopPropagation();markReplied(\''+esc(p.id)+'\')" style="padding:2px 6px;background:rgba(196,147,63,.10);border:1px solid var(--gold);border-radius:5px;color:var(--gold);font-size:10px;font-weight:700;cursor:pointer" title="Mark replied — pauses cadence">Replied</button>' : '',
+            canConvert ? '<button onclick="event.stopPropagation();convertToOpp(\''+esc(p.id)+'\')" style="padding:2px 6px;background:rgba(68,114,202,.10);border:1px solid #4472CA;border-radius:5px;color:#4472CA;font-size:10px;font-weight:700;cursor:pointer" title="Convert to opportunity in Pipeline">Convert</button>' : '',
+            (p.cadenceStep > 0) ? '<button onclick="event.stopPropagation();unenrollProspect(\''+esc(p.id)+'\')" style="padding:2px 5px;background:none;border:1px solid var(--ink-60);border-radius:5px;color:var(--ink-40);font-size:10px;font-weight:700;cursor:pointer" title="Stop cadence">Stop</button>' : '',
             '<button onclick="event.stopPropagation();_deleteProspect(\''+esc(p.id)+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0 4px" title="Delete">×</button>',
           ].filter(Boolean).join(' ');
 
           return '<tr style="cursor:pointer" onclick="_showActivityTimeline(\''+esc(p.id)+'\')">' +
             '<td onclick="event.stopPropagation()"><input type="checkbox" '+(isSel?'checked':'')+' onchange="_toggleSelected(\''+esc(p.id)+'\')"></td>' +
             '<td><span style="font-weight:800;font-size:12px;color:'+_scoreColor(score)+';padding:2px 8px;background:'+_scoreColor(score)+'18;border-radius:10px">'+score+'</span></td>' +
-            '<td><strong>'+esc((p.firstName||'')+' '+(p.lastName||''))+'</strong></td>' +
-            '<td>'+esc(p.email||'—')+'</td>' +
-            '<td>'+esc(p.phone||'—')+'</td>' +
-            '<td>'+esc(p.company||'—')+'</td>' +
+            '<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc((p.firstName||'')+' '+(p.lastName||''))+'"><strong>'+esc((p.firstName||'')+' '+(p.lastName||''))+'</strong></td>' +
+            '<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(p.email||'')+'">'+esc(p.email||'—')+'</td>' +
+            '<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(p.phone||'')+'">'+esc(p.phone||'—')+'</td>' +
+            '<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(p.company||'')+'">'+esc(p.company||'—')+'</td>' +
             '<td>'+esc(personaLbl)+'</td>' +
             '<td>'+(p.state ? '<span style="font-size:11px;font-weight:700;color:#4472CA">'+esc(p.state)+'</span>' : '<span style="color:var(--ink-50);font-size:11px">—</span>')+'</td>' +
             '<td>'+(cadCls?'<span class="cadence-badge '+cadCls+'">'+cadTxt+'</span>':'<span style="color:var(--ink-50);font-size:11px">'+cadTxt+'</span>')+'</td>' +
