@@ -10013,7 +10013,7 @@ async function renderSales() {
 
   const sortedKeys = Object.keys(monthGroups)
     .filter(k => k !== 'unknown')
-    .sort((a,b) => a.localeCompare(b));  // chronological: oldest first
+    .sort((a,b) => b.localeCompare(a));  // newest first
   if (monthGroups['unknown']?.length) sortedKeys.push('unknown');
 
   const keyLabel = k => {
@@ -10045,7 +10045,10 @@ async function renderSales() {
   /* ── Build month sections ── */
   const sectionsHTML = sortedKeys.map((k, sIdx) => {
     const recs = monthGroups[k];
-    const monthTotal = recs.reduce((s,o) => s+(Number(o.saleAmount) || Number(o.estimate) || 0), 0);
+    const monthCancels = cancelByMonth[k] || [];
+    const cancelDeducted = monthCancels.reduce((s,c) => s + c.cancelAmount, 0);
+    const grossTotal = recs.reduce((s,o) => s+(Number(o.saleAmount) || Number(o.estimate) || 0), 0);
+    const monthTotal = Math.max(0, grossTotal - cancelDeducted);
     const qLabel = k !== 'unknown' ? (() => {
       const m = parseInt(k.split('-')[1],10);
       const q = m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';
@@ -10105,8 +10108,11 @@ async function renderSales() {
             ${qLabel}
           </div>
           <div style="display:flex;align-items:center;gap:14px">
-            <div style="font-weight:700;font-size:16px;color:var(--green)">${fmt$(monthTotal)}
-              <span style="font-size:11px;font-weight:400;color:var(--ink-40);margin-left:6px">${recs.length} deal${recs.length!==1?'s':''}</span>
+            <div style="text-align:right">
+              <div style="font-weight:700;font-size:16px;color:var(--green)">${fmt$(monthTotal)}
+                <span style="font-size:11px;font-weight:400;color:var(--ink-40);margin-left:6px">${recs.length} deal${recs.length!==1?'s':''}</span>
+              </div>
+              ${cancelDeducted > 0 ? `<div style="font-size:11px;color:var(--red);margin-top:1px">${fmt$(grossTotal)} − ${fmt$(cancelDeducted)} canceled</div>` : ''}
             </div>
             <button onclick="event.stopPropagation();openCancelModal('${k}')"
               style="background:rgba(224,80,80,.12);border:1px solid rgba(224,80,80,.35);color:var(--red);
