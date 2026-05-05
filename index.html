@@ -1628,6 +1628,63 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
 
 <button class="add-btn" onclick="openNewLead()" title="Add new lead">+</button>
 
+<!-- ── CANCELLATION MODAL ── -->
+<div class="modal-overlay" id="cancelModal" onclick="if(event.target===this)closeCancelModal()" role="dialog" aria-modal="true">
+  <div class="modal-panel" style="max-width:520px">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="color:var(--red)">🚫 New Cancellation</div>
+    <p style="font-size:13px;color:var(--ink-40);margin:-12px 0 20px">The cancel amount will be deducted from the selected month's total.</p>
+
+    <div class="form-section">
+      <div class="form-section-title">Cancellation Details</div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="cf-so">SO Number</label>
+          <input id="cf-so" type="text" placeholder="e.g. SO-2026-045">
+        </div>
+        <div class="field">
+          <label for="cf-client">Client Name</label>
+          <input id="cf-client" type="text" placeholder="Client name">
+        </div>
+        <div class="field">
+          <label for="cf-date">Cancel Date *</label>
+          <input id="cf-date" type="date">
+        </div>
+        <div class="field">
+          <label for="cf-amount">Cancel Amount *</label>
+          <input id="cf-amount" type="number" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label for="cf-followup">Follow-up Date</label>
+          <input id="cf-followup" type="date">
+        </div>
+        <div class="field">
+          <label for="cf-reason">Reason *</label>
+          <select id="cf-reason">
+            <option value="">— Select reason —</option>
+            <option>Budget constraints</option>
+            <option>Went with competitor</option>
+            <option>Project canceled</option>
+            <option>Timing — project on hold</option>
+            <option>Moved / relocated</option>
+            <option>Unhappy with design</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label for="cf-notes">Notes</label>
+        <input id="cf-notes" type="text" placeholder="Any additional details…">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeCancelModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" style="background:var(--red);border-color:var(--red)" onclick="saveCancellation()">Save Cancellation</button>
+    </div>
+  </div>
+</div>
+
 <script>
 
 /* ══════════════════════════════════════════════════
@@ -2960,6 +3017,9 @@ const DB = {
       cancelReason: row.cancelReason || '',
       cancelNotes: row.cancelNotes || '',
       lostReason:   row.lost_reason  || '',
+      cancelDate:      row.cancel_date          || '',
+      cancelAmount:    Number(row.cancel_amount) || 0,
+      cancelFollowup:  row.cancel_followup_date  || '',
     };
   },
 
@@ -2998,6 +3058,9 @@ const DB = {
       cancelReason: o.cancelReason || null,
       cancelNotes: o.cancelNotes || null,
       lost_reason: o.lostReason   || null,
+      cancel_date:          o.cancelDate     || null,
+      cancel_amount:        Number(o.cancelAmount) || null,
+      cancel_followup_date: o.cancelFollowup || null,
     };
   },
 
@@ -9923,6 +9986,15 @@ async function renderSales() {
       return db.localeCompare(da);
     });
 
+  /* ── Cancellations grouped by cancel_date month ── */
+  const cancelEntries = opps.filter(o => o.stage === 'Cancellation');
+  const cancelByMonth = {};
+  cancelEntries.forEach(o => {
+    const key = o.cancelDate ? o.cancelDate.substring(0, 7) : 'unknown';
+    if (!cancelByMonth[key]) cancelByMonth[key] = [];
+    cancelByMonth[key].push(o);
+  });
+
   /* ── Group by sale month ── */
   const monthGroups = {}; // key = "YYYY-MM" or "Unknown"
   const MONTHS_EN = ['January','February','March','April','May','June',
@@ -10032,8 +10104,14 @@ async function renderSales() {
             <span style="font-family:var(--font-display);font-size:18px;color:var(--gold-lt)">${keyLabel(k)}</span>
             ${qLabel}
           </div>
-          <div style="font-weight:700;font-size:16px;color:var(--green)">${fmt$(monthTotal)}
-            <span style="font-size:11px;font-weight:400;color:var(--ink-40);margin-left:6px">${recs.length} deal${recs.length!==1?'s':''}</span>
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="font-weight:700;font-size:16px;color:var(--green)">${fmt$(monthTotal)}
+              <span style="font-size:11px;font-weight:400;color:var(--ink-40);margin-left:6px">${recs.length} deal${recs.length!==1?'s':''}</span>
+            </div>
+            <button onclick="event.stopPropagation();openCancelModal('${k}')"
+              style="background:rgba(224,80,80,.12);border:1px solid rgba(224,80,80,.35);color:var(--red);
+                     border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer;
+                     letter-spacing:.04em;white-space:nowrap">🚫 + Cancellation</button>
           </div>
         </div>
         <div id="${secId}" style="overflow-x:auto;border:1px solid var(--ink-60);border-top:2px solid var(--gold-dk);border-radius:0 0 var(--r) var(--r)">
@@ -10054,6 +10132,32 @@ async function renderSales() {
             </thead>
             <tbody>${rows}</tbody>
           </table>
+          ${(() => {
+            const monthCancels = cancelByMonth[k] || [];
+            if (!monthCancels.length) return '';
+            const cancelTotal = monthCancels.reduce((s,c) => s + c.cancelAmount, 0);
+            const cancelRows = monthCancels.map(c => `
+              <tr style="background:rgba(224,80,80,.04);border-top:1px solid rgba(224,80,80,.15)">
+                <td style="padding:7px 12px;font-size:11px;color:var(--red)">🚫</td>
+                <td style="padding:7px 12px;font-size:11px;color:var(--ink-40)">${c.cancelDate ? fmtDate(c.cancelDate) : '—'}</td>
+                <td style="padding:7px 12px;font-weight:600;color:var(--ink-20)">${esc(c.firstName||'Cancellation')}</td>
+                <td style="padding:7px 12px;font-size:11px;color:var(--ink-40)">${esc(c.saleOrderNumber||'—')}</td>
+                <td style="padding:7px 12px;text-align:right;font-weight:700;color:var(--red)">-${fmt$(c.cancelAmount)}</td>
+                <td style="padding:7px 12px;font-size:11px;color:var(--ink-40)" colspan="4">${esc(c.cancelReason||'—')}</td>
+                <td style="padding:7px 12px"></td>
+              </tr>`).join('');
+            return `
+              <table style="width:100%;border-collapse:collapse;min-width:800px;border-top:2px dashed rgba(224,80,80,.3)">
+                <thead>
+                  <tr style="background:rgba(224,80,80,.06)">
+                    <th style="padding:5px 12px;font-size:10px;font-weight:700;color:var(--red);letter-spacing:.07em;text-transform:uppercase" colspan="4">Cancellations this month</th>
+                    <th style="padding:5px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--red)">${fmt$(cancelTotal)} deducted</th>
+                    <th colspan="5"></th>
+                  </tr>
+                </thead>
+                <tbody>${cancelRows}</tbody>
+              </table>`;
+          })()}
         </div>
       </div>`;
   }).join('');
@@ -10174,6 +10278,73 @@ function toggleSalesSection(secId) {
   const hidden = el.style.display === 'none';
   el.style.display = hidden ? '' : 'none';
   if (chev) chev.textContent = hidden ? '▼' : '▶';
+}
+
+/* ── CANCELLATION MODAL ─────────────────────────────────── */
+function openCancelModal(monthKey) {
+  // Pre-fill cancel date to first day of the month clicked
+  const dateEl = document.getElementById('cf-date');
+  if (dateEl && monthKey && monthKey !== 'unknown') {
+    dateEl.value = monthKey + '-01';
+  }
+  document.getElementById('cancelModal')?.classList.add('open');
+}
+
+function closeCancelModal() {
+  document.getElementById('cancelModal')?.classList.remove('open');
+  // Reset form
+  ['cf-so','cf-client','cf-date','cf-amount','cf-followup','cf-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const reason = document.getElementById('cf-reason');
+  if (reason) reason.value = '';
+}
+
+async function saveCancellation() {
+  const cancelDate = document.getElementById('cf-date')?.value;
+  const amount     = parseFloat(document.getElementById('cf-amount')?.value) || 0;
+  const reason     = document.getElementById('cf-reason')?.value;
+
+  if (!cancelDate)  { toast('Cancel date is required.', 'error');   return; }
+  if (!amount)      { toast('Amount is required.', 'error');         return; }
+  if (!reason)      { toast('Please select a reason.', 'error');     return; }
+
+  const soNumber  = document.getElementById('cf-so')?.value?.trim()      || null;
+  const client    = document.getElementById('cf-client')?.value?.trim()  || 'Cancellation';
+  const followup  = document.getElementById('cf-followup')?.value        || null;
+  const notes     = document.getElementById('cf-notes')?.value?.trim()   || null;
+
+  const btn = document.querySelector('#cancelModal .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  try {
+    const { error } = await DB.client
+      .from('opportunities')
+      .insert({
+        id:                   uid(),
+        stage:                'Cancellation',
+        first_name:           client,
+        saleOrderNumber:      soNumber,
+        cancel_date:          cancelDate,
+        cancel_amount:        amount,
+        cancelReason:         reason,
+        cancel_followup_date: followup,
+        notes:                notes,
+      });
+
+    if (error) throw error;
+
+    DB._invalidateCache();
+    closeCancelModal();
+    toast('Cancellation saved ✓', 'success');
+    await renderSales();
+  } catch(e) {
+    console.error('saveCancellation error:', e);
+    toast('Error saving: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save Cancellation'; }
+  }
 }
 
 async function launchApp(fromSupabase) {
