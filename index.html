@@ -4495,8 +4495,12 @@ async function renderPost30() {
     }
   });
 
-  // Sort: most recent delivery date first
-  rows.sort((a,b) => (b.delivDate || '').localeCompare(a.delivDate || ''));
+  // Sort: most recent delivery date first (use Date parse so format doesn't matter)
+  rows.sort((a,b) => {
+    const ta = a.delivDate ? new Date(a.delivDate).getTime() : 0;
+    const tb = b.delivDate ? new Date(b.delivDate).getTime() : 0;
+    return tb - ta;
+  });
 
   // Filter out dismissed
   const visibleRows = rows.filter(r => !r.rec.p30_dismissed);
@@ -4535,8 +4539,8 @@ async function renderPost30() {
       </td>
       <td><input type="text" value="${esc(rec.notes||'')}" placeholder="Notes"
         onchange="updatePost30('${opp.id}','notes',this.value)" style="min-width:120px" /></td>
-      <td><button onclick="dismissPost30('${opp.id}')" title="Dismiss from list"
-        style="background:none;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">✕</button></td>
+      <td><button onclick="dismissPost30('${opp.id}')" title="Mark done — removes from this list only, client stays everywhere else"
+        style="padding:4px 10px;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.5);color:var(--green);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Done</button></td>
     </tr>`;
   }).join('');
 
@@ -4603,7 +4607,7 @@ async function renderPost60() {
     const daysToFU   = daysDiff(today, followup60);
     const daysSinceDelivery = _dv60 ? -daysDiff(today, _dv60) : null;
     // Post60 has its own contact/notes — stored as rec.p60_*
-    return { opp, rec, followup60, daysToFU, daysSinceDelivery };
+    return { opp, rec, delivDate: _dv60, followup60, daysToFU, daysSinceDelivery };
   }).filter(Boolean);
 
   // Auto-archive entries past 90 days since delivery
@@ -4615,8 +4619,12 @@ async function renderPost60() {
     }
   });
 
-  // Sort: most recent delivery date first
-  rows.sort((a,b) => (b.rec.deliveryDate||'').localeCompare(a.rec.deliveryDate||''));
+  // Sort: most recent delivery date first (use Date parse so format doesn't matter)
+  rows.sort((a,b) => {
+    const ta = a.delivDate ? new Date(a.delivDate).getTime() : 0;
+    const tb = b.delivDate ? new Date(b.delivDate).getTime() : 0;
+    return tb - ta;
+  });
 
   // Filter out dismissed
   const visibleRows60 = rows.filter(r => !r.rec.p60_dismissed);
@@ -4651,8 +4659,8 @@ async function renderPost60() {
       </td>
       <td><input type="text" value="${esc(rec.p60_notes||'')}" placeholder="Notes"
         onchange="updatePost60('${rec.oppId}','p60_notes',this.value)" style="min-width:120px" /></td>
-      <td><button onclick="dismissPost60('${rec.oppId}')" title="Dismiss from list"
-        style="background:none;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;opacity:.7" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">✕</button></td>
+      <td><button onclick="dismissPost60('${rec.oppId}')" title="Mark done — removes from this list only, client stays everywhere else"
+        style="padding:4px 10px;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.5);color:var(--green);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Done</button></td>
     </tr>`;
   }).join('');
 
@@ -9709,20 +9717,21 @@ async function renderActive() {
 
   /* ── Column header helper ── */
   function TH(txt, extra) {
-    return '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;'
-      + 'color:var(--ink-10);letter-spacing:.07em;text-transform:uppercase;'
-      + 'white-space:nowrap;border-bottom:2px solid var(--gold-dk);border-right:1px solid var(--ink-60);'
-      + 'position:sticky;top:0;' + (extra || '') + '">' + txt + '</th>';
+    return '<th style="padding:4px 6px;text-align:left;font-size:10px;font-weight:700;'
+      + 'color:var(--ink-10);letter-spacing:.05em;text-transform:uppercase;'
+      + 'border-bottom:2px solid var(--gold-dk);border-right:1px solid var(--ink-60);'
+      + 'overflow:hidden;' + (extra || '') + '">' + txt + '</th>';
   }
   function THR(txt, extra) {  /* Red/accent header */
-    return '<th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;'
-      + 'color:#fff;letter-spacing:.07em;text-transform:uppercase;'
-      + 'white-space:nowrap;background:rgba(180,50,50,.55);border-bottom:2px solid var(--gold-dk);'
-      + 'border-right:1px solid rgba(255,255,255,.15);position:sticky;top:0;' + (extra || '') + '">' + txt + '</th>';
+    return '<th style="padding:4px 6px;text-align:left;font-size:10px;font-weight:700;'
+      + 'color:#fff;letter-spacing:.05em;text-transform:uppercase;'
+      + 'background:rgba(180,50,50,.55);border-bottom:2px solid var(--gold-dk);'
+      + 'border-right:1px solid rgba(255,255,255,.15);overflow:hidden;' + (extra || '') + '">' + txt + '</th>';
   }
   function TD(txt, extra) {
-    return '<td style="padding:7px 10px;font-size:12px;vertical-align:middle;'
+    return '<td style="padding:4px 6px;font-size:11px;vertical-align:middle;'
       + 'border-right:1px solid var(--ink-70);border-bottom:1px solid var(--ink-70);'
+      + 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
       + (extra || '') + '">' + (txt || '<span style="color:var(--ink-60)">—</span>') + '</td>';
   }
 
@@ -9868,15 +9877,15 @@ async function renderActive() {
 
   /* ── Build month-grouped table HTML ── */
   const tableHeader = '<thead><tr style="background:var(--ink-70)">'
-    + TH('Last Name') + TH('First Name')
-    + THR('Customer #') + THR('GoldComp<br>Yes/No') + THR('Sale Date')
-    + THR('Project Type') + THR('GoldComp Value') + THR('Project Value')
-    + TH('2 Days Before<br>Delivery','text-align:center') + TH('Delivery Date','text-align:center')
-    + TH('Follow-up / Link<br>Review','text-align:center')
-    + TH('Next Follow-up<br>(Date)','text-align:center')
-    + TH('Details') + TH('Active Phase<br>Result','text-align:center')
-    + TH('Notes')
-    + TH('','width:60px')
+    + TH('Last Name','width:88px') + TH('First Name','width:72px')
+    + THR('Cust. #','width:78px') + THR('GC?','width:44px') + THR('Sale','width:60px')
+    + THR('Type','width:65px') + THR('GC $','width:64px') + THR('Value','width:64px')
+    + TH('2d Pre','width:56px;text-align:center') + TH('Delivery','width:66px;text-align:center')
+    + TH('Link Rev.','width:66px;text-align:center')
+    + TH('Next F/U','width:62px;text-align:center')
+    + TH('Details','width:48px') + TH('Phase','width:50px;text-align:center')
+    + TH('Notes','width:78px')
+    + TH('','width:72px')
     + '</tr></thead>';
 
   const monthSections = !clients.length ? '' : visKeys.map((mk, sIdx) => {
@@ -9934,7 +9943,7 @@ async function renderActive() {
         + (mGC > 0 ? '<span style="font-size:11px;color:var(--gold)">GC ' + fmt$(mGC) + '</span>' : '')
       + '</div>'
       + '<div id="' + secId + '" style="overflow-x:auto;border:1px solid var(--ink-60);border-top:none;border-radius:0 0 8px 8px">'
-        + '<table style="width:100%;border-collapse:collapse;min-width:1400px;font-size:12px">'
+        + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px">'
         + tableHeader
         + '<tbody>' + mRows + '</tbody>'
         + '</table></div>'
@@ -10309,6 +10318,7 @@ function toggleSalesSection(secId) {
   el.style.display = hidden ? '' : 'none';
   if (chev) chev.textContent = hidden ? '▼' : '▶';
 }
+window.toggleSalesSection = toggleSalesSection;
 
 /* ── CANCELLATION MODAL ─────────────────────────────────── */
 function openCancelModal(monthKey) {
