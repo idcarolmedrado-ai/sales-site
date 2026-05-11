@@ -10072,7 +10072,49 @@ async function renderActive() {
     + (!clients.length
         ? '<div class="empty-state"><div class="icon">📭</div><p>No active clients yet — closed deals will appear here</p></div>'
         : monthSections)
-    + '</div>';
+    + '</div>'
+
+    /* ── Completed / Done section ── */
+    + (() => {
+        const doneOpps = opps.filter(o => _completedActives.includes(o.id));
+        if (!doneOpps.length) return '';
+        const doneRows = doneOpps.map(o =>
+          `<tr style="background:var(--ink-85)">
+            <td style="padding:6px 12px;font-size:11px;font-weight:600;color:var(--ink-30)">${esc(o.lastName||'')} ${esc(o.firstName||'')}</td>
+            <td style="padding:6px 12px;font-size:11px;color:var(--ink-40)">${esc(o.projectType||'—')}</td>
+            <td style="padding:6px 12px;font-size:11px;color:var(--ink-40);text-align:center">${o.deliveryDate ? fmtDate(o.deliveryDate) : '—'}</td>
+            <td style="padding:6px 12px;font-size:11px;color:var(--green);font-weight:700;text-align:right">${o.estimate ? fmt$(Number(o.estimate)) : '—'}</td>
+            <td style="padding:5px 10px;text-align:center">
+              <button onclick="restoreActive('${o.id}')"
+                style="padding:3px 12px;background:rgba(196,147,63,.1);border:1px solid rgba(196,147,63,.4);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">
+                ↩ Undo
+              </button>
+            </td>
+          </tr>`
+        ).join('');
+        return `<div class="container" style="margin-bottom:32px">
+          <div onclick="toggleSalesSection('active-done-sec')"
+               style="display:flex;align-items:center;gap:8px;padding:7px 14px;background:var(--ink-80);
+                      border:1px solid var(--ink-60);border-radius:8px 8px 0 0;cursor:pointer;user-select:none">
+            <span id="active-done-sec-chev" style="font-size:12px;color:var(--ink-40);transition:transform .2s">▶</span>
+            <span style="font-size:12px;font-weight:700;color:var(--ink-40);text-transform:uppercase;letter-spacing:.07em">✓ Completed this cycle</span>
+            <span style="padding:2px 8px;border-radius:10px;background:rgba(76,175,125,.12);color:var(--green);font-size:10px;font-weight:700">${doneOpps.length}</span>
+            <span style="margin-left:auto;font-size:10px;color:var(--ink-50)">Click to expand · use ↩ Undo to restore</span>
+          </div>
+          <div id="active-done-sec" style="display:none;border:1px solid var(--ink-60);border-top:none;border-radius:0 0 8px 8px;overflow:hidden">
+            <table style="width:100%;border-collapse:collapse;font-size:11px">
+              <thead><tr style="background:var(--ink-75)">
+                <th style="padding:5px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);text-transform:uppercase;letter-spacing:.06em">Client</th>
+                <th style="padding:5px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-40);text-transform:uppercase;letter-spacing:.06em">Project</th>
+                <th style="padding:5px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--ink-40);text-transform:uppercase;letter-spacing:.06em">Delivery</th>
+                <th style="padding:5px 12px;text-align:right;font-size:10px;font-weight:700;color:var(--ink-40);text-transform:uppercase;letter-spacing:.06em">Value</th>
+                <th style="padding:5px 12px;width:80px"></th>
+              </tr></thead>
+              <tbody>${doneRows}</tbody>
+            </table>
+          </div>
+        </div>`;
+      })();
 
   // ── CLIENT TIMELINE ─────────────────────────────────────────────────────
   const _timelineWrap = document.getElementById('clientTimelineWrapper') ||
