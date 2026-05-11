@@ -1804,6 +1804,7 @@ const STRINGS = {
     stage_design:'Design in Progress', stage_quote:'Quote Sent',
     stage_followup:'Follow-up', stage_pending:'Pending Decision',
     stage_sale:'Sale Made', stage_postponed:'Postponed', stage_canceled:'Canceled',
+    stage_lost:'Closed Lost',
 
     // Months
     months: ['January','February','March','April','May','June',
@@ -1984,6 +1985,7 @@ const STRINGS = {
     stage_design:'Design em Andamento', stage_quote:'Proposta Enviada',
     stage_followup:'Follow-up', stage_pending:'Decisão Pendente',
     stage_sale:'Venda Realizada', stage_postponed:'Postergado', stage_canceled:'Cancelado',
+    stage_lost:'Negócio Perdido',
 
     // Months
     months: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -2089,8 +2091,9 @@ const STAGE_KEYS = {
   'New Lead':'stage_new','Home Call':'stage_hc','Design in Progress':'stage_design',
   'Quote Sent':'stage_quote','Follow-up':'stage_followup','Pending Decision':'stage_pending',
   'Sale Made':'stage_sale','Postponed':'stage_postponed','Canceled':'stage_canceled',
+  'Closed Lost':'stage_lost','Closed Won':'stage_sale',
 };
-function stageLabel(stage) { return T(STAGE_KEYS[stage] || 'stage_new') || stage; }
+function stageLabel(stage) { return T(STAGE_KEYS[stage]) || stage || ''; }
 
 'use strict';
 
@@ -4106,64 +4109,148 @@ async function renderPipeline() {
   if (state.stageFilter) list = list.filter(o=>o.stage===state.stageFilter);
   if (search) list = list.filter(o=>`${o.firstName} ${o.lastName} ${o.projectType} ${o.stage} ${o.email} ${o.leadSource} ${o.notes}`.toLowerCase().includes(search));
 
-  // Sort: overdue first, then by urgency score desc
-  list.sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
-
-  // Paginate if large dataset
-  const fullList = list;
-  const pgInfo = PAGINATION.paginate(list, 'pipeline');
-  list = pgInfo.items;
-
-  const tbody = document.getElementById('pipelineBody');
+  const wrap  = document.getElementById('pipelineTableWrap');
   const empty = document.getElementById('pipelineEmpty');
 
-  if (!fullList.length) {
-    tbody.innerHTML = '';
-    empty.style.display = 'block';
+  // Clean up old pagination / cards
+  document.getElementById('pipelinePagination')?.remove();
+  document.getElementById('pipelineCards')?.remove();
+
+  if (!list.length) {
+    if (wrap) wrap.innerHTML = '';
+    if (empty) empty.style.display = 'block';
     return;
   }
-  empty.style.display = 'none';
+  if (empty) empty.style.display = 'none';
 
-  tbody.innerHTML = list.map(o=>{
-    const wt  = BL.getWinTier(o);
-    const urg = BL.getUrgencyScore(o);
-    const ovr = BL.isOverdue(o);
-    const w   = BL.getWeighted(o);
-    const trCls = ovr?'overdue':(o.saleMade==='Yes'?'sold':(Number(o.probability)>=75?'hot':''));
-    return `<tr class="${trCls}" onclick="editLead('${o.id}')">
-      <td onclick="event.stopPropagation()"><input type="checkbox" class="bulk-check" data-id="${o.id}" onchange="toggleBulk('${o.id}',this.checked)" ${_bulkSelected.has(o.id)?'checked':''}></td>
-      <td>
-        <div style="font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</div>
-        <div style="font-size:11px;color:var(--ink-40)">${esc(o.email||'')}</div>
-      </td>
-      <td>${esc(o.projectType||'—')}</td>
-      <td style="font-size:11px;color:var(--ink-40)">${esc(o.leadSource||'—')}</td>
-      <td><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}">${stageLabel(o.stage)||'—'}</span></td>
-      <td style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':'—'}</td>
-      <td>${o.estimate?fmt$(Number(o.estimate)):'—'}</td>
-      <td style="color:var(--gold)">${w>0?fmt$(w):'—'}</td>
-      <td style="font-size:11px;color:var(--ink-20)">${o.closeDate?fmtDate(o.closeDate):'—'}</td>
-      <td class="tc"><span style="font-size:11px;font-weight:700;color:${BL.getQuarter(o.closeDate)?'var(--gold)':'var(--ink-60)'}">${BL.getQuarter(o.closeDate)||'—'}</span></td>
-      <td style="${ovr?'color:var(--red);font-weight:600':''}">${fmtDate(o.followUpDate)}${ovr?` <span style="font-size:10px">(${BL.getDaysOverdue(o)}d)</span>`:''}</td>
-      <td><span class="badge ${wt.cls}">${wt.label}</span></td>
-      <td style="font-size:11px;color:var(--ink-40)">${urg}</td>
-      <td><button class="btn-icon" onclick="event.stopPropagation();editLead('${o.id}')" aria-label="Edit ${esc(o.firstName)} ${esc(o.lastName)}">✏️</button></td>
-    </tr>`;
+  // ── Group by close-date month (YYYY-MM), no-date at end ──
+  const monthGroups = {};
+  list.forEach(o => {
+    const key = (o.closeDate||'').substring(0,7) || 'no-date';
+    if (!monthGroups[key]) monthGroups[key] = [];
+    monthGroups[key].push(o);
+  });
+
+  // Sort months newest-first; 'no-date' always last
+  const sortedKeys = Object.keys(monthGroups).sort((a,b) => {
+    if (a==='no-date') return 1;
+    if (b==='no-date') return -1;
+    return b.localeCompare(a);
+  });
+
+  // ── Column helpers ──
+  const PH = (txt, w, extra='') =>
+    `<th style="padding:5px 7px;text-align:left;font-size:10px;font-weight:700;`+
+    `color:var(--ink-10);letter-spacing:.05em;text-transform:uppercase;`+
+    `border-bottom:2px solid var(--gold-dk);border-right:1px solid var(--ink-60);`+
+    `overflow:hidden;width:${w};${extra}">${txt}</th>`;
+  const PHR = (txt, w) => PH(txt, w, 'text-align:right');
+  const PHC = (txt, w) => PH(txt, w, 'text-align:center');
+  const PT  = (txt, extra='') =>
+    `<td style="padding:4px 7px;font-size:11px;vertical-align:middle;`+
+    `border-right:1px solid var(--ink-70);border-bottom:1px solid var(--ink-70);`+
+    `overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${extra}">`+
+    (txt===''||txt===null||txt===undefined ? '<span style="color:var(--ink-60)">—</span>' : txt)+`</td>`;
+  const PTR = (txt, extra='') => PT(txt, 'text-align:right;'+extra);
+  const PTC = (txt, extra='') => PT(txt, 'text-align:center;'+extra);
+
+  const tableHeader =
+    `<thead><tr style="background:var(--ink-70)">`+
+    PH('Client','130px') + PH('Project','90px') +
+    PHC('Stage','92px') + PHR('Prob','44px') +
+    PHR('Estimate','74px') + PHR('Weighted','74px') +
+    PHC('Close','72px') + PHC('Follow-Up','72px') +
+    PHC('Tier','66px') + PHC('Score','44px') +
+    PH('','34px') +
+    `</tr></thead>`;
+
+  // ── Build month sections ──
+  const sectionsHTML = sortedKeys.map((k, sIdx) => {
+    const leads  = monthGroups[k];
+
+    // Closed Lost always at bottom; others sorted by urgency desc
+    const active = leads.filter(o => o.stage !== 'Closed Lost');
+    const lost   = leads.filter(o => o.stage === 'Closed Lost');
+    active.sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
+    lost.sort((a,b)   => (b.closeDate||'').localeCompare(a.closeDate||''));
+    const allInMonth = [...active, ...lost];
+
+    // Month label
+    const label = k === 'no-date' ? 'No Close Date'
+      : (() => {
+          const [y,m] = k.split('-');
+          return new Date(parseInt(y), parseInt(m)-1, 1)
+            .toLocaleString('en-US', {month:'long', year:'numeric'});
+        })();
+
+    const secId   = `pipe-month-${sIdx}`;
+    const weighted = allInMonth.reduce((s,o) => s + BL.getWeighted(o), 0);
+    const lostCnt  = lost.length;
+
+    const rows = allInMonth.map(o => {
+      const wt  = BL.getWinTier(o);
+      const urg = BL.getUrgencyScore(o);
+      const ovr = BL.isOverdue(o);
+      const w   = BL.getWeighted(o);
+      const isLost = o.stage === 'Closed Lost';
+      const rowBg  = isLost
+        ? 'background:rgba(180,60,60,.06)'
+        : (ovr ? 'background:rgba(224,80,80,.04)' : '');
+      const probTxt = o.probability
+        ? `<span style="color:${probColor(Number(o.probability))};font-weight:700">${o.probability}%</span>`
+        : '';
+      const fuTxt = o.followUpDate
+        ? `<span style="${ovr?'color:var(--red);font-weight:600':''}">${fmtDate(o.followUpDate)}${ovr?` <small>(${BL.getDaysOverdue(o)}d)</small>`:''}</span>`
+        : '';
+      return `<tr style="cursor:pointer;${rowBg}" onclick="editLead('${o.id}')">
+        ${PT(`<span style="font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</span>`)}
+        ${PT(esc(o.projectType||''))}
+        ${PTC(`<span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}" style="font-size:10px">${stageLabel(o.stage)||'—'}</span>`)}
+        ${PTR(probTxt)}
+        ${PTR(o.estimate ? fmt$(Number(o.estimate)) : '')}
+        ${PTR(w > 0 ? `<span style="color:var(--gold)">${fmt$(w)}</span>` : '')}
+        ${PTC(o.closeDate ? fmtDate(o.closeDate) : '')}
+        ${PTC(fuTxt)}
+        ${PTC(`<span class="badge ${wt.cls}" style="font-size:10px">${wt.label}</span>`)}
+        ${PTC(`<span style="color:var(--ink-40)">${urg}</span>`)}
+        <td style="padding:3px 5px;border-bottom:1px solid var(--ink-70);text-align:center">
+          <button class="btn-icon" onclick="event.stopPropagation();editLead('${o.id}')" aria-label="Edit">✏️</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    const lostBadge    = lostCnt
+      ? `<span style="margin-left:8px;padding:2px 8px;border-radius:10px;font-size:10px;background:rgba(224,80,80,.14);color:var(--red);font-weight:700">${lostCnt} lost</span>`
+      : '';
+    const weightedBadge = weighted > 0
+      ? `<span style="margin-left:8px;padding:2px 8px;border-radius:10px;font-size:10px;background:rgba(196,152,80,.14);color:var(--gold-dk);font-weight:700">≈${fmt$(Math.round(weighted))}</span>`
+      : '';
+
+    return `<div style="margin-bottom:10px">
+      <div onclick="toggleSalesSection('${secId}')"
+           style="display:flex;align-items:center;gap:0;padding:7px 14px;background:var(--ink-70);
+                  border-radius:8px 8px 0 0;cursor:pointer;border:1px solid var(--ink-60);user-select:none">
+        <span id="${secId}-chev" style="margin-right:8px;font-size:12px;transition:transform .2s">▼</span>
+        <span style="font-weight:700;font-size:13px;color:var(--ink-10)">${label}</span>
+        <span style="margin-left:8px;padding:2px 8px;border-radius:10px;font-size:10px;
+                     background:rgba(90,130,200,.12);color:var(--ink-30);font-weight:700">
+          ${allInMonth.length} lead${allInMonth.length!==1?'s':''}
+        </span>
+        ${weightedBadge}${lostBadge}
+      </div>
+      <div id="${secId}" style="border:1px solid var(--ink-60);border-top:none;border-radius:0 0 8px 8px;overflow:hidden">
+        <div style="overflow-x:auto">
+          <table style="width:100%;min-width:690px;border-collapse:collapse;table-layout:fixed;font-size:11px">
+            ${tableHeader}
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        ${lostCnt ? `<div style="padding:3px 14px;font-size:10px;font-weight:700;color:var(--red);letter-spacing:.06em;text-transform:uppercase;background:rgba(224,80,80,.06);border-top:1px dashed rgba(224,80,80,.3)">↑ ${lostCnt} Closed Lost lead${lostCnt!==1?'s':''} shown above</div>` : ''}
+      </div>
+    </div>`;
   }).join('');
 
-  // Mobile card view
-  const existingCards = document.getElementById('pipelineCards');
-  if (existingCards) existingCards.remove();
-  const wrap = document.getElementById('pipelineTable')?.parentElement;
-  if (wrap) wrap.insertAdjacentHTML('afterend', _renderPipelineCards(list));
-
-  // Pagination controls
-  const pgEl = document.getElementById('pipelinePagination');
-  if (pgEl) pgEl.remove();
-  if (pgInfo.total > 1) {
-    const pgHTML = '<div id="pipelinePagination" class="container">' + PAGINATION.renderControls('pipeline', pgInfo, 'setPipelinePage') + '</div>';
-    document.getElementById('pipelineTableWrap')?.insertAdjacentHTML('afterend', pgHTML);
-  }
+  if (wrap) wrap.innerHTML = sectionsHTML;
 }
 
 function setStageFilter(s) { state.stageFilter = s; renderPipeline(); }
@@ -10183,7 +10270,12 @@ async function renderSales() {
                 <td style="padding:7px 12px;font-size:11px;color:var(--ink-40)">${esc(c.saleOrderNumber||'—')}</td>
                 <td style="padding:7px 12px;text-align:right;font-weight:700;color:var(--red)">-${fmt$(c.cancelAmount)}</td>
                 <td style="padding:7px 12px;font-size:11px;color:var(--ink-40)" colspan="4">${esc(c.cancelReason||'—')}</td>
-                <td style="padding:7px 12px"></td>
+                <td style="padding:5px 10px;white-space:nowrap">
+                  <button onclick="openCancelEdit('${c.id}')" title="Edit this cancellation"
+                    style="padding:3px 8px;margin-right:4px;background:rgba(90,130,200,.1);border:1px solid rgba(90,130,200,.4);color:#5a82c8;border-radius:5px;font-size:11px;cursor:pointer">✏️ Edit</button>
+                  <button onclick="deleteCancellation('${c.id}')" title="Delete this cancellation"
+                    style="padding:3px 8px;background:rgba(224,80,80,.1);border:1px solid rgba(224,80,80,.4);color:var(--red);border-radius:5px;font-size:11px;cursor:pointer">🗑</button>
+                </td>
               </tr>`).join('');
             return `
               <table style="width:100%;border-collapse:collapse;min-width:800px;border-top:2px dashed rgba(224,80,80,.3)">
@@ -10321,16 +10413,42 @@ function toggleSalesSection(secId) {
 window.toggleSalesSection = toggleSalesSection;
 
 /* ── CANCELLATION MODAL ─────────────────────────────────── */
-function openCancelModal(monthKey) {
-  // Pre-fill cancel date to first day of the month clicked
-  const dateEl = document.getElementById('cf-date');
-  if (dateEl && monthKey && monthKey !== 'unknown') {
-    dateEl.value = monthKey + '-01';
+let _editingCancelId = null;
+
+function openCancelModal(monthKey, cancelRecord) {
+  _editingCancelId = null;
+  // Reset form first
+  ['cf-so','cf-client','cf-date','cf-amount','cf-followup','cf-notes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const reason = document.getElementById('cf-reason'); if (reason) reason.value = '';
+
+  if (cancelRecord) {
+    // Edit mode — pre-fill from existing record
+    _editingCancelId = cancelRecord.id;
+    const sf = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    sf('cf-so',       cancelRecord.saleOrderNumber || '');
+    sf('cf-client',   cancelRecord.firstName       || '');
+    sf('cf-date',     cancelRecord.cancelDate       || '');
+    sf('cf-amount',   cancelRecord.cancelAmount     || '');
+    sf('cf-followup', cancelRecord.cancelFollowup   || '');
+    sf('cf-notes',    cancelRecord.cancelNotes || cancelRecord.notes || '');
+    if (reason) reason.value = cancelRecord.cancelReason || '';
+    // Update modal title
+    const titleEl = document.querySelector('#cancelModal .modal-title');
+    if (titleEl) titleEl.textContent = '✏️ Edit Cancellation';
+  } else {
+    // New mode — pre-fill date from month
+    const dateEl = document.getElementById('cf-date');
+    if (dateEl && monthKey && monthKey !== 'unknown') dateEl.value = monthKey + '-01';
+    const titleEl = document.querySelector('#cancelModal .modal-title');
+    if (titleEl) titleEl.textContent = '🚫 New Cancellation';
   }
   document.getElementById('cancelModal')?.classList.add('open');
 }
 
 function closeCancelModal() {
+  _editingCancelId = null;
   document.getElementById('cancelModal')?.classList.remove('open');
   // Reset form
   ['cf-so','cf-client','cf-date','cf-amount','cf-followup','cf-notes'].forEach(id => {
@@ -10359,19 +10477,37 @@ async function saveCancellation() {
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
   try {
-    const { error } = await DB.client
-      .from('opportunities')
-      .insert({
-        id:                   uid(),
-        stage:                'Cancellation',
-        first_name:           client,
-        saleOrderNumber:      soNumber,
-        cancel_date:          cancelDate,
-        cancel_amount:        amount,
-        cancelReason:         reason,
-        cancel_followup_date: followup,
-        notes:                notes,
-      });
+    let error;
+    if (_editingCancelId) {
+      // UPDATE existing record
+      ({ error } = await DB.client
+        .from('opportunities')
+        .update({
+          first_name:           client,
+          saleOrderNumber:      soNumber,
+          cancel_date:          cancelDate,
+          cancel_amount:        amount,
+          cancelReason:         reason,
+          cancel_followup_date: followup,
+          notes:                notes,
+        })
+        .eq('id', _editingCancelId));
+    } else {
+      // INSERT new record
+      ({ error } = await DB.client
+        .from('opportunities')
+        .insert({
+          id:                   uid(),
+          stage:                'Cancellation',
+          first_name:           client,
+          saleOrderNumber:      soNumber,
+          cancel_date:          cancelDate,
+          cancel_amount:        amount,
+          cancelReason:         reason,
+          cancel_followup_date: followup,
+          notes:                notes,
+        }));
+    }
 
     if (error) throw error;
 
@@ -10386,6 +10522,28 @@ async function saveCancellation() {
     if (btn) { btn.disabled = false; btn.textContent = 'Save Cancellation'; }
   }
 }
+
+async function deleteCancellation(id) {
+  if (!confirm('Delete this cancellation record? This cannot be undone.')) return;
+  try {
+    const { error } = await DB.client.from('opportunities').delete().eq('id', id);
+    if (error) throw error;
+    DB._invalidateCache();
+    toast('Cancellation deleted', 'success');
+    await renderSales();
+  } catch(e) {
+    console.error('deleteCancellation error:', e);
+    toast('Error deleting: ' + (e.message || e), 'error');
+  }
+}
+window.deleteCancellation = deleteCancellation;
+
+async function openCancelEdit(id) {
+  const all = await DB.getAll();
+  const rec = all.find(o => o.id === id);
+  if (rec) openCancelModal(null, rec);
+}
+window.openCancelEdit = openCancelEdit;
 
 async function launchApp(fromSupabase) {
   document.getElementById('configScreen').style.display = 'none';
