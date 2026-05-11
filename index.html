@@ -9791,9 +9791,10 @@ async function renderActive() {
   const el    = document.getElementById('page-active');
   if (!el) return;
 
-  /* ── Active clients = saleMade=Yes, sorted by deliveryDate then saleDate ── */
+  /* ── Active clients = saleMade=Yes, not yet marked Done ── */
+  const _completedActives = getCompletedActives();
   const clients = opps
-    .filter(o => o.saleMade === 'Yes')
+    .filter(o => o.saleMade === 'Yes' && !_completedActives.includes(o.id))
     .sort((a, b) => {
       const da = a.deliveryDate || a.saleDate || '9999';
       const db = b.deliveryDate || b.saleDate || '9999';
@@ -9929,28 +9930,32 @@ async function renderActive() {
       + '</tr>';
   }).join('');
 
-  /* ── Group clients by sale month (most recent first) ── */
-  const _saleMonthKey = o => {
-    const d = o.saleDate || o.closeDate || '';
-    if (!d) return 'Unknown';
+  /* ── Group clients by DELIVERY month (oldest delivery first) ── */
+  const _delivMonthKey = o => {
+    const d = o.deliveryDate || o.saleDate || o.closeDate || '';
+    if (!d) return 'No Date';
     const dt = new Date(d + 'T12:00:00');
-    return isNaN(dt) ? 'Unknown' : (LOOKUP.months[dt.getMonth()] + ' ' + dt.getFullYear());
+    return isNaN(dt) ? 'No Date' : (LOOKUP.months[dt.getMonth()] + ' ' + dt.getFullYear());
   };
   const _mkDate = key => {
-    if (key === 'Unknown') return new Date(0);
+    if (key === 'No Date' || key === 'Unknown') return new Date(8640000000000000); // push no-date to end
     const [mn, y] = key.split(' ');
     return new Date(+y, LOOKUP.months.indexOf(mn), 1);
   };
   const grouped = {};
   clients.forEach(o => {
-    const k = _saleMonthKey(o);
+    const k = _delivMonthKey(o);
     if (!grouped[k]) grouped[k] = [];
     grouped[k].push(o);
   });
-  const monthKeys = Object.keys(grouped).sort((a,b) => _mkDate(b) - _mkDate(a)); // newest first
+  const monthKeys = Object.keys(grouped).sort((a,b) => _mkDate(a) - _mkDate(b)); // oldest delivery first
 
   /* ── Active month filter state ── */
   if (!window._activeMonthFilter) window._activeMonthFilter = 'all';
+  // Reset if the saved filter key no longer exists (e.g. after grouping change)
+  if (window._activeMonthFilter !== 'all' && !monthKeys.includes(window._activeMonthFilter)) {
+    window._activeMonthFilter = 'all';
+  }
   const AMF = window._activeMonthFilter;
   const visKeys = AMF === 'all' ? monthKeys : monthKeys.filter(k => k === AMF);
   const viewClients = visKeys.flatMap(k => grouped[k] || []);
