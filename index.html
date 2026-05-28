@@ -1388,7 +1388,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
   <div class="dash-hero container">
     <div class="dash-hero-title">
       <span class="label">Annual Overview</span>
-      <h1 class="display">2026 AT A GLANCE</h1>
+      <h1 class="display" id="yearGlanceHeading">FY 2025-26 AT A GLANCE</h1>
       <p class="dash-hero-date" id="yearSubtitle"></p>
     </div>
     <div class="goal-pill" id="ytdPill" onclick="openAnnualGoalEditor()" style="cursor:pointer" title="Edit annual goal" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor=''">
@@ -7635,52 +7635,78 @@ async function saveAnnualGoalEdit() {
 }
 
 async function renderYear() {
-  const opps = await DB.getAll();
+  const opps  = await DB.getAll();
   const today = new Date();
-  const curMonthIdx = today.getMonth();
-  const monthData = BL.calcAllMonthsKPIs(opps);
 
-  // YTD totals (months up to and including current)
-  const ytdMonths = monthData.slice(0, curMonthIdx + 1);
-  const ytdRevenue = ytdMonths.reduce((s,m) => s+m.totalSales, 0);
-  const ytdGoal    = ytdMonths.reduce((s,m) => s+m.goal, 0);
-  const ytdDeals   = ytdMonths.reduce((s,m) => s+m.deals, 0);
-  const ytdGC      = ytdMonths.reduce((s,m) => s+m.gcSales, 0);
+  // ── EA Fiscal Year helpers ─────────────────────────────────────────────
+  // EA FY = July 1 – June 30.
+  // curFyStart = the year in which the current FY's July started.
+  const curFyStart = today.getMonth() >= 6 ? today.getFullYear() : today.getFullYear() - 1;
+
+  // Build all 12 FY months for a given start year:
+  //   Jul-Dec → calcAllMonthsKPIs(opps, fyStart).slice(6)
+  //   Jan-Jun → calcAllMonthsKPIs(opps, fyStart+1).slice(0,6)
+  const buildFyMonths = (fyStart) => {
+    const h1 = BL.calcAllMonthsKPIs(opps, fyStart);
+    const h2 = BL.calcAllMonthsKPIs(opps, fyStart + 1);
+    return [...h1.slice(6), ...h2.slice(0, 6)];
+  };
+
+  // ── Current FY → YTD KPIs ──────────────────────────────────────────────
+  const curFyMonths = buildFyMonths(curFyStart);
+  // FY month index: Jul=0, Aug=1, …, Dec=5, Jan=6, …, Jun=11
+  const todayFyIdx  = today.getMonth() >= 6
+    ? today.getMonth() - 6
+    : today.getMonth() + 6;
+  const ytdFyMonths = curFyMonths.slice(0, todayFyIdx + 1);
+
+  const ytdRevenue = ytdFyMonths.reduce((s,m) => s+m.totalSales, 0);
+  const ytdGoal    = ytdFyMonths.reduce((s,m) => s+m.goal, 0);
+  const ytdDeals   = ytdFyMonths.reduce((s,m) => s+m.deals, 0);
+  const ytdGC      = ytdFyMonths.reduce((s,m) => s+m.gcSales, 0);
   const ytdPct     = ytdGoal ? Math.min(Math.round(ytdRevenue/ytdGoal*100), 999) : 0;
+  const fyEndYr    = curFyStart + 1;
+  const fyShort    = `FY ${curFyStart}-${String(fyEndYr).slice(-2)}`;
 
+  // Update heading & subtitle
+  const headEl = document.getElementById('yearGlanceHeading');
+  if (headEl) headEl.textContent = fyShort + ' AT A GLANCE';
   document.getElementById('yearSubtitle').textContent =
-    today.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + ' — Year to date through ' + LOOKUP.months[curMonthIdx];
+    today.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) +
+    ' — ' + fyShort + ' · ' + LOOKUP.months[today.getMonth()] + ' YTD';
   document.getElementById('ytd-revenue').textContent = fmt$(ytdRevenue);
   document.getElementById('ytd-fill').style.width = Math.min(ytdPct,100) + '%';
-  document.getElementById('ytd-pct').textContent = ytdPct + '% of YTD goal (' + fmt$(ytdRevenue) + ' / ' + fmt$(ytdGoal) + ')';
+  document.getElementById('ytd-pct').textContent =
+    ytdPct + '% of FY goal (' + fmt$(ytdRevenue) + ' / ' + fmt$(ytdGoal) + ')';
 
-  // YTD summary KPIs
+  // ── KPI strip ─────────────────────────────────────────────────────────
   const annualGoal = getAnnualGoal();
   document.getElementById('yearKpiGrid').innerHTML = `
-    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><path d="M10 5v1.5M10 13.5V15M7.5 12.5c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-2-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2"/></svg><span class="label">YTD Revenue</span><div class="kpi-value gold">${fmt$(ytdRevenue)}</div><div class="kpi-delta">vs ${fmt$(ytdGoal)} goal</div></div>
-    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a3 3 0 016 0v2"/><path d="M2 12h16"/></svg><span class="label">Total Deals</span><div class="kpi-value">${ytdDeals}</div><div class="kpi-delta">closed YTD</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="9"/><path d="M10 5v1.5M10 13.5V15M7.5 12.5c0 1.1 1.1 2 2.5 2s2.5-.9 2.5-2-1.1-2-2.5-2-2.5-.9-2.5-2 1.1-2 2.5-2 2.5.9 2.5 2"/></svg><span class="label">FY Revenue YTD</span><div class="kpi-value gold">${fmt$(ytdRevenue)}</div><div class="kpi-delta">vs ${fmt$(ytdGoal)} goal</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M7 7V5a3 3 0 016 0v2"/><path d="M2 12h16"/></svg><span class="label">Total Deals</span><div class="kpi-value">${ytdDeals}</div><div class="kpi-delta">closed FY YTD</div></div>
     <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 1v4M10 15v4M1 10h4M15 10h4M3.4 3.4l2.8 2.8M13.8 13.8l2.8 2.8M16.6 3.4l-2.8 2.8M6.2 13.8L3.4 16.6"/><circle cx="10" cy="10" r="3"/></svg><span class="label">GoldComp YTD</span><div class="kpi-value">${fmt$(ytdGC)}</div><div class="kpi-delta">${ytdRevenue?Math.round(ytdGC/ytdRevenue*100):0}% of revenue</div></div>
-    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 15l5-5 3 3 5-6 3 3"/><path d="M2 18h16"/></svg><span class="label">YTD vs Goal</span><div class="kpi-value ${ytdPct>=100?'green':ytdPct>=70?'gold':'red'}">${ytdPct}%</div><div class="kpi-delta">${fmt$(Math.max(ytdGoal-ytdRevenue,0))} remaining</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 15l5-5 3 3 5-6 3 3"/><path d="M2 18h16"/></svg><span class="label">FY vs Goal</span><div class="kpi-value ${ytdPct>=100?'green':ytdPct>=70?'gold':'red'}">${ytdPct}%</div><div class="kpi-delta">${fmt$(Math.max(ytdGoal-ytdRevenue,0))} remaining</div></div>
     <div class="kpi-card" onclick="openAnnualGoalEditor()" style="cursor:pointer"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="10" width="3" height="8" rx="1"/><rect x="8.5" y="5" width="3" height="13" rx="1"/><rect x="14" y="2" width="3" height="16" rx="1"/></svg><span class="label">Annual Goal ✏️</span><div class="kpi-value">${fmt$(annualGoal)}</div><div class="kpi-delta">Click to edit</div></div>
-    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2L1 18h18L10 2z"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="label">Months w/ Goal Hit</span><div class="kpi-value green">${ytdMonths.filter(m=>m.onTrack&&m.deals>0).length}</div><div class="kpi-delta">of ${curMonthIdx+1} months elapsed</div></div>
+    <div class="kpi-card"><svg class="kpi-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2L1 18h18L10 2z"/><path d="M10 8v4M10 14.5v.5" stroke-linecap="round"/></svg><span class="label">Months w/ Goal Hit</span><div class="kpi-value green">${ytdFyMonths.filter(m=>m.onTrack&&m.deals>0).length}</div><div class="kpi-delta">of ${todayFyIdx+1} FY months elapsed</div></div>
   `;
 
-  // 12-month cards
-  document.getElementById('yearMonthGrid').innerHTML = monthData.map((m, i) => {
-    const isFuture  = i > curMonthIdx;
-    const isCurrent = i === curMonthIdx;
-    const isEmpty   = m.deals === 0 && !isCurrent;
-    const fillPct   = Math.min(m.pctToGoal, 100);
-    const fillColor = m.onTrack ? 'var(--green)' : 'var(--gold)';
-    const badgeCls  = isFuture ? 'future' : m.onTrack && m.deals>0 ? 'hit' : 'miss';
-    const badgeTxt  = isFuture ? 'UPCOMING' : m.onTrack && m.deals>0 ? '✓ GOAL HIT' : m.deals>0 ? `${Math.round(m.pctToGoal)}%` : '—';
-    const cardCls   = isCurrent ? 'current-month' : m.onTrack && m.deals>0 ? 'on-track' : 'below';
-
-    return `<div class="month-kpi-card ${cardCls} ${isEmpty&&!isCurrent?'empty-month':''}"
-        onclick="showMonthDetail('${m.month} 2026')">
+  // ── Render month card for a single month ──────────────────────────────
+  const renderCard = (m, cardMonthIdx, cardYear) => {
+    const cardDate    = new Date(cardYear, cardMonthIdx, 1);
+    const isFuture    = cardDate > today;
+    const isCurrentMo = cardYear === today.getFullYear() && cardMonthIdx === today.getMonth();
+    const isEmpty     = m.deals === 0 && !isCurrentMo;
+    const fillPct     = Math.min(m.pctToGoal, 100);
+    const fillColor   = m.onTrack ? 'var(--green)' : 'var(--gold)';
+    const badgeCls    = isFuture ? 'future' : m.onTrack && m.deals>0 ? 'hit' : 'miss';
+    const badgeTxt    = isFuture ? 'UPCOMING' : m.onTrack && m.deals>0 ? '✓ GOAL HIT' : m.deals>0 ? Math.round(m.pctToGoal)+'%' : '—';
+    const cardCls     = isCurrentMo ? 'current-month' : m.onTrack && m.deals>0 ? 'on-track' : 'below';
+    const mGoal       = getGoalForMonth(cardMonthIdx, cardYear);
+    return `<div class="month-kpi-card ${cardCls} ${isEmpty&&!isCurrentMo?'empty-month':''}"
+        onclick="showMonthDetail('${m.month} ${cardYear}')">
       <div class="m-badge ${badgeCls}">${badgeTxt}</div>
       <div class="m-name">${m.month.toUpperCase()}</div>
-      <div class="m-revenue">${m.deals>0||isCurrent?fmt$(m.totalSales):'—'}</div>
+      <div class="m-revenue">${m.deals>0||isCurrentMo?fmt$(m.totalSales):'—'}</div>
       <div style="font-size:11px;color:var(--ink-40);margin-top:2px">Goal: ${fmt$(m.goal)}</div>
       <div class="m-goal-bar"><div class="m-goal-fill" style="width:${fillPct}%;background:${fillColor}"></div></div>
       <div class="m-grid">
@@ -7690,18 +7716,88 @@ async function renderYear() {
         <div class="m-stat"><div class="m-stat-val">${m.weightedPipe>0?fmt$(m.weightedPipe,true):'—'}</div><div class="m-stat-lbl">Wtd Pipeline</div></div>
         <div class="m-stat"><div class="m-stat-val">${m.overdue>0?m.overdue:'—'}</div><div class="m-stat-lbl" style="color:${m.overdue>0?'var(--red)':''}">Overdue</div></div>
         <div class="m-stat"><div class="m-stat-val">${m.homeCalls}</div><div class="m-stat-lbl">Home Calls</div></div>
-        <div class="m-stat"><div class="m-stat-val">${fmt$(getGoalForMonth(m.monthIdx, m.year),true)}</div><div class="m-stat-lbl">Goal</div></div>
-        <div class="m-stat"><div class="m-stat-val" style="color:${m.totalSales>=getGoalForMonth(m.monthIdx,m.year)&&getGoalForMonth(m.monthIdx,m.year)>0?'var(--green)':'var(--gold)'}">${getGoalForMonth(m.monthIdx,m.year)>0?Math.round(m.totalSales/getGoalForMonth(m.monthIdx,m.year)*100)+'%':'—'}</div><div class="m-stat-lbl">vs Goal</div></div>
+        <div class="m-stat"><div class="m-stat-val">${fmt$(mGoal,true)}</div><div class="m-stat-lbl">Goal</div></div>
+        <div class="m-stat"><div class="m-stat-val" style="color:${m.totalSales>=mGoal&&mGoal>0?'var(--green)':'var(--gold)'}">${mGoal>0?Math.round(m.totalSales/mGoal*100)+'%':'—'}</div><div class="m-stat-lbl">vs Goal</div></div>
       </div>
       <div style="padding:6px 12px 10px;text-align:right">
-        <button onclick="openGoalEditor(${m.monthIdx},${m.year})"
+        <button onclick="event.stopPropagation();openGoalEditor(${cardMonthIdx},${cardYear})"
           style="font-size:10px;padding:3px 10px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:5px;color:var(--gold);cursor:pointer;font-weight:600">
           ✏️ Edit Goal
         </button>
       </div>
     </div>`;
-  }).join('');
+  };
+
+  // ── Build fiscal year sections (newest first) ─────────────────────────
+  // Show FYs from 4 years back up to the current FY.
+  // Rule: only show a FY if its July 1 start date ≤ today.
+  const oldestFyStart = curFyStart - 4;
+  let gridHTML = '';
+
+  for (let fyStart = curFyStart; fyStart >= oldestFyStart; fyStart--) {
+    const fyJuly1 = new Date(fyStart, 6, 1); // July 1 of fyStart
+    if (fyJuly1 > today) continue;           // FY hasn't started yet — skip
+
+    const fyEnd        = fyStart + 1;
+    const fyLabel      = `FY ${fyStart}-${String(fyEnd).slice(-2)}`;
+    const isCurFy      = fyStart === curFyStart;
+    const sectionId    = `fy-sec-${fyStart}`;
+    const fyMonths     = buildFyMonths(fyStart);
+
+    // FY-level summary
+    const fyRevTotal = fyMonths.reduce((s,m) => s+m.totalSales, 0);
+    const fyGoalSum  = fyMonths.reduce((s,m) => s+m.goal, 0);
+    const fyDealsCnt = fyMonths.reduce((s,m) => s+m.deals, 0);
+    const fyPct      = fyGoalSum ? Math.min(Math.round(fyRevTotal/fyGoalSum*100), 999) : 0;
+
+    // Month cards: localIdx 0=Jul…5=Dec (year=fyStart), 6=Jan…11=Jun (year=fyEnd)
+    const cardsHTML = fyMonths.map((m, li) => {
+      const cardMonthIdx = li < 6 ? li + 6 : li - 6;
+      const cardYear     = li < 6 ? fyStart : fyEnd;
+      return renderCard(m, cardMonthIdx, cardYear);
+    }).join('');
+
+    // Header badge: CURRENT pill or stats summary
+    const headerBadge = isCurFy
+      ? `<span style="background:var(--gold);color:var(--bg);font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;letter-spacing:.5px">CURRENT</span>`
+      : `<span style="font-size:11px;color:var(--ink-40)">${fyDealsCnt} deals &nbsp;·&nbsp; ${fmt$(fyRevTotal)} &nbsp;·&nbsp; ${fyPct}%</span>`;
+
+    gridHTML += `
+      <div class="fy-section" id="${sectionId}" style="margin-bottom:16px">
+        <div onclick="toggleFySection('${sectionId}')"
+          style="display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:10px;cursor:pointer;user-select:none;margin-bottom:${isCurFy?'14px':'0'};transition:background .15s"
+          onmouseover="this.style.background='var(--surface-1)'" onmouseout="this.style.background='var(--surface-2)'">
+          <span id="${sectionId}-arrow" style="font-size:13px;width:14px;display:inline-block">${isCurFy?'▼':'▶'}</span>
+          <span style="font-weight:700;font-size:15px;color:var(--ink-10);letter-spacing:.3px">${fyLabel}</span>
+          <span style="font-size:12px;color:var(--ink-40)">Jul ${fyStart} – Jun ${fyEnd}</span>
+          ${headerBadge}
+        </div>
+        <div id="${sectionId}-body" style="display:${isCurFy?'block':'none'}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;padding:4px 0 14px">
+            ${cardsHTML}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Switch yearMonthGrid from a css grid to a plain block container
+  const gridEl = document.getElementById('yearMonthGrid');
+  gridEl.style.display = 'block';
+  gridEl.style.gridTemplateColumns = 'none';
+  gridEl.innerHTML = gridHTML;
 }
+
+function toggleFySection(secId) {
+  const body  = document.getElementById(secId + '-body');
+  const arrow = document.getElementById(secId + '-arrow');
+  const header = body?.previousElementSibling;
+  if (!body) return;
+  const opening = body.style.display === 'none';
+  body.style.display = opening ? 'block' : 'none';
+  if (arrow) arrow.textContent = opening ? '▼' : '▶';
+  if (header) header.style.marginBottom = opening ? '14px' : '0';
+}
+window.toggleFySection = toggleFySection;
 
 /* ══════════════════════════════════════════════════
    MONTH DETAIL MODAL — shows sales for a month,
