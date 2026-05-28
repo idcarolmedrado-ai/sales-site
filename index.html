@@ -954,12 +954,42 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
     <svg width="48" height="48" viewBox="0 0 36 36" style="margin-bottom:12px"><rect width="36" height="36" rx="8" fill="#C4933F"/><text x="18" y="24" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="white">CM</text></svg>
     <div class="auth-gate-logo">Carol Medrado</div>
     <div class="auth-gate-sub">Sales Intelligence</div>
-    <input id="authEmail" type="email" placeholder="Email address" autocomplete="email"
-      onkeydown="if(event.key==='Enter')document.getElementById('authPassword').focus()">
-    <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password"
-      onkeydown="if(event.key==='Enter')checkAuthGate()" style="margin-top:8px">
-    <button class="auth-gate-btn" onclick="checkAuthGate()" style="margin-top:12px">Sign In</button>
-    <div class="auth-gate-error" id="authError">Incorrect email or password</div>
+
+    <!-- ① Normal login panel -->
+    <div id="authLoginPanel">
+      <input id="authEmail" type="email" placeholder="Email address" autocomplete="email"
+        onkeydown="if(event.key==='Enter')document.getElementById('authPassword').focus()">
+      <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')checkAuthGate()" style="margin-top:8px">
+      <button class="auth-gate-btn" onclick="checkAuthGate()" style="margin-top:12px">Sign In</button>
+      <div class="auth-gate-error" id="authError">Incorrect email or password</div>
+      <button class="auth-gate-skip" onclick="showForgotPanel()" style="margin-top:10px">Forgot password?</button>
+    </div>
+
+    <!-- ② Forgot password panel -->
+    <div id="authForgotPanel" style="display:none">
+      <div style="font-size:13px;color:#2A2622;margin-bottom:14px;line-height:1.5">Enter your email to receive a password reset link</div>
+      <input id="resetEmail" type="email" placeholder="Email address" value="id.carolmedrado@gmail.com">
+      <button class="auth-gate-btn" onclick="sendPasswordReset()" style="margin-top:12px">Send Reset Email</button>
+      <div class="auth-gate-error" id="resetError"></div>
+      <div id="resetSuccess" style="display:none;color:#2A8B5E;font-size:12px;margin-top:10px;padding:8px;background:rgba(42,139,94,.08);border-radius:6px">
+        ✓ Reset email sent! Check your inbox and click the link.
+      </div>
+      <button class="auth-gate-skip" onclick="showLoginPanel()" style="margin-top:10px">← Back to Sign In</button>
+    </div>
+
+    <!-- ③ Set new password panel (shown after clicking the reset link in email) -->
+    <div id="authNewPassPanel" style="display:none">
+      <div style="font-size:13px;color:#2A2622;margin-bottom:14px;line-height:1.5">Choose your new password</div>
+      <input id="newPassword" type="password" placeholder="New password" autocomplete="new-password">
+      <input id="newPasswordConfirm" type="password" placeholder="Confirm new password" autocomplete="new-password" style="margin-top:8px"
+        onkeydown="if(event.key==='Enter')setNewPassword()">
+      <button class="auth-gate-btn" onclick="setNewPassword()" style="margin-top:12px">Update Password</button>
+      <div class="auth-gate-error" id="newPassError"></div>
+      <div id="newPassSuccess" style="display:none;color:#2A8B5E;font-size:12px;margin-top:10px;padding:8px;background:rgba(42,139,94,.08);border-radius:6px">
+        ✓ Password updated! Signing you in…
+      </div>
+    </div>
   </div>
 </div>
 
@@ -8528,6 +8558,71 @@ async function signOut() {
   window.location.reload();
 }
 
+function showForgotPanel() {
+  document.getElementById('authLoginPanel').style.display = 'none';
+  document.getElementById('authForgotPanel').style.display = '';
+  document.getElementById('authNewPassPanel').style.display = 'none';
+  setTimeout(() => document.getElementById('resetEmail')?.focus(), 50);
+}
+function showLoginPanel() {
+  document.getElementById('authForgotPanel').style.display = 'none';
+  document.getElementById('authNewPassPanel').style.display = 'none';
+  document.getElementById('authLoginPanel').style.display = '';
+}
+function showNewPassPanel() {
+  document.getElementById('authLoginPanel').style.display = 'none';
+  document.getElementById('authForgotPanel').style.display = 'none';
+  document.getElementById('authNewPassPanel').style.display = '';
+  setTimeout(() => document.getElementById('newPassword')?.focus(), 50);
+}
+
+async function sendPasswordReset() {
+  const email = (document.getElementById('resetEmail')?.value || '').trim();
+  if (!email) return;
+  const btn = document.querySelector('#authForgotPanel .auth-gate-btn');
+  const err = document.getElementById('resetError');
+  const suc = document.getElementById('resetSuccess');
+  if (btn) { btn.textContent = 'Sending…'; btn.disabled = true; }
+  if (err) err.style.display = 'none';
+  if (suc) suc.style.display = 'none';
+  try {
+    const { error } = await window._sbAuthClient.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://idcarolmedrado-ai.github.io/sales-site/'
+    });
+    if (error) throw error;
+    if (suc) suc.style.display = 'block';
+    if (btn) { btn.textContent = 'Email Sent ✓'; }
+  } catch(e) {
+    if (err) { err.textContent = e.message || 'Error sending reset email'; err.style.display = 'block'; }
+    if (btn) { btn.textContent = 'Send Reset Email'; btn.disabled = false; }
+  }
+}
+
+async function setNewPassword() {
+  const pw  = (document.getElementById('newPassword')?.value  || '').trim();
+  const pw2 = (document.getElementById('newPasswordConfirm')?.value || '').trim();
+  const btn = document.querySelector('#authNewPassPanel .auth-gate-btn');
+  const err = document.getElementById('newPassError');
+  const suc = document.getElementById('newPassSuccess');
+  if (err) err.style.display = 'none';
+  if (!pw)        { if (err) { err.textContent = 'Please enter a new password.'; err.style.display = 'block'; } return; }
+  if (pw.length < 6) { if (err) { err.textContent = 'Password must be at least 6 characters.'; err.style.display = 'block'; } return; }
+  if (pw !== pw2) { if (err) { err.textContent = 'Passwords do not match.'; err.style.display = 'block'; } return; }
+  if (btn) { btn.textContent = 'Updating…'; btn.disabled = true; }
+  try {
+    const { error } = await window._sbAuthClient.auth.updateUser({ password: pw });
+    if (error) throw error;
+    if (suc) suc.style.display = 'block';
+    setTimeout(() => {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      window.location.reload();
+    }, 2000);
+  } catch(e) {
+    if (err) { err.textContent = e.message || 'Error updating password.'; err.style.display = 'block'; }
+    if (btn) { btn.textContent = 'Update Password'; btn.disabled = false; }
+  }
+}
+
 // no-op — auth is now handled in the boot sequence via _sbAuthClient
 function initAuthGate() {}
 
@@ -13974,6 +14069,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   /* ── Create one shared client for both auth and data ── */
   const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
   window._sbAuthClient = sbClient;
+
+  /* ── Listen for PASSWORD_RECOVERY event (user clicked reset link in email) ── */
+  sbClient.auth.onAuthStateChange((event, _session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      document.getElementById('configScreen').style.display = 'none';
+      document.getElementById('authGate').style.display = 'flex';
+      showNewPassPanel();
+    }
+  });
 
   /* ── Check auth session — show login gate if not signed in ── */
   const { data: { session } } = await sbClient.auth.getSession();
