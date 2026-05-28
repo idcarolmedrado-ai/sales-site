@@ -8605,13 +8605,26 @@ async function setNewPassword() {
   const err = document.getElementById('newPassError');
   const suc = document.getElementById('newPassSuccess');
   if (err) err.style.display = 'none';
-  if (!pw)        { if (err) { err.textContent = 'Please enter a new password.'; err.style.display = 'block'; } return; }
+  if (!pw)           { if (err) { err.textContent = 'Please enter a new password.'; err.style.display = 'block'; } return; }
   if (pw.length < 6) { if (err) { err.textContent = 'Password must be at least 6 characters.'; err.style.display = 'block'; } return; }
-  if (pw !== pw2) { if (err) { err.textContent = 'Passwords do not match.'; err.style.display = 'block'; } return; }
+  if (pw !== pw2)    { if (err) { err.textContent = 'Passwords do not match.'; err.style.display = 'block'; } return; }
   if (btn) { btn.textContent = 'Updating…'; btn.disabled = true; }
   try {
+    /* ── Restore session from recovery token in URL hash (fixes "Auth session missing") ── */
+    const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+    const accessToken  = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    if (accessToken && refreshToken) {
+      const { error: sessErr } = await window._sbAuthClient.auth.setSession({
+        access_token:  accessToken,
+        refresh_token: refreshToken,
+      });
+      if (sessErr) throw sessErr;
+    }
+
     const { error } = await window._sbAuthClient.auth.updateUser({ password: pw });
     if (error) throw error;
+
     if (suc) suc.style.display = 'block';
     setTimeout(() => {
       history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -14078,6 +14091,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       showNewPassPanel();
     }
   });
+
+  /* ── Also detect recovery token directly in URL hash (backup for slow onAuthStateChange) ── */
+  const _hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  if (_hashParams.get('type') === 'recovery' && _hashParams.get('access_token')) {
+    document.getElementById('configScreen').style.display = 'none';
+    document.getElementById('authGate').style.display = 'flex';
+    showNewPassPanel();
+    // Don't await login — let the user set their password; setNewPassword() handles the session exchange
+    return;
+  }
 
   /* ── Check auth session — show login gate if not signed in ── */
   const { data: { session } } = await sbClient.auth.getSession();
