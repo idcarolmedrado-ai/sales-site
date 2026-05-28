@@ -8664,10 +8664,18 @@ async function _hydrateSettings() {
     }
   }
 }
-function renderSettings() {
+async function renderSettings() {
   const el = document.getElementById('page-settings');
   if (!el) return;
   const s = _getSettings();
+
+  // Always fetch the current user email fresh — _sbAuthEmail may be stale or unset
+  if (window._sbAuthClient) {
+    try {
+      const { data: { user } } = await window._sbAuthClient.auth.getUser();
+      if (user?.email) window._sbAuthEmail = user.email;
+    } catch(e) { /* non-fatal */ }
+  }
   const hasPassword = !!window._sbAuthEmail;
 
   el.innerHTML = `
@@ -8705,7 +8713,7 @@ function renderSettings() {
       <div class="tab-section" style="margin-top:20px">
         <h3>🔒 Account</h3>
         <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">
-          Signed in as <strong>${esc(window._sbAuthClient?.email || window._sbAuthEmail || '—')}</strong>. Change your password below or sign out.
+          Signed in as <strong>${esc(window._sbAuthEmail || '—')}</strong>. Change your password below or sign out.
         </p>
         <div class="form-grid">
           <div class="field">
