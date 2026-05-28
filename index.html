@@ -8610,24 +8610,14 @@ async function setNewPassword() {
   if (pw !== pw2)    { if (err) { err.textContent = 'Passwords do not match.'; err.style.display = 'block'; } return; }
   if (btn) { btn.textContent = 'Updating…'; btn.disabled = true; }
   try {
-    /* ── Restore session from recovery token in URL hash (fixes "Auth session missing") ── */
-    const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
-    const accessToken  = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token');
-    if (accessToken && refreshToken) {
-      const { error: sessErr } = await window._sbAuthClient.auth.setSession({
-        access_token:  accessToken,
-        refresh_token: refreshToken,
-      });
-      if (sessErr) throw sessErr;
-    }
-
+    /* Session was established at boot (exchangeCodeForSession or setSession).
+       Just call updateUser — no need to re-parse the URL here. */
     const { error } = await window._sbAuthClient.auth.updateUser({ password: pw });
     if (error) throw error;
 
     if (suc) suc.style.display = 'block';
     setTimeout(() => {
-      history.replaceState(null, '', window.location.pathname + window.location.search);
+      history.replaceState(null, '', window.location.pathname);
       window.location.reload();
     }, 2000);
   } catch(e) {
@@ -14083,24 +14073,46 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
   window._sbAuthClient = sbClient;
 
-  /* ── Listen for PASSWORD_RECOVERY event (user clicked reset link in email) ── */
-  sbClient.auth.onAuthStateChange((event, _session) => {
+  /* ── Handle password recovery redirect ── */
+  /* PKCE flow (Supabase JS v2 default): link arrives as ?code=... in query string */
+  const _recCode = new URLSearchParams(window.location.search).get('code');
+  if (_recCode) {
+    try {
+      const { error: exchErr } = await sbClient.auth.exchangeCodeForSession(_recCode);
+      if (exchErr) console.warn('Code exchange error:', exchErr.message);
+    } catch(e) { console.warn('exchangeCodeForSession failed:', e); }
+    // Clean the ?code= from the URL so a refresh doesn't re-use it
+    history.replaceState(null, '', window.location.pathname);
+    document.getElementById('configScreen').style.display = 'none';
+    document.getElementById('authGate').style.display = 'flex';
+    showNewPassPanel();
+    return; // Page reloads automatically after password is set
+  }
+
+  /* Implicit flow fallback: link arrives as #access_token=...&type=recovery in hash */
+  const _hashP = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  if (_hashP.get('type') === 'recovery' && _hashP.get('access_token')) {
+    try {
+      await sbClient.auth.setSession({
+        access_token:  _hashP.get('access_token'),
+        refresh_token: _hashP.get('refresh_token') || '',
+      });
+    } catch(e) { console.warn('setSession failed:', e); }
+    history.replaceState(null, '', window.location.pathname);
+    document.getElementById('configScreen').style.display = 'none';
+    document.getElementById('authGate').style.display = 'flex';
+    showNewPassPanel();
+    return;
+  }
+
+  /* onAuthStateChange as last-resort backup */
+  sbClient.auth.onAuthStateChange((event) => {
     if (event === 'PASSWORD_RECOVERY') {
       document.getElementById('configScreen').style.display = 'none';
       document.getElementById('authGate').style.display = 'flex';
       showNewPassPanel();
     }
   });
-
-  /* ── Also detect recovery token directly in URL hash (backup for slow onAuthStateChange) ── */
-  const _hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
-  if (_hashParams.get('type') === 'recovery' && _hashParams.get('access_token')) {
-    document.getElementById('configScreen').style.display = 'none';
-    document.getElementById('authGate').style.display = 'flex';
-    showNewPassPanel();
-    // Don't await login — let the user set their password; setNewPassword() handles the session exchange
-    return;
-  }
 
   /* ── Check auth session — show login gate if not signed in ── */
   const { data: { session } } = await sbClient.auth.getSession();
