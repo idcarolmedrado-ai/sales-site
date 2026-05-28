@@ -3965,28 +3965,65 @@ async function renderDashboard() {
   document.getElementById('goalFill').style.width = pct + '%';
   document.getElementById('goalPct').textContent = T('pct_of_goal')(pct);
 
-  // Month filter chips — sorted chronologically
+  // Month filter chips — grouped by EA fiscal year (July–June)
   const _MO_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const _monthToDate = s => { const [mn, y] = (s||'').split(' '); const i = _MO_EN.indexOf(mn); return i >= 0 ? new Date(+y, i, 1) : new Date(0); };
   const months = [...new Set(opps.map(o=>BL.getMonthAuto(o)).filter(Boolean))]
     .sort((a, b) => _monthToDate(a) - _monthToDate(b));
 
-  // FY picker buttons — parse "Month YYYY" not "YYYY-MM"
+  // Current EA FY start year (July–June)
+  const _dashCurFyStart = today.getMonth() >= 6 ? today.getFullYear() : today.getFullYear() - 1;
+  // Persist expanded state across re-renders — current FY open by default
+  if (!window._expandedFyYrs) window._expandedFyYrs = new Set([_dashCurFyStart]);
+  // When a month filter is set, auto-expand its FY so the chip stays visible
+  if (state.monthFilter) {
+    const [_fmn, _fy] = (state.monthFilter||'').split(' ');
+    const _fmo = _MO_EN.indexOf(_fmn) + 1;
+    const _fyS = _fmo >= 7 ? parseInt(_fy,10) : parseInt(_fy,10) - 1;
+    if (!isNaN(_fyS)) window._expandedFyYrs.add(_fyS);
+  }
+
+  // Unique FY start years present in data — newest first
   const _fyYears = [...new Set(months.map(m => {
     const [mn, yStr] = (m||'').split(' ');
-    const mo = _MO_EN.indexOf(mn) + 1;  // 1-based
+    const mo = _MO_EN.indexOf(mn) + 1;
     const y  = parseInt(yStr, 10);
     return mo >= 7 ? y : y - 1;
-  }).filter(y => !isNaN(y)))].sort();
-  const fyButtons = _fyYears.map(yr => {
-    const label = `FY${yr}-${String(yr+1).slice(2)}`;
-    return `<button class="filter-chip ${state._fyStartYr===yr?'active':''}" onclick="setFiscalYearFilter(${yr})" style="font-size:10px">${label}</button>`;
+  }).filter(y => !isNaN(y)))].sort((a,b) => b - a); // newest first
+
+  const fyGroupsHTML = _fyYears.map(yr => {
+    const fyLabel    = `FY ${yr}-${String(yr+1).slice(-2)}`;
+    const isExpanded = window._expandedFyYrs.has(yr);
+    const isCurFy    = yr === _dashCurFyStart;
+
+    // Months belonging to this FY, oldest→newest
+    const fyMonths = months.filter(m => {
+      const [mn, yStr] = (m||'').split(' ');
+      const mo = _MO_EN.indexOf(mn) + 1;
+      const y  = parseInt(yStr, 10);
+      return (mo >= 7 ? y : y - 1) === yr;
+    });
+
+    const pillsHTML = fyMonths.map(m =>
+      `<button class="filter-chip ${state.monthFilter===m?'active':''}"
+         onclick="setMonthFilter('${m}')"
+         style="font-size:10px">${localMonthLabel(m)}</button>`
+    ).join('');
+
+    return `<span style="display:inline-flex;flex-direction:column;gap:4px;vertical-align:top;margin-right:2px">
+      <button class="filter-chip${isCurFy?' active':''}" onclick="toggleFyPillGroup(${yr})"
+        style="font-size:10px;gap:5px;display:inline-flex;align-items:center">
+        <span id="fy-arrow-${yr}" style="font-size:9px">${isExpanded?'▼':'▶'}</span>${fyLabel}
+      </button>
+      <div id="fy-pills-${yr}" style="display:${isExpanded?'flex':'none'};flex-wrap:wrap;gap:4px;padding-left:2px">
+        ${pillsHTML}
+      </div>
+    </span>`;
   }).join('');
 
   document.getElementById('monthFilter').innerHTML =
     `<button class="filter-chip ${!state.monthFilter&&!state._fyStartYr?'active':''}" onclick="setMonthFilter(null)">${T('all_months')}</button>` +
-    fyButtons +
-    months.map(m=>`<button class="filter-chip ${state.monthFilter===m?'active':''}" onclick="setMonthFilter('${m}')">${localMonthLabel(m)}</button>`).join('');
+    fyGroupsHTML;
 
   // KPI values with trend indicators
   document.getElementById('k-opps').textContent    = kpis.opps;
@@ -4122,12 +4159,27 @@ async function renderDashboard() {
   await _updateTasksWidget(opps);
 }
 
-function setMonthFilter(m) { state.monthFilter = m; state._fyStartYr = null; renderDashboard(); }
+function setMonthFilter(m) {
+  state.monthFilter = m;
+  state._fyStartYr  = null;
+  renderDashboard();
+}
 function setFiscalYearFilter(startYr) {
   if (state._fyStartYr === startYr) { state._fyStartYr = null; state.monthFilter = null; }
   else { state._fyStartYr = startYr; state.monthFilter = null; }
   renderDashboard();
 }
+// Toggle expand/collapse of a FY's month pills without a full re-render
+function toggleFyPillGroup(yr) {
+  if (!window._expandedFyYrs) window._expandedFyYrs = new Set();
+  const wasOpen = window._expandedFyYrs.has(yr);
+  wasOpen ? window._expandedFyYrs.delete(yr) : window._expandedFyYrs.add(yr);
+  const pills = document.getElementById('fy-pills-' + yr);
+  const arrow = document.getElementById('fy-arrow-' + yr);
+  if (pills) pills.style.display = wasOpen ? 'none' : 'flex';
+  if (arrow) arrow.textContent   = wasOpen ? '▶' : '▼';
+}
+window.toggleFyPillGroup = toggleFyPillGroup;
 
 /* ══════════════════════════════════════════════════
    RENDER: PIPELINE
