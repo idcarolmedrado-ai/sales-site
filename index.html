@@ -2925,7 +2925,7 @@ const DB = {
   LOCAL_KEY: 'ea_sales_v4',
 
   initSupabase(url, key, existingClient) {
-    this.client = existingClient || window.supabase.createClient(url, key);
+    this.client = existingClient || window.supabase.createClient(url, key, { auth: { flowType: 'implicit' } });
     this.mode = 'supabase';
     this._setBadge('live');
   },
@@ -14069,50 +14069,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  /* ── Create one shared client for both auth and data ── */
-  const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
+  /* ── Create one shared client — implicit flow so recovery links work on static sites ── */
+  const sbClient = window.supabase.createClient(SB_URL, SB_KEY, {
+    auth: { flowType: 'implicit', detectSessionInUrl: true }
+  });
   window._sbAuthClient = sbClient;
 
-  /* ── Handle password recovery redirect ── */
-  /* PKCE flow (Supabase JS v2 default): link arrives as ?code=... in query string */
-  const _recCode = new URLSearchParams(window.location.search).get('code');
-  if (_recCode) {
-    try {
-      const { error: exchErr } = await sbClient.auth.exchangeCodeForSession(_recCode);
-      if (exchErr) console.warn('Code exchange error:', exchErr.message);
-    } catch(e) { console.warn('exchangeCodeForSession failed:', e); }
-    // Clean the ?code= from the URL so a refresh doesn't re-use it
-    history.replaceState(null, '', window.location.pathname);
-    document.getElementById('configScreen').style.display = 'none';
-    document.getElementById('authGate').style.display = 'flex';
-    showNewPassPanel();
-    return; // Page reloads automatically after password is set
-  }
-
-  /* Implicit flow fallback: link arrives as #access_token=...&type=recovery in hash */
+  /* ── Password recovery: Supabase sends #access_token=...&type=recovery in the hash.
+     detectSessionInUrl:true means the client already parsed the hash and stored the
+     session by the time we reach this code. We just need to show the right panel. ── */
   const _hashP = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
-  if (_hashP.get('type') === 'recovery' && _hashP.get('access_token')) {
-    try {
-      await sbClient.auth.setSession({
-        access_token:  _hashP.get('access_token'),
-        refresh_token: _hashP.get('refresh_token') || '',
-      });
-    } catch(e) { console.warn('setSession failed:', e); }
-    history.replaceState(null, '', window.location.pathname);
+  if (_hashP.get('type') === 'recovery') {
+    history.replaceState(null, '', window.location.pathname); // clean the hash from URL
     document.getElementById('configScreen').style.display = 'none';
     document.getElementById('authGate').style.display = 'flex';
     showNewPassPanel();
-    return;
+    return; // page reloads after setNewPassword() succeeds
   }
-
-  /* onAuthStateChange as last-resort backup */
-  sbClient.auth.onAuthStateChange((event) => {
-    if (event === 'PASSWORD_RECOVERY') {
-      document.getElementById('configScreen').style.display = 'none';
-      document.getElementById('authGate').style.display = 'flex';
-      showNewPassPanel();
-    }
-  });
 
   /* ── Check auth session — show login gate if not signed in ── */
   const { data: { session } } = await sbClient.auth.getSession();
