@@ -874,6 +874,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
 .cal-event.delivery { background:rgba(76,175,125,.18);color:#2A2622; }
 .cal-event.homecall { background:rgba(196,147,63,.18);color:#2A2622; }
 .cal-event.review { background:rgba(68,114,202,.18);color:#2A2622; }
+.cal-event.task   { background:rgba(139,92,246,.22);color:#2A2622; }
 .cal-nav { display:flex;align-items:center;gap:14px;margin-bottom:20px; }
 .cal-nav button { background:#fff;border:1px solid var(--ink-60);color:#2A2622;
   border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body); }
@@ -1297,49 +1298,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
 </div><!-- /pipeline -->
 
 <!-- ══════ PRIORITIES ══════ -->
-<div class="page" id="page-priorities">
-  <div class="priorities-header">
-    <span class="label" style="display:block;margin-bottom:6px" data-i18n="prio_label">Daily Focus</span>
-    <h2 class="display" data-i18n="prio_header">⚡ PRIORITIES</h2>
-    <p style="font-size:13px;color:var(--ink-40);margin-top:8px" id="prioritiesSubtitle" data-i18n="prio_sub">Clients sorted by urgency score</p>
-    <button onclick="printPage('page-priorities')" class="print-btn" style="margin-top:12px" title="Print or Save as PDF">
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg><span data-i18n="btn_print">Print / PDF</span>
-    </button>
-  </div>
-
-  <div class="container" style="margin-bottom:20px">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-      <div class="kpi-card"><span class="kpi-icon">🔥</span><span class="label" data-i18n="prio_overdue">Overdue</span>
-        <div class="kpi-value red" id="prio-overdue">0</div><div class="kpi-delta" data-i18n="prio_d_overdue">Follow-ups past due</div></div>
-      <div class="kpi-card"><span class="kpi-icon">⚡</span><span class="label" data-i18n="prio_today">Due Today</span>
-        <div class="kpi-value gold" id="prio-today">0</div><div class="kpi-delta" data-i18n="prio_d_today">Follow up today</div></div>
-      <div class="kpi-card"><span class="kpi-icon">📋</span><span class="label" data-i18n="prio_open">Open Pipeline</span>
-        <div class="kpi-value" id="prio-open">0</div><div class="kpi-delta" data-i18n="prio_d_open">Active opportunities</div></div>
-    </div>
-  </div>
-
-  <div class="priority-table-wrap">
-    <table id="priorityTable" class="table-desktop">
-      <thead><tr>
-        <th class="sortable" onclick="sortTable('priorityTable',0,'str')" data-i18n="prio_th_client">Client <span class="sort-icon">⇅</span></th>
-        <th data-i18n="prio_th_project">Project Type</th>
-        <th data-i18n="prio_th_stage">Stage</th>
-        <th data-i18n="prio_th_next">Next Step</th>
-        <th class="sortable" onclick="sortTable('priorityTable',4,'num')" data-i18n="prio_th_prob">Prob <span class="sort-icon">⇅</span></th>
-        <th class="sortable" onclick="sortTable('priorityTable',5,'num')" data-i18n="prio_th_est">Estimate <span class="sort-icon">⇅</span></th>
-        <th class="sortable" onclick="sortTable('priorityTable',6,'date')" data-i18n="prio_th_date">Follow-Up <span class="sort-icon">⇅</span></th>
-        <th class="sortable" onclick="sortTable('priorityTable',7,'num')" data-i18n="prio_th_days">Days Overdue <span class="sort-icon">⇅</span></th>
-        <th data-i18n="prio_th_tier">Win Tier</th>
-        <th class="sortable" onclick="sortTable('priorityTable',9,'num')" data-i18n="prio_th_score">Urgency Score <span class="sort-icon">⇅</span></th>
-        <th></th>
-      </tr></thead>
-      <tbody id="priorityBody"></tbody>
-    </table>
-    <div class="empty-state" id="priorityEmpty" style="display:none">
-      <div class="icon">✅</div><p>All follow-ups are on track!</p>
-    </div>
-  </div>
-</div><!-- /priorities -->
+<div class="page" id="page-priorities"></div><!-- /priorities -->
 
 <!-- ══════ MAILING ══════ -->
 <div class="page" id="page-mailing">
@@ -4511,50 +4470,215 @@ async function reactivateLead(id) {
 /* ══════════════════════════════════════════════════
    RENDER: PRIORITIES
 ══════════════════════════════════════════════════ */
+// ── Task CRUD helpers ─────────────────────────────────────────────
+function _loadTasks() { return Store.load('tasks'); }
+
+function addTask(title, dueDate, priority, notes) {
+  if (!title.trim()) return;
+  Store.upsert('tasks', { id: uid(), title: title.trim(), dueDate: dueDate||'', priority: priority||'medium', notes: notes||'', done: false, createdAt: new Date().toISOString() });
+  renderPriorities();
+  try { if (typeof _calYear !== 'undefined') renderCalendar(); } catch(e){}
+}
+
+function toggleTaskDone(id) {
+  const arr = _loadTasks();
+  const t = arr.find(x => x.id === id);
+  if (!t) return;
+  t.done = !t.done;
+  Store.save('tasks', arr);
+  renderPriorities();
+  try { if (typeof _calYear !== 'undefined') renderCalendar(); } catch(e){}
+}
+
+function deleteTask(id) {
+  if (!confirm('Deletar esta tarefa?')) return;
+  Store.remove('tasks', id);
+  renderPriorities();
+  try { if (typeof _calYear !== 'undefined') renderCalendar(); } catch(e){}
+}
+
+async function markFollowUpDone(oppId) {
+  const newDate = new Date();
+  newDate.setDate(newDate.getDate() + 14);
+  const nd = localDateStr(newDate);
+  const { error } = await DB.client.from('opportunities').update({ followUpDate: nd }).eq('id', oppId);
+  if (error) { toast('Erro ao atualizar', 'error'); return; }
+  DB._invalidateCache();
+  toast('Follow-up remarcado para ' + fmtDate(nd), 'success');
+  await renderPriorities();
+}
+
+async function rescheduleFollowUp(oppId) {
+  const nd = window.prompt('Nova data de follow-up (AAAA-MM-DD):');
+  if (!nd) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(nd.trim())) { toast('Formato inválido. Use AAAA-MM-DD', 'error'); return; }
+  const { error } = await DB.client.from('opportunities').update({ followUpDate: nd.trim() }).eq('id', oppId);
+  if (error) { toast('Erro ao atualizar', 'error'); return; }
+  DB._invalidateCache();
+  toast('Follow-up remarcado para ' + fmtDate(nd.trim()), 'success');
+  await renderPriorities();
+  try { if (typeof _calYear !== 'undefined') renderCalendar(); } catch(e){}
+}
+
+function gcalLink(title, dateStr, notes) {
+  const base = 'https://calendar.google.com/calendar/r/eventedit?';
+  if (!dateStr) return base + 'text=' + encodeURIComponent(title);
+  const d = dateStr.replace(/-/g,'');
+  const dt = new Date(dateStr + 'T12:00:00'); dt.setDate(dt.getDate()+1);
+  const next = dt.getFullYear() + String(dt.getMonth()+1).padStart(2,'0') + String(dt.getDate()).padStart(2,'0');
+  return base + 'text=' + encodeURIComponent(title) + '&dates=' + d + '/' + next + '&details=' + encodeURIComponent(notes||'');
+}
+
+function _submitTask() {
+  const t = (document.getElementById('task-title-inp')?.value||'').trim();
+  const d = document.getElementById('task-date-inp')?.value||'';
+  const p = document.getElementById('task-prio-inp')?.value||'medium';
+  if (!t) { toast('Digite o título da tarefa', 'warn'); return; }
+  addTask(t, d, p, '');
+  const inp = document.getElementById('task-title-inp'); if(inp) inp.value='';
+  const di  = document.getElementById('task-date-inp');  if(di)  di.value='';
+}
+
+window.addTask = addTask;
+window.toggleTaskDone = toggleTaskDone;
+window.deleteTask = deleteTask;
+window.markFollowUpDone = markFollowUpDone;
+window.rescheduleFollowUp = rescheduleFollowUp;
+window._submitTask = _submitTask;
+
+// ── renderPriorities — Daily Action Board ─────────────────────────
 async function renderPriorities() {
-  const opps = await DB.getAll();
+  const opps  = await DB.getAll();
+  const today = new Date();
+  const todayStr = localDateStr(today);
+  const el = document.getElementById('page-priorities');
+  if (!el) return;
+
+  // Follow-ups: overdue + due today (deduplicated, sorted by urgency)
   const active = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
-  const overdue = active.filter(o => BL.isOverdue(o));
-  const dueToday = active.filter(o => BL.isDueToday(o));
+  const overdue   = active.filter(o => BL.isOverdue(o));
+  const dueToday  = active.filter(o => BL.isDueToday(o));
+  const urgent    = [...new Map([...overdue, ...dueToday].map(o=>[o.id,o])).values()]
+                    .sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
 
-  document.getElementById('prio-overdue').textContent = overdue.length;
-  document.getElementById('prio-today').textContent   = dueToday.length;
-  document.getElementById('prio-open').textContent    = active.length;
-  document.getElementById('prioritiesSubtitle').textContent =
-    `${new Date().toLocaleDateString(getLang()==='pt'?'pt-BR':'en-US',{weekday:'long',month:'long',day:'numeric'})} — ${overdue.length} cliente${overdue.length!==1&&getLang()==='pt'?'s':overdue.length!==1?'s':''} ${getLang()==='pt'?'precisam de follow-up':'need follow-up'}`;
+  // Tasks
+  const allTasks    = _loadTasks().sort((a,b)=>{
+    if(a.done!==b.done) return a.done?1:-1;
+    const po={high:0,medium:1,low:2}; if(po[a.priority]!==po[b.priority]) return po[a.priority]-po[b.priority];
+    if(a.dueDate&&b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+    return a.dueDate?-1:b.dueDate?1:0;
+  });
+  const activeTasks = allTasks.filter(t=>!t.done);
+  const doneTasks   = allTasks.filter(t=>t.done);
 
-  // Show all active opps sorted by urgency score desc
-  const sorted = [...active].sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
-  const tbody = document.getElementById('priorityBody');
-  const empty = document.getElementById('priorityEmpty');
+  const prioIcon = {high:'🔴',medium:'🟡',low:'⚪'};
+  const prioLabel= {high:'Alta',medium:'Média',low:'Baixa'};
 
-  if (!sorted.length) { tbody.innerHTML = ''; empty.style.display='block'; return; }
-  empty.style.display = 'none';
+  // ── Follow-up cards ──
+  const fuHTML = !urgent.length
+    ? `<div style="padding:24px;text-align:center;color:var(--ink-40);font-size:13px">✅ Nenhum follow-up urgente hoje!</div>`
+    : urgent.map(o => {
+        const days = BL.getDaysOverdue(o);
+        const wt   = BL.getWinTier(o);
+        const isOvr= BL.isOverdue(o);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface-2);border:1px solid ${isOvr?'rgba(224,80,80,.35)':'rgba(196,147,63,.35)'};border-radius:8px;margin-bottom:8px">
+          <div style="flex:1;min-width:0;overflow:hidden">
+            <div style="font-weight:600;color:var(--ink-10)">${esc(o.firstName)} ${esc(o.lastName)}</div>
+            <div style="font-size:11px;color:var(--ink-40)">${esc(o.projectType||'—')} · ${o.estimate?fmt$(Number(o.estimate)):'sem estimativa'}</div>
+          </div>
+          <span class="badge ${wt.cls}" style="flex-shrink:0">${wt.label}</span>
+          <span style="font-size:11px;font-weight:700;color:${isOvr?'var(--red)':'var(--gold)'};white-space:nowrap;flex-shrink:0">${isOvr?(days+'d atraso'):'Hoje'}</span>
+          <button onclick="markFollowUpDone('${o.id}')" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer">✓ Done</button>
+          <button onclick="rescheduleFollowUp('${o.id}')" style="flex-shrink:0;background:rgba(196,147,63,.1);border:1px solid rgba(196,147,63,.4);color:var(--gold);border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer">📅 Remarcar</button>
+          <button onclick="editLead('${o.id}')" style="flex-shrink:0;background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-20);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer">✏️</button>
+        </div>`;
+      }).join('');
 
-  tbody.innerHTML = sorted.map(o=>{
-    const days = BL.getDaysOverdue(o);
-    const urg  = BL.getUrgencyScore(o);
-    const wt   = BL.getWinTier(o);
-    const ovr  = BL.isOverdue(o);
-    const today = BL.isDueToday(o);
-    const trCls = ovr?'overdue':(today?'hot':'');
-    return `<tr class="${trCls}" onclick="editLead('${o.id}')">
-      <td>
-        <div style="font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</div>
-        <div style="font-size:11px;color:var(--ink-40)">${esc(o.email||'')}</div>
-      </td>
-      <td>${esc(o.projectType||'—')}</td>
-      <td><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}">${stageLabel(o.stage)||'—'}</span></td>
-      <td style="font-size:12px">${esc(o.nextStep||'—')}</td>
-      <td style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':'—'}</td>
-      <td>${o.estimate?fmt$(Number(o.estimate)):'—'}</td>
-      <td style="${ovr?'color:var(--red);font-weight:600':today?'color:var(--gold)':''}">${fmtDate(o.followUpDate)}</td>
-      <td style="color:${ovr?'var(--red)':today?'var(--gold)':'var(--ink-40)'};font-weight:${ovr||today?'700':'400'}">${days>0?days+T('overdue_suffix'):today?T('due_today'):'—'}</td>
-      <td><span class="badge ${wt.cls}">${wt.label}</span></td>
-      <td style="font-family:var(--font-display);font-size:18px;color:${urg>50?'var(--red)':urg>20?'var(--gold)':'var(--ink-40)'}">${urg}</td>
-      <td><button class="btn-icon" onclick="event.stopPropagation();editLead('${o.id}')">✏️</button></td>
-    </tr>`;
-  }).join('');
+  // ── Active task rows ──
+  const taskHTML = !activeTasks.length
+    ? `<div style="padding:24px;text-align:center;color:var(--ink-40);font-size:13px">Nenhuma tarefa pendente — adicione acima ↑</div>`
+    : activeTasks.map(t => {
+        const isOvr = t.dueDate && t.dueDate < todayStr;
+        const isToday = t.dueDate === todayStr;
+        const gc = gcalLink(t.title, t.dueDate, t.notes);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:8px;margin-bottom:8px">
+          <span style="font-size:15px;flex-shrink:0" title="${prioLabel[t.priority]||''}">${prioIcon[t.priority]||'⚪'}</span>
+          <div style="flex:1;min-width:0;overflow:hidden">
+            <div style="font-weight:600;color:var(--ink-10)">${esc(t.title)}</div>
+            ${t.notes?`<div style="font-size:11px;color:var(--ink-40)">${esc(t.notes)}</div>`:''}
+          </div>
+          ${t.dueDate?`<span style="font-size:11px;font-weight:700;color:${isOvr?'var(--red)':isToday?'var(--gold)':'var(--ink-30)'};white-space:nowrap;flex-shrink:0">${fmtDate(t.dueDate)}</span>`:''}
+          <a href="${gc}" target="_blank" rel="noopener" style="flex-shrink:0;background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.4);color:#4285f4;border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;text-decoration:none;white-space:nowrap">📅 Google Cal</a>
+          <button onclick="toggleTaskDone('${t.id}')" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer">✓</button>
+          <button onclick="deleteTask('${t.id}')" style="flex-shrink:0;background:rgba(224,80,80,.08);border:1px solid rgba(224,80,80,.3);color:var(--red);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer">🗑</button>
+        </div>`;
+      }).join('');
+
+  // ── Done tasks (collapsible) ──
+  const doneHTML = !doneTasks.length ? '' : `
+    <div style="margin-top:16px">
+      <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('span').textContent=this.nextElementSibling.style.display==='none'?'▶ ':'▼ '"
+        style="display:flex;align-items:center;cursor:pointer;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--ink-40);font-weight:600">▶ </span>
+        <span style="font-size:12px;color:var(--ink-40);font-weight:600">Concluídas (${doneTasks.length})</span>
+      </div>
+      <div style="display:none">
+        ${doneTasks.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--ink-80);border:1px solid var(--ink-70);border-radius:8px;margin-bottom:6px;opacity:.55">
+          <span style="text-decoration:line-through;flex:1;color:var(--ink-40);font-size:13px">${esc(t.title)}</span>
+          ${t.dueDate?`<span style="font-size:11px;color:var(--ink-50)">${fmtDate(t.dueDate)}</span>`:''}
+          <button onclick="toggleTaskDone('${t.id}')" style="flex-shrink:0;background:none;border:1px solid var(--ink-60);color:var(--ink-40);border-radius:6px;font-size:11px;padding:4px 10px;cursor:pointer">↩ Undo</button>
+          <button onclick="deleteTask('${t.id}')" style="flex-shrink:0;background:none;border:1px solid rgba(224,80,80,.3);color:var(--red);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer">🗑</button>
+        </div>`).join('')}
+      </div>
+    </div>`;
+
+  el.innerHTML = `
+    <div class="section-header">
+      <div style="padding:0 24px;max-width:1320px;margin:0 auto">
+        <span class="label" style="display:block;margin-bottom:6px">Daily Focus</span>
+        <h2 class="display">⚡ PRIORITIES</h2>
+        <p style="font-size:13px;color:var(--ink-40);margin-top:8px">${today.toLocaleDateString(getLang()==='pt'?'pt-BR':'en-US',{weekday:'long',month:'long',day:'numeric'})} · ${overdue.length} vencidos · ${dueToday.length} hoje</p>
+      </div>
+    </div>
+
+    <div class="container" style="margin-bottom:20px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div class="kpi-card"><span class="kpi-icon">🔥</span><span class="label">Overdue</span><div class="kpi-value red">${overdue.length}</div><div class="kpi-delta">Follow-ups vencidos</div></div>
+        <div class="kpi-card"><span class="kpi-icon">⚡</span><span class="label">Due Today</span><div class="kpi-value gold">${dueToday.length}</div><div class="kpi-delta">Follow-up hoje</div></div>
+        <div class="kpi-card"><span class="kpi-icon">📋</span><span class="label">Tasks Pendentes</span><div class="kpi-value">${activeTasks.length}</div><div class="kpi-delta">Minhas tarefas</div></div>
+        <div class="kpi-card"><span class="kpi-icon">✅</span><span class="label">Concluídas</span><div class="kpi-value green">${doneTasks.length}</div><div class="kpi-delta">Tasks done</div></div>
+      </div>
+    </div>
+
+    <div class="container" style="margin-bottom:28px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span style="font-family:var(--font-display);font-size:17px;color:var(--red)">🔴 Follow-ups Urgentes</span>
+        <span style="background:rgba(224,80,80,.15);color:var(--red);font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">${urgent.length}</span>
+      </div>
+      ${fuHTML}
+    </div>
+
+    <div class="container" style="margin-bottom:40px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <span style="font-family:var(--font-display);font-size:17px;color:var(--gold)">✅ Minhas Tarefas</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:10px">
+        <input id="task-title-inp" type="text" placeholder="Nova tarefa..." maxlength="120"
+          style="flex:1;min-width:180px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--ink-10);font-family:var(--font-body)"
+          onkeydown="if(event.key==='Enter')_submitTask()">
+        <input id="task-date-inp" type="date"
+          style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--ink-10);font-family:var(--font-body);cursor:pointer">
+        <select id="task-prio-inp"
+          style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--ink-10);font-family:var(--font-body);cursor:pointer">
+          <option value="high">🔴 Alta</option>
+          <option value="medium" selected>🟡 Média</option>
+          <option value="low">⚪ Baixa</option>
+        </select>
+        <button onclick="_submitTask()" style="background:var(--gold);color:var(--bg);border:none;border-radius:6px;padding:7px 18px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">+ Adicionar</button>
+      </div>
+      ${taskHTML}
+      ${doneHTML}
+    </div>`;
 }
 
 /* ══════════════════════════════════════════════════
@@ -9638,6 +9762,10 @@ async function renderCalendar() {
     if (o.homeCallDate) events.push({ date:o.homeCallDate, label:name.trim(), type:'homecall', id:o.id, tip:'Home Call' });
     if (o.linkReviewDate) events.push({ date:o.linkReviewDate, label:name.trim(), type:'review', id:o.id, tip:'Link Review' });
   });
+  // Add personal tasks
+  (Store.load('tasks') || []).filter(t => !t.done && t.dueDate).forEach(t => {
+    events.push({ date: t.dueDate, label: t.title, type: 'task', id: t.id, tip: 'Task' });
+  });
 
   // Build calendar grid
   const firstDay = new Date(_calYear, _calMonth, 1);
@@ -9663,9 +9791,10 @@ async function renderCalendar() {
     const ds = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday = ds === todayStr;
     const dayEvents = events.filter(e => e.date === ds);
-    const evHTML = dayEvents.slice(0, 3).map(e =>
-      `<span class="cal-event ${e.type}" onclick="event.stopPropagation();editLead('${e.id}')" title="${esc(e.tip)}: ${esc(e.label)}">${esc(e.label.split(' ')[0])}</span>`
-    ).join('') + (dayEvents.length > 3 ? `<span style="font-size:8px;color:var(--ink-40)">+${dayEvents.length-3} more</span>` : '');
+    const evHTML = dayEvents.slice(0, 3).map(e => {
+      const action = e.type === 'task' ? "navigate('priorities')" : `editLead('${e.id}')`;
+      return `<span class="cal-event ${e.type}" onclick="event.stopPropagation();${action}" title="${esc(e.tip)}: ${esc(e.label)}">${esc(e.label.split(' ')[0])}</span>`;
+    }).join('') + (dayEvents.length > 3 ? `<span style="font-size:8px;color:var(--ink-40)">+${dayEvents.length-3} more</span>` : '');
     gridHTML += `<div class="cal-day${isToday?' today':''}"><div class="cal-day-num">${d}</div>${evHTML}</div>`;
   }
 
@@ -9681,6 +9810,7 @@ async function renderCalendar() {
     { cls:'delivery', label:'Delivery' },
     { cls:'homecall', label:'Home Call' },
     { cls:'review', label:'Link Review' },
+    { cls:'task',    label:'Task' },
   ].map(l => `<span class="cal-event ${l.cls}" style="cursor:default;display:inline-flex;padding:4px 10px;font-size:12px">${l.label}</span>`).join('');
 
   el.innerHTML = `
