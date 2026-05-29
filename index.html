@@ -4052,7 +4052,7 @@ async function renderDashboard() {
   const allInsights   = BL.generateInsights(kpis, opps);
   // Stable fingerprint: hash of title so dismissed state survives re-renders
   const _insKey = title => title.replace(/\s+/g,'').toLowerCase().slice(0,40);
-  const visibleInsights = allInsights.filter(ins => !_dismissedIns.has(_insKey(ins.title)));
+  const visibleInsights = allInsights.filter(ins => !_dismissedIns.has(_insKey(ins.title))).slice(0, 3);
 
   const insGrid = document.getElementById('insightsGrid');
   // Update refresh button badge — show count of dismissed items
