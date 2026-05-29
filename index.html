@@ -4548,82 +4548,89 @@ window._submitTask = _submitTask;
 
 // ── renderPriorities — Daily Action Board ─────────────────────────
 async function renderPriorities() {
-  const opps  = await DB.getAll();
-  const today = new Date();
+  const opps     = await DB.getAll();
+  const today    = new Date();
   const todayStr = localDateStr(today);
-  const el = document.getElementById('page-priorities');
+  const el       = document.getElementById('page-priorities');
   if (!el) return;
 
-  // Follow-ups: overdue + due today (deduplicated, sorted by urgency)
-  const active = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
-  const overdue   = active.filter(o => BL.isOverdue(o));
-  const dueToday  = active.filter(o => BL.isDueToday(o));
-  const urgent    = [...new Map([...overdue, ...dueToday].map(o=>[o.id,o])).values()]
-                    .sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
+  // ── CRM tasks (same engine as dashboard widget) ──
+  const crmTasks   = _buildTasks(opps);
+  const crmUrgent  = crmTasks.filter(t => t.type === 'overdue' || t.type === 'today');
+  const crmRest    = crmTasks.filter(t => t.type !== 'overdue' && t.type !== 'today');
 
-  // Tasks
-  const allTasks    = _loadTasks().sort((a,b)=>{
-    if(a.done!==b.done) return a.done?1:-1;
-    const po={high:0,medium:1,low:2}; if(po[a.priority]!==po[b.priority]) return po[a.priority]-po[b.priority];
-    if(a.dueDate&&b.dueDate) return a.dueDate.localeCompare(b.dueDate);
-    return a.dueDate?-1:b.dueDate?1:0;
+  // ── Personal tasks ──
+  const allTasks    = _loadTasks().sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    const po = {high:0, medium:1, low:2};
+    if (po[a.priority] !== po[b.priority]) return po[a.priority] - po[b.priority];
+    if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+    return a.dueDate ? -1 : b.dueDate ? 1 : 0;
   });
-  const activeTasks = allTasks.filter(t=>!t.done);
-  const doneTasks   = allTasks.filter(t=>t.done);
+  const activeTasks = allTasks.filter(t => !t.done);
+  const doneTasks   = allTasks.filter(t => t.done);
 
-  const prioIcon = {high:'🔴',medium:'🟡',low:'⚪'};
-  const prioLabel= {high:'Alta',medium:'Média',low:'Baixa'};
+  const prioIcon = {high:'🔴', medium:'🟡', low:'⚪'};
 
-  // ── Follow-up cards ──
-  const fuHTML = !urgent.length
-    ? `<div style="padding:24px;text-align:center;color:var(--ink-40);font-size:13px">✅ Nenhum follow-up urgente hoje!</div>`
-    : urgent.map(o => {
-        const days = BL.getDaysOverdue(o);
-        const wt   = BL.getWinTier(o);
-        const isOvr= BL.isOverdue(o);
-        return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface-2);border:1px solid ${isOvr?'rgba(224,80,80,.35)':'rgba(196,147,63,.35)'};border-radius:8px;margin-bottom:8px">
-          <div style="flex:1;min-width:0;overflow:hidden">
-            <div style="font-weight:600;color:var(--ink-10)">${esc(o.firstName)} ${esc(o.lastName)}</div>
-            <div style="font-size:11px;color:var(--ink-40)">${esc(o.projectType||'—')} · ${o.estimate?fmt$(Number(o.estimate)):'sem estimativa'}</div>
-          </div>
-          <span class="badge ${wt.cls}" style="flex-shrink:0">${wt.label}</span>
-          <span style="font-size:11px;font-weight:700;color:${isOvr?'var(--red)':'var(--gold)'};white-space:nowrap;flex-shrink:0">${isOvr?(days+'d atraso'):'Hoje'}</span>
-          <button onclick="markFollowUpDone('${o.id}')" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer">✓ Done</button>
-          <button onclick="rescheduleFollowUp('${o.id}')" style="flex-shrink:0;background:rgba(196,147,63,.1);border:1px solid rgba(196,147,63,.4);color:var(--gold);border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer">📅 Remarcar</button>
-          <button onclick="editLead('${o.id}')" style="flex-shrink:0;background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-20);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer">✏️</button>
-        </div>`;
-      }).join('');
+  const sourceLabel = {
+    post30:'Post-30', post60:'Post-60', pipeline:'Follow-up',
+    delivery:'Delivery', review:'Link Review', issue:'Issue', active:'Active Phase'
+  };
 
-  // ── Active task rows ──
+  // ── CRM task row builder ──
+  const crmRow = t => {
+    const who = `${t.firstName||''} ${t.lastName||''}`.trim();
+    const safeId = esc(t.id).replace(/'/g,"\\'");
+    const canReschedule = t.source === 'pipeline';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface-2);
+      border:1px solid ${t.type==='overdue'?'rgba(224,80,80,.35)':'rgba(196,147,63,.25)'};
+      border-radius:8px;margin-bottom:8px">
+      <span style="font-size:18px;flex-shrink:0">${t.icon}</span>
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="editLead('${t.oppId}')">
+        <div style="font-weight:700;font-size:13px;color:var(--ink-10)">${esc(who)}${t.customerNumber?` <span style="font-size:10px;color:var(--gold)">#${esc(t.customerNumber)}</span>`:''}</div>
+        <div style="font-size:11px;color:var(--ink-40)">${esc(t.activity)}</div>
+        <div style="font-size:10px;color:var(--ink-50)">${esc(sourceLabel[t.source]||t.stage||'')}${t.dueDate?' · '+fmtDate(t.dueDate):''}</div>
+      </div>
+      <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${t.labelColor}22;color:${t.labelColor};flex-shrink:0;white-space:nowrap">${esc(t.label)}</span>
+      ${canReschedule?`<button onclick="rescheduleFollowUp('${t.oppId}')" style="flex-shrink:0;background:rgba(196,147,63,.1);border:1px solid rgba(196,147,63,.4);color:var(--gold);border-radius:6px;font-size:11px;font-weight:700;padding:4px 9px;cursor:pointer">📅 Reschedule</button>`:''}
+      <button onclick="markTaskComplete('${safeId}');renderPriorities()" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer">✓ Done</button>
+    </div>`;
+  };
+
+  const crmHTML = !crmTasks.length
+    ? `<div style="padding:24px;text-align:center;color:var(--ink-40);font-size:13px">✅ No pending CRM activities!</div>`
+    : [...crmUrgent, ...crmRest].map(crmRow).join('');
+
+  // ── Personal task rows ──
   const taskHTML = !activeTasks.length
-    ? `<div style="padding:24px;text-align:center;color:var(--ink-40);font-size:13px">Nenhuma tarefa pendente — adicione acima ↑</div>`
+    ? `<div style="padding:24px;text-align:center;color:var(--ink-40);font-size:13px">No pending tasks — add one above ↑</div>`
     : activeTasks.map(t => {
-        const isOvr = t.dueDate && t.dueDate < todayStr;
+        const isOvr   = t.dueDate && t.dueDate < todayStr;
         const isToday = t.dueDate === todayStr;
-        const gc = gcalLink(t.title, t.dueDate, t.notes);
+        const gc      = gcalLink(t.title, t.dueDate, t.notes);
         return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:8px;margin-bottom:8px">
-          <span style="font-size:15px;flex-shrink:0" title="${prioLabel[t.priority]||''}">${prioIcon[t.priority]||'⚪'}</span>
+          <span style="font-size:15px;flex-shrink:0">${prioIcon[t.priority]||'⚪'}</span>
           <div style="flex:1;min-width:0;overflow:hidden">
             <div style="font-weight:600;color:var(--ink-10)">${esc(t.title)}</div>
             ${t.notes?`<div style="font-size:11px;color:var(--ink-40)">${esc(t.notes)}</div>`:''}
           </div>
           ${t.dueDate?`<span style="font-size:11px;font-weight:700;color:${isOvr?'var(--red)':isToday?'var(--gold)':'var(--ink-30)'};white-space:nowrap;flex-shrink:0">${fmtDate(t.dueDate)}</span>`:''}
-          <a href="${gc}" target="_blank" rel="noopener" style="flex-shrink:0;background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.4);color:#4285f4;border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;text-decoration:none;white-space:nowrap">📅 Google Cal</a>
+          <a href="${gc}" target="_blank" rel="noopener" style="flex-shrink:0;background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.4);color:#4285f4;border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;text-decoration:none;white-space:nowrap">📅 Cal</a>
           <button onclick="toggleTaskDone('${t.id}')" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer">✓</button>
           <button onclick="deleteTask('${t.id}')" style="flex-shrink:0;background:rgba(224,80,80,.08);border:1px solid rgba(224,80,80,.3);color:var(--red);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer">🗑</button>
         </div>`;
       }).join('');
 
-  // ── Done tasks (collapsible) ──
+  // ── Completed personal tasks (collapsible) ──
   const doneHTML = !doneTasks.length ? '' : `
     <div style="margin-top:16px">
       <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('span').textContent=this.nextElementSibling.style.display==='none'?'▶ ':'▼ '"
         style="display:flex;align-items:center;cursor:pointer;margin-bottom:6px">
         <span style="font-size:11px;color:var(--ink-40);font-weight:600">▶ </span>
-        <span style="font-size:12px;color:var(--ink-40);font-weight:600">Concluídas (${doneTasks.length})</span>
+        <span style="font-size:12px;color:var(--ink-40);font-weight:600">Completed (${doneTasks.length})</span>
       </div>
       <div style="display:none">
-        ${doneTasks.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--ink-80);border:1px solid var(--ink-70);border-radius:8px;margin-bottom:6px;opacity:.55">
+        ${doneTasks.map(t => `<div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--ink-80);border:1px solid var(--ink-70);border-radius:8px;margin-bottom:6px;opacity:.55">
           <span style="text-decoration:line-through;flex:1;color:var(--ink-40);font-size:13px">${esc(t.title)}</span>
           ${t.dueDate?`<span style="font-size:11px;color:var(--ink-50)">${fmtDate(t.dueDate)}</span>`:''}
           <button onclick="toggleTaskDone('${t.id}')" style="flex-shrink:0;background:none;border:1px solid var(--ink-60);color:var(--ink-40);border-radius:6px;font-size:11px;padding:4px 10px;cursor:pointer">↩ Undo</button>
@@ -4637,44 +4644,45 @@ async function renderPriorities() {
       <div style="padding:0 24px;max-width:1320px;margin:0 auto">
         <span class="label" style="display:block;margin-bottom:6px">Daily Focus</span>
         <h2 class="display">⚡ PRIORITIES</h2>
-        <p style="font-size:13px;color:var(--ink-40);margin-top:8px">${today.toLocaleDateString(getLang()==='pt'?'pt-BR':'en-US',{weekday:'long',month:'long',day:'numeric'})} · ${overdue.length} vencidos · ${dueToday.length} hoje</p>
+        <p style="font-size:13px;color:var(--ink-40);margin-top:8px">${today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})} · ${crmUrgent.length} urgent · ${activeTasks.length} tasks pending</p>
       </div>
     </div>
 
     <div class="container" style="margin-bottom:20px">
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-        <div class="kpi-card"><span class="kpi-icon">🔥</span><span class="label">Overdue</span><div class="kpi-value red">${overdue.length}</div><div class="kpi-delta">Follow-ups vencidos</div></div>
-        <div class="kpi-card"><span class="kpi-icon">⚡</span><span class="label">Due Today</span><div class="kpi-value gold">${dueToday.length}</div><div class="kpi-delta">Follow-up hoje</div></div>
-        <div class="kpi-card"><span class="kpi-icon">📋</span><span class="label">Tasks Pendentes</span><div class="kpi-value">${activeTasks.length}</div><div class="kpi-delta">Minhas tarefas</div></div>
-        <div class="kpi-card"><span class="kpi-icon">✅</span><span class="label">Concluídas</span><div class="kpi-value green">${doneTasks.length}</div><div class="kpi-delta">Tasks done</div></div>
+        <div class="kpi-card"><span class="kpi-icon">🔥</span><span class="label">Urgent</span><div class="kpi-value red">${crmUrgent.length}</div><div class="kpi-delta">Overdue & due today</div></div>
+        <div class="kpi-card"><span class="kpi-icon">📋</span><span class="label">CRM Activities</span><div class="kpi-value gold">${crmTasks.length}</div><div class="kpi-delta">Follow-ups, deliveries & more</div></div>
+        <div class="kpi-card"><span class="kpi-icon">✏️</span><span class="label">My Tasks</span><div class="kpi-value">${activeTasks.length}</div><div class="kpi-delta">Personal to-do</div></div>
+        <div class="kpi-card"><span class="kpi-icon">✅</span><span class="label">Done</span><div class="kpi-value green">${doneTasks.length}</div><div class="kpi-delta">Personal tasks completed</div></div>
       </div>
     </div>
 
     <div class="container" style="margin-bottom:28px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <span style="font-family:var(--font-display);font-size:17px;color:var(--red)">🔴 Follow-ups Urgentes</span>
-        <span style="background:rgba(224,80,80,.15);color:var(--red);font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">${urgent.length}</span>
+        <span style="font-family:var(--font-display);font-size:17px;color:var(--ink-10)">📋 CRM Activities</span>
+        <span style="background:var(--ink-70);color:var(--ink-20);font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">${crmTasks.length}</span>
+        <button onclick="clearCompletedTasks();renderPriorities()" style="margin-left:auto;font-size:10px;color:var(--ink-50);background:none;border:none;cursor:pointer">Reset completed</button>
       </div>
-      ${fuHTML}
+      ${crmHTML}
     </div>
 
     <div class="container" style="margin-bottom:40px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-        <span style="font-family:var(--font-display);font-size:17px;color:var(--gold)">✅ Minhas Tarefas</span>
+        <span style="font-family:var(--font-display);font-size:17px;color:var(--gold)">✏️ My Tasks</span>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:10px">
-        <input id="task-title-inp" type="text" placeholder="Nova tarefa..." maxlength="120"
+        <input id="task-title-inp" type="text" placeholder="New task..." maxlength="120"
           style="flex:1;min-width:180px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--ink-10);font-family:var(--font-body)"
           onkeydown="if(event.key==='Enter')_submitTask()">
         <input id="task-date-inp" type="date"
           style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--ink-10);font-family:var(--font-body);cursor:pointer">
         <select id="task-prio-inp"
           style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--ink-10);font-family:var(--font-body);cursor:pointer">
-          <option value="high">🔴 Alta</option>
-          <option value="medium" selected>🟡 Média</option>
-          <option value="low">⚪ Baixa</option>
+          <option value="high">🔴 High</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="low">⚪ Low</option>
         </select>
-        <button onclick="_submitTask()" style="background:var(--gold);color:var(--bg);border:none;border-radius:6px;padding:7px 18px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">+ Adicionar</button>
+        <button onclick="_submitTask()" style="background:var(--gold);color:var(--bg);border:none;border-radius:6px;padding:7px 18px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">+ Add</button>
       </div>
       ${taskHTML}
       ${doneHTML}
