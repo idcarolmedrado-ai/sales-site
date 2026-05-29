@@ -1222,17 +1222,10 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
   </div>
 
   <div class="container" style="margin-bottom:24px">
-    <div class="dash-card">
-      <div class="dash-card-header">
-        <div>
-          <div class="dash-card-title">📋 Tasks</div>
-          <div class="dash-card-sub">All pending follow-ups, post-sale &amp; overdue activities</div>
-        </div>
-        <button class="btn btn-ghost btn-sm" onclick="navigate('active')">View All →</button>
-      </div>
-      <div id="tasksWidget">
-        <div class="empty-state"><div class="icon">✅</div><p>All caught up!</p></div>
-      </div>
+    <div id="tasksWidget" style="display:flex;align-items:center;gap:14px;padding:13px 18px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:10px;min-height:50px">
+      <span style="font-size:20px;flex-shrink:0">⚡</span>
+      <div style="flex:1;font-size:12px;color:var(--ink-40)">All caught up!</div>
+      <button class="btn btn-ghost btn-sm" onclick="navigate('priorities')" style="flex-shrink:0">Priorities →</button>
     </div>
   </div>
 </div><!-- /dashboard -->
@@ -4473,9 +4466,9 @@ async function reactivateLead(id) {
 // ── Task CRUD helpers ─────────────────────────────────────────────
 function _loadTasks() { return Store.load('tasks'); }
 
-function addTask(title, dueDate, priority, notes) {
+function addTask(title, dueDate, priority, notes, soNumber) {
   if (!title.trim()) return;
-  Store.upsert('tasks', { id: uid(), title: title.trim(), dueDate: dueDate||'', priority: priority||'medium', notes: notes||'', done: false, createdAt: new Date().toISOString() });
+  Store.upsert('tasks', { id: uid(), title: title.trim(), dueDate: dueDate||'', priority: priority||'medium', notes: notes||'', soNumber: soNumber||'', done: false, createdAt: new Date().toISOString() });
   renderPriorities();
   try { if (typeof _calYear !== 'undefined') renderCalendar(); } catch(e){}
 }
@@ -4530,13 +4523,15 @@ function gcalLink(title, dateStr, notes) {
 }
 
 function _submitTask() {
-  const t = (document.getElementById('task-title-inp')?.value||'').trim();
-  const d = document.getElementById('task-date-inp')?.value||'';
-  const p = document.getElementById('task-prio-inp')?.value||'medium';
-  if (!t) { toast('Digite o título da tarefa', 'warn'); return; }
-  addTask(t, d, p, '');
+  const t  = (document.getElementById('task-title-inp')?.value||'').trim();
+  const d  = document.getElementById('task-date-inp')?.value||'';
+  const p  = document.getElementById('task-prio-inp')?.value||'medium';
+  const so = (document.getElementById('task-so-inp')?.value||'').trim();
+  if (!t) { toast('Enter a task title', 'warn'); return; }
+  addTask(t, d, p, '', so);
   const inp = document.getElementById('task-title-inp'); if(inp) inp.value='';
   const di  = document.getElementById('task-date-inp');  if(di)  di.value='';
+  const si  = document.getElementById('task-so-inp');    if(si)  si.value='';
 }
 
 window.addTask = addTask;
@@ -4554,8 +4549,8 @@ async function renderPriorities() {
   const el       = document.getElementById('page-priorities');
   if (!el) return;
 
-  // ── CRM tasks (same engine as dashboard widget) ──
-  const crmTasks   = _buildTasks(opps);
+  // ── CRM tasks (same engine as dashboard widget, minus postponed queue items) ──
+  const crmTasks   = _buildTasks(opps).filter(t => t.type !== 'postponed');
   const crmUrgent  = crmTasks.filter(t => t.type === 'overdue' || t.type === 'today');
   const crmRest    = crmTasks.filter(t => t.type !== 'overdue' && t.type !== 'today');
 
@@ -4607,11 +4602,12 @@ async function renderPriorities() {
     : activeTasks.map(t => {
         const isOvr   = t.dueDate && t.dueDate < todayStr;
         const isToday = t.dueDate === todayStr;
-        const gc      = gcalLink(t.title, t.dueDate, t.notes);
+        const gcNotes = [t.soNumber?`SO: ${t.soNumber}`:'', t.notes].filter(Boolean).join('\n');
+        const gc      = gcalLink(t.title, t.dueDate, gcNotes);
         return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:8px;margin-bottom:8px">
           <span style="font-size:15px;flex-shrink:0">${prioIcon[t.priority]||'⚪'}</span>
           <div style="flex:1;min-width:0;overflow:hidden">
-            <div style="font-weight:600;color:var(--ink-10)">${esc(t.title)}</div>
+            <div style="font-weight:600;color:var(--ink-10)">${esc(t.title)}${t.soNumber?` <span style="font-size:10px;font-weight:700;background:rgba(196,147,63,.15);color:var(--gold);border-radius:4px;padding:1px 6px">SO ${esc(t.soNumber)}</span>`:''}</div>
             ${t.notes?`<div style="font-size:11px;color:var(--ink-40)">${esc(t.notes)}</div>`:''}
           </div>
           ${t.dueDate?`<span style="font-size:11px;font-weight:700;color:${isOvr?'var(--red)':isToday?'var(--gold)':'var(--ink-30)'};white-space:nowrap;flex-shrink:0">${fmtDate(t.dueDate)}</span>`:''}
@@ -4671,8 +4667,11 @@ async function renderPriorities() {
         <span style="font-family:var(--font-display);font-size:17px;color:var(--gold)">✏️ My Tasks</span>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:10px">
-        <input id="task-title-inp" type="text" placeholder="New task..." maxlength="120"
-          style="flex:1;min-width:180px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--ink-10);font-family:var(--font-body)"
+        <input id="task-title-inp" type="text" placeholder="Task description..." maxlength="120"
+          style="flex:2;min-width:200px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--ink-10);font-family:var(--font-body)"
+          onkeydown="if(event.key==='Enter')_submitTask()">
+        <input id="task-so-inp" type="text" placeholder="SO # (optional)" maxlength="40"
+          style="width:130px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--ink-10);font-family:var(--font-body)"
           onkeydown="if(event.key==='Enter')_submitTask()">
         <input id="task-date-inp" type="date"
           style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--ink-10);font-family:var(--font-body);cursor:pointer">
@@ -8600,42 +8599,36 @@ function _buildTasks(opps) {
 }
 
 async function _updateTasksWidget(opps) {
-  const tasks = _buildTasks(opps);
-  const el    = document.getElementById('tasksWidget');
+  const tasks     = _buildTasks(opps);
+  const el        = document.getElementById('tasksWidget');
   if (!el) return;
-  const urgentCnt = tasks.filter(function(t){return t.type==='overdue'||t.type==='today';}).length;
+  const urgentCnt = tasks.filter(t => t.type === 'overdue' || t.type === 'today').length;
   const badge = document.getElementById('tasksBadge');
-  if (badge) { badge.textContent=String(urgentCnt); badge.style.display=urgentCnt>0?'flex':'none'; }
+  if (badge) { badge.textContent = String(urgentCnt); badge.style.display = urgentCnt > 0 ? 'flex' : 'none'; }
+
   if (!tasks.length) {
-    el.innerHTML = '<div class="empty-state"><div class="icon">✅</div><p>All caught up!</p></div>';
+    el.innerHTML = '<span style="font-size:20px;flex-shrink:0">✅</span>'
+      + '<div style="flex:1;font-size:12px;color:var(--ink-40)">All caught up — no pending CRM activities.</div>'
+      + '<button class="btn btn-ghost btn-sm" onclick="navigate(\'priorities\')" style="flex-shrink:0">Priorities →</button>';
     return;
   }
-  const sorted = tasks.slice().sort(function(a,b){return (b.priority||0)-(a.priority||0);});
-  el.innerHTML = sorted.slice(0,10).map(function(t) {
-    var who = (t.firstName||'') + ' ' + (t.lastName||'');
-    return '<div data-task-id="' + esc(t.id) + '" data-task-label="' + esc(t.label||'') + '" data-task-who="' + esc(who.trim()) + '" style="display:flex;align-items:center;gap:8px;padding:8px 10px;'
-      + 'border-left:3px solid ' + t.labelColor + ';background:' + t.labelColor + '12;'
-      + 'border-radius:0 8px 8px 0;margin-bottom:4px">'
-      + '<span style="font-size:18px;flex-shrink:0">' + t.icon + '</span>'
-      + '<div style="flex:1;min-width:0;cursor:pointer" onclick="editLead(\'' + t.oppId + '\')">'
-      + '<div style="font-weight:700;font-size:13px;color:var(--ink-10)">'
-      + esc(t.firstName) + ' ' + esc(t.lastName)
-      + (t.customerNumber ? ' <span style="font-size:10px;color:var(--gold)">#' + esc(t.customerNumber) + '</span>' : '')
-      + '</div>'
-      + '<div style="font-size:11px;color:var(--ink-40)">' + esc(t.activity) + (t.dueDate ? ' &middot; ' + fmtDate(t.dueDate) : '') + '</div>'
-      + '<div style="font-size:10px;color:var(--ink-50)">' + esc(t.stage||'') + '</div>'
-      + '</div>'
-      + '<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;'
-      + 'background:' + t.labelColor + '22;color:' + t.labelColor + ';flex-shrink:0">' + esc(t.label) + '</span>'
-      + '<button onclick="event.stopPropagation();markTaskComplete(\'' + esc(t.id).replace(/'/g,"\\'") + '\')"'
-      + ' style="flex-shrink:0;padding:3px 8px;background:rgba(76,175,125,.15);'
-      + 'border:1px solid rgba(76,175,125,.4);border-radius:5px;color:var(--green);'
-      + 'font-size:10px;font-weight:700;cursor:pointer">&#10003; Done</button>'
-      + '</div>';
-  }).join('')
-  + '<div style="text-align:right;padding:4px 2px 0">'
-  + '<button onclick="clearCompletedTasks()" style="font-size:10px;color:var(--ink-60);background:none;border:none;cursor:pointer">Reset completed</button>'
-  + '</div>';
+
+  // Count by type for the summary chips
+  const bySource = {};
+  tasks.forEach(t => { bySource[t.source] = (bySource[t.source]||0) + 1; });
+  const sourceNames = {post30:'Post-30', post60:'Post-60', pipeline:'Follow-up', delivery:'Delivery', review:'Link Review', issue:'Issue', active:'Active'};
+  const chips = Object.entries(bySource).map(([src, cnt]) =>
+    `<span style="background:var(--ink-70);color:var(--ink-20);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap">${sourceNames[src]||src}: ${cnt}</span>`
+  ).join('');
+  const urgentColor = urgentCnt > 0 ? 'var(--red)' : 'var(--ink-40)';
+
+  el.innerHTML = `<span style="font-size:20px;flex-shrink:0">⚡</span>`
+    + `<div style="flex:1;min-width:0">`
+    + `<span style="font-weight:700;font-size:13px;color:${urgentColor}">${urgentCnt} urgent</span>`
+    + `<span style="font-size:12px;color:var(--ink-40);margin-left:8px">· ${tasks.length} total</span>`
+    + `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${chips}</div>`
+    + `</div>`
+    + `<button class="btn btn-ghost btn-sm" onclick="navigate('priorities')" style="flex-shrink:0">View →</button>`;
 }
 
 /* ══════════════════════════════════════════════════
