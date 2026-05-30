@@ -4548,6 +4548,15 @@ async function renderPriorities() {
   const crmUrgent  = crmTasks.filter(t => t.type === 'overdue' || t.type === 'today');
   const crmRest    = crmTasks.filter(t => t.type !== 'overdue' && t.type !== 'today');
 
+  // ── Active clients with NO pending alerts (sold, not covered by any CRM task) ──
+  const _completedActives = getCompletedActives();
+  const _coveredIds = new Set(crmTasks.map(t => t.oppId));
+  const quietClients = opps
+    .filter(o => o.saleMade === 'Yes'
+      && !_completedActives.includes(o.id)
+      && !_coveredIds.has(o.id))
+    .sort((a, b) => (a.deliveryDate||'9999').localeCompare(b.deliveryDate||'9999'));
+
   // ── Personal tasks ──
   const allTasks    = _loadTasks().sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1;
@@ -4642,8 +4651,8 @@ async function renderPriorities() {
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
         <div class="kpi-card"><span class="kpi-icon">🔥</span><span class="label">Urgent</span><div class="kpi-value red">${crmUrgent.length}</div><div class="kpi-delta">Overdue & due today</div></div>
         <div class="kpi-card"><span class="kpi-icon">📋</span><span class="label">CRM Activities</span><div class="kpi-value gold">${crmTasks.length}</div><div class="kpi-delta">Follow-ups, deliveries & more</div></div>
+        <div class="kpi-card"><span class="kpi-icon">👥</span><span class="label">Active Clients</span><div class="kpi-value">${quietClients.length}</div><div class="kpi-delta">No pending alerts</div></div>
         <div class="kpi-card"><span class="kpi-icon">✏️</span><span class="label">My Tasks</span><div class="kpi-value">${activeTasks.length}</div><div class="kpi-delta">Personal to-do</div></div>
-        <div class="kpi-card"><span class="kpi-icon">✅</span><span class="label">Done</span><div class="kpi-value green">${doneTasks.length}</div><div class="kpi-delta">Personal tasks completed</div></div>
       </div>
     </div>
 
@@ -4679,7 +4688,37 @@ async function renderPriorities() {
       </div>
       ${taskHTML}
       ${doneHTML}
-    </div>`;
+    </div>
+
+    ${quietClients.length === 0 ? '' : `
+    <div class="container" style="margin-bottom:40px">
+      <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.qc-arrow').textContent=this.nextElementSibling.style.display==='none'?'▶':'▼'"
+        style="display:flex;align-items:center;gap:8px;margin-bottom:0;cursor:pointer;user-select:none;padding-bottom:10px">
+        <span class="qc-arrow" style="font-size:11px;color:var(--ink-40)">▶</span>
+        <span style="font-family:var(--font-display);font-size:16px;color:var(--ink-20)">👥 Active Clients — No Alerts</span>
+        <span style="background:var(--ink-70);color:var(--ink-40);font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">${quietClients.length}</span>
+        <span style="font-size:11px;color:var(--ink-50);margin-left:4px">All good — nothing urgent</span>
+      </div>
+      <div style="display:none">
+        ${quietClients.map(o => {
+          const dvDiff = o.deliveryDate ? daysDiff(todayStr, o.deliveryDate) : null;
+          const dvColor = dvDiff === null ? 'var(--ink-50)' : dvDiff < 0 ? 'var(--ink-40)' : dvDiff <= 14 ? 'var(--gold)' : 'var(--ink-30)';
+          const gcBadge = o.goldComp === 'Yes' ? `<span style="font-size:10px;font-weight:700;background:rgba(196,147,63,.15);color:var(--gold);border-radius:4px;padding:1px 6px;margin-left:4px">⭐ GC</span>` : '';
+          return `<div onclick="editLead('${o.id}')" style="display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--surface-2);border:1px solid var(--ink-70);border-radius:8px;margin-bottom:6px;cursor:pointer"
+            onmouseover="this.style.borderColor='var(--ink-50)'" onmouseout="this.style.borderColor='var(--ink-70)'">
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:13px;color:var(--ink-10)">${esc(o.firstName||'')} ${esc(o.lastName||'')}${gcBadge}
+                ${o.customerNumber?`<span style="font-size:10px;color:var(--gold);margin-left:4px">#${esc(o.customerNumber)}</span>`:''}
+              </div>
+              <div style="font-size:11px;color:var(--ink-40)">${esc(o.projectType||'—')} · ${o.estimate?fmt$(Number(o.estimate)):'no estimate'}${o.activePhase?` · ${esc(o.activePhase)}`:''}</div>
+            </div>
+            ${o.deliveryDate ? `<span style="font-size:11px;font-weight:600;color:${dvColor};white-space:nowrap;flex-shrink:0">🚚 ${fmtDate(o.deliveryDate)}</span>` : '<span style="font-size:11px;color:var(--ink-60);flex-shrink:0">No delivery date</span>'}
+            <span style="font-size:11px;color:var(--ink-50);flex-shrink:0">→</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`}
+    `;
 }
 
 /* ══════════════════════════════════════════════════
