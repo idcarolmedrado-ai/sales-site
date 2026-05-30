@@ -210,9 +210,9 @@ h2.display { font-size: 40px; }
 .dash-card-sub { font-size: 11px; color: var(--ink-40); }
 
 /* ── INSIGHT CARD ── */
-.insights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+.insights-grid { display: flex; flex-direction: row; flex-wrap: nowrap;
   gap: 12px; padding: 0 24px; max-width: 1320px; margin: 0 auto 24px;
-  grid-auto-rows: auto; align-items: start; }
+  overflow-x: auto; align-items: stretch; }
 .insight-card {
   background: var(--ink-80); border: 1px solid var(--ink-70); border-radius: var(--r);
   padding: 16px 18px; border-left: 3px solid var(--gold);
@@ -221,7 +221,8 @@ h2.display { font-size: 40px; }
 .insight-card:hover { transform: translateY(-1px); border-color: var(--gold); }
 .insight-card.warn { border-left-color: var(--red); }
 .insight-card.good { border-left-color: var(--green); }
-.insight-card.priority-1 { grid-column: 1 / -1; display: flex; gap: 16px; align-items: flex-start; }
+.insight-card { flex: 1; min-width: 220px; max-width: 340px; }
+.insight-card.priority-1 { display: flex; gap: 16px; align-items: flex-start; }
 .insight-card.priority-1 .insight-body { margin-top: 0; }
 .insight-priority-bar { height: 3px; border-radius: 2px; margin-top: 10px; }
 .insight-priority-bar.p1 { background: var(--red); }
@@ -688,8 +689,9 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
   .kpi-grid { grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px; }
   .kpi-card { padding:14px 12px; }
   .kpi-value { font-size:24px; }
-  .insights-grid { grid-template-columns:1fr;padding:0 12px; }
-  .insight-card.priority-1 { grid-column:1; flex-direction:column; }
+  .insights-grid { padding:0 12px; }
+  .insight-card { min-width:240px; }
+  .insight-card.priority-1 { flex-direction:column; }
   .dash-grid { grid-template-columns:1fr;padding:0 12px; }
   .dash-hero { padding:20px 12px 12px; }
   .filter-row { padding:0 12px; }
@@ -1221,13 +1223,6 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
     <div class="month-bars" id="monthChart"></div>
   </div>
 
-  <div class="container" style="margin-bottom:24px">
-    <div id="tasksWidget" style="display:flex;align-items:center;gap:14px;padding:13px 18px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:10px;min-height:50px">
-      <span style="font-size:20px;flex-shrink:0">⚡</span>
-      <div style="flex:1;font-size:12px;color:var(--ink-40)">All caught up!</div>
-      <button class="btn btn-ghost btn-sm" onclick="navigate('priorities')" style="flex-shrink:0">Priorities →</button>
-    </div>
-  </div>
 </div><!-- /dashboard -->
 
 <!-- ══════ PIPELINE ══════ -->
@@ -4004,7 +3999,7 @@ async function renderDashboard() {
   const allInsights   = BL.generateInsights(kpis, opps);
   // Stable fingerprint: hash of title so dismissed state survives re-renders
   const _insKey = title => title.replace(/\s+/g,'').toLowerCase().slice(0,40);
-  const visibleInsights = allInsights.filter(ins => !_dismissedIns.has(_insKey(ins.title))).slice(0, 3);
+  const visibleInsights = allInsights.filter(ins => !_dismissedIns.has(_insKey(ins.title))).slice(0, 5);
 
   const insGrid = document.getElementById('insightsGrid');
   // Update refresh button badge — show count of dismissed items
@@ -4107,8 +4102,7 @@ async function renderDashboard() {
     </div>`;
   }).join('');
 
-  // Tasks widget (replaces overdue box)
-  await _updateTasksWidget(opps);
+  // (Tasks widget removed — see Priorities tab)
 }
 
 function setMonthFilter(m) {
