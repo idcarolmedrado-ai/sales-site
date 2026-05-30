@@ -2628,10 +2628,11 @@ www.carolmedrado.com`
     const active  = opps.filter(o => o.saleMade !== 'Yes' && o.stage !== 'Canceled');
     const sold    = opps.filter(o => o.saleMade === 'Yes');
     const hot     = active.filter(o => (Number(o.probability)||0) >= 75);
-    const overdue = opps.filter(o => this.isOverdue(o))
+    // Only active (non-canceled, non-sold) leads generate follow-up alerts
+    const overdue = active.filter(o => this.isOverdue(o))
       .sort((a,b)=>(this.getDaysOverdue(b)*10+(Number(b.estimate)||0)/1000)
                   -(this.getDaysOverdue(a)*10+(Number(a.estimate)||0)/1000));
-    const dueToday = opps.filter(o => this.isDueToday(o));
+    const dueToday = active.filter(o => this.isDueToday(o));
 
     // 1. OVERDUE
     if (overdue.length > 0) {
@@ -6323,9 +6324,13 @@ async function saveLead() {
   if (isSold && !closeDate) closeDate = saleDate || todayStr();
 
   // ── Delivery & link review ──
-  const deliveryDate   = document.getElementById('f-deliveryDate')?.value   || '';
-  const linkReviewDate = document.getElementById('f-linkReviewDate')?.value ||
-                         (deliveryDate ? offsetDate(deliveryDate, 7) : '');
+  const deliveryDate    = document.getElementById('f-deliveryDate')?.value || '';
+  const _formLrDate     = document.getElementById('f-linkReviewDate')?.value || '';
+  const _wasAlreadySold = existingRec?.saleMade === 'Yes';
+  // Auto-set link review to saleDate+3 only when newly marking as sold and field is empty
+  const linkReviewDate  = _formLrDate
+    || (!_wasAlreadySold && isSold ? offsetDate(saleDate || todayStr(), 3) : '')
+    || (existingRec?.linkReviewDate || '');
 
   const opp = {
     id:             existingId || uid(),
@@ -10329,6 +10334,17 @@ async function renderActive() {
           ? '<span style="color:' + lrColor + ';font-weight:' + (lrDiff !== null && lrDiff <= 1 ? '700' : '400') + '">'
             + (lrDiff !== null && lrDiff <= 0 ? '⭐ ' : '') + fmtDate(o.linkReviewDate) + '</span>'
           : '')
+      /* N2: Next Follow-up Date */
+      + (function() {
+          const fuDate  = o.followUpDate || '';
+          const fuDiff  = fuDate ? daysDiff(today, fuDate) : null;
+          const fuColor = fuDiff === null ? '' : fuDiff < 0 ? 'var(--red)' : fuDiff === 0 ? 'var(--gold)' : 'var(--ink-20)';
+          const fuBold  = fuDiff !== null && fuDiff <= 0 ? '700' : '400';
+          return TD(fuDate
+            ? '<span style="color:' + fuColor + ';font-weight:' + fuBold + '">'
+              + (fuDiff !== null && fuDiff < 0 ? '⚠️ ' : fuDiff === 0 ? '📅 ' : '') + fmtDate(fuDate) + '</span>'
+            : '', 'text-align:center');
+        })()
       /* N: Issue Flag */
       + TD(o.issueFlag
           ? '<span style="background:' + issueBg + ';color:' + issueTxt + ';font-weight:700;font-size:10px;padding:2px 8px;border-radius:4px">'
@@ -10402,9 +10418,10 @@ async function renderActive() {
     + THR('Type','width:65px') + THR('GC $','width:64px') + THR('Value','width:64px')
     + TH('2d Pre','width:56px;text-align:center') + TH('Delivery','width:66px;text-align:center')
     + TH('Link Rev.','width:66px;text-align:center')
-    + TH('Next F/U','width:62px;text-align:center')
-    + TH('Details','width:48px') + TH('Phase','width:50px;text-align:center')
-    + TH('Notes','width:78px')
+    + TH('Next Step','width:72px;text-align:center')
+    + TH('Issue?','width:48px;text-align:center') + TH('Issue Type','width:80px')
+    + TH('Action','width:80px') + TH('Result','width:56px;text-align:center')
+    + TH('Notes','width:90px')
     + TH('','width:72px')
     + '</tr></thead>';
 
