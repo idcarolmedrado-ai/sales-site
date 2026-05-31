@@ -8486,7 +8486,7 @@ function _buildTasks(opps) {
     const sd = o.saleDate || o.closeDate || '';
     if (!sd) return;
     const dSince = -(daysDiff(todayS, sd) || 0); // positive = days since sale
-    if (dSince < 0 || dSince > 14) return;
+    if (dSince < 0 || dSince > 10) return;
     addTask({
       id: o.id + '_ty', oppId: o.id, source: 'thankyou', category: 'mailing',
       type: dSince === 0 ? 'today' : 'upcoming',
@@ -8598,7 +8598,7 @@ function _buildTasks(opps) {
     const hcDate = o.homeCallDate || '';
     if (hcDate) {
       const dHC = daysDiff(todayS, hcDate);
-      if (dHC !== null && dHC >= 0 && dHC <= 2) addTask({
+      if (dHC !== null && dHC >= 0 && dHC <= 10) addTask({
         id: o.id + '_hc', oppId: o.id, source: 'homecall', category: 'crm',
         type: dHC === 0 ? 'today' : 'upcoming',
         priority: dHC === 0 ? 44 : 38, icon: '🏠',
@@ -8653,7 +8653,7 @@ function _buildTasks(opps) {
     const lr = o.linkReviewDate || '';
     if (lr) {
       const daysLR = daysDiff(todayS, lr);
-      if (daysLR !== null && daysLR <= 2) addTask({
+      if (daysLR !== null && daysLR <= 10) addTask({
         id: o.id + '_lr', oppId: o.id, source: 'review', category: 'mailing',
         type: daysLR < 0 ? 'overdue' : daysLR === 0 ? 'today' : 'upcoming',
         priority: daysLR < 0 ? 28 : daysLR === 0 ? 22 : 18, icon: '⭐',
