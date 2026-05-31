@@ -1522,7 +1522,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
             <input id="f-deliveryDate" type="date" onchange="onDeliveryDateChange()">
           </div>
           <div class="field">
-            <label for="f-linkReviewDate">Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: delivery+5d)</span></label>
+            <label for="f-linkReviewDate">Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: sale+3d)</span></label>
             <input id="f-linkReviewDate" type="date">
           </div>
           <div class="field">
@@ -4583,18 +4583,20 @@ async function renderPriorities() {
     const who = `${t.firstName||''} ${t.lastName||''}`.trim();
     const safeId = esc(t.id).replace(/'/g,"\\'");
     const canReschedule = t.source === 'pipeline' || t.source === 'nextstep';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface-2);
-      border:1px solid ${t.type==='overdue'?'rgba(224,80,80,.35)':'rgba(196,147,63,.25)'};
-      border-radius:8px;margin-bottom:8px">
-      <span style="font-size:18px;flex-shrink:0">${t.icon}</span>
+    const dateColor = t.type === 'overdue' ? 'var(--red)' : t.type === 'today' ? 'var(--gold)' : 'var(--ink-40)';
+    const shortActivity = t.activity ? t.activity.slice(0, 55) + (t.activity.length > 55 ? '…' : '') : '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--surface-2);
+      border:1px solid ${t.type==='overdue'?'rgba(224,80,80,.35)':'rgba(196,147,63,.2)'};
+      border-radius:8px;margin-bottom:7px">
+      <span style="font-size:16px;flex-shrink:0">${t.icon}</span>
       <div style="flex:1;min-width:0;cursor:pointer" onclick="editLead('${t.oppId}')">
-        <div style="font-weight:700;font-size:13px;color:var(--ink-10)">${esc(who)}${t.customerNumber?` <span style="font-size:10px;color:var(--gold)">#${esc(t.customerNumber)}</span>`:''}</div>
-        <div style="font-size:11px;color:var(--ink-40)">${esc(t.activity)}</div>
-        <div style="font-size:10px;color:var(--ink-50)">${esc(sourceLabel[t.source]||t.stage||'')}${t.dueDate?' · '+fmtDate(t.dueDate):''}</div>
+        <div style="font-weight:700;font-size:12px;color:var(--ink-10);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(who)}${t.customerNumber?` <span style="font-size:10px;color:var(--gold)">#${esc(t.customerNumber)}</span>`:''}</div>
+        ${shortActivity?`<div style="font-size:10px;color:var(--ink-50);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(shortActivity)}</div>`:''}
       </div>
-      <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${t.labelColor}22;color:${t.labelColor};flex-shrink:0;white-space:nowrap">${esc(t.label)}</span>
-      ${canReschedule?`<button onclick="rescheduleFollowUp('${t.oppId}')" style="flex-shrink:0;background:rgba(196,147,63,.1);border:1px solid rgba(196,147,63,.4);color:var(--gold);border-radius:6px;font-size:11px;font-weight:700;padding:4px 9px;cursor:pointer">📅 Reschedule</button>`:''}
-      <button onclick="markTaskComplete('${safeId}');renderPriorities()" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer">✓ Done</button>
+      ${t.dueDate?`<span style="font-size:11px;font-weight:600;color:${dateColor};white-space:nowrap;flex-shrink:0">${fmtDate(t.dueDate)}</span>`:''}
+      <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${t.labelColor}22;color:${t.labelColor};flex-shrink:0;white-space:nowrap">${esc(t.label)}</span>
+      ${canReschedule?`<button onclick="rescheduleFollowUp('${t.oppId}')" style="flex-shrink:0;background:rgba(196,147,63,.1);border:1px solid rgba(196,147,63,.4);color:var(--gold);border-radius:6px;font-size:10px;padding:3px 7px;cursor:pointer">📅</button>`:''}
+      <button onclick="markTaskComplete('${safeId}');renderPriorities()" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:10px;font-weight:700;padding:3px 9px;cursor:pointer">✓ Done</button>
     </div>`;
   };
 
@@ -8487,7 +8489,7 @@ function _buildTasks(opps) {
     const sd = o.saleDate || o.closeDate || '';
     if (!sd) return;
     const dSince = -(daysDiff(todayS, sd) || 0); // positive = days since sale
-    if (dSince < 0 || dSince > 10) return;
+    if (dSince < 0 || dSince > 7) return;
     addTask({
       id: o.id + '_ty', oppId: o.id, source: 'thankyou', category: 'mailing',
       type: dSince === 0 ? 'today' : 'upcoming',
@@ -8510,7 +8512,7 @@ function _buildTasks(opps) {
     if (!dv) return;
     const fu30 = offsetDate(dv, 30), d30 = daysDiff(todayS, fu30);
     const fu60 = offsetDate(dv, 60), d60 = daysDiff(todayS, fu60);
-    if (d30 !== null && d30 <= 10) addTask({
+    if (d30 !== null && d30 <= 7) addTask({
       id: o.id + '_p30', oppId: o.id, source: 'post30', category: 'mailing',
       type: d30 < 0 ? 'overdue' : d30 === 0 ? 'today' : 'upcoming',
       priority: d30 < 0 ? 52 : 42, icon: '📦',
@@ -8521,7 +8523,7 @@ function _buildTasks(opps) {
       estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
       stage: 'Post-30', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
     });
-    if (d60 !== null && d60 <= 10) addTask({
+    if (d60 !== null && d60 <= 7) addTask({
       id: o.id + '_p60', oppId: o.id, source: 'post60', category: 'mailing',
       type: d60 < 0 ? 'overdue' : d60 === 0 ? 'today' : 'upcoming',
       priority: d60 < 0 ? 50 : 40, icon: '🔔',
@@ -8537,24 +8539,28 @@ function _buildTasks(opps) {
   // ── 3. ACTIVE CLIENTS: postponed phase + next step date (10d before) ──
   opps.filter(o => o.saleMade === 'Yes').forEach(o => {
     if (o.issueResult === 'Done') return;
-    if (o.issueResult === 'Postpone' || (o.activePhase && o.issueFlag)) {
-      addTask({
+    if (o.issueResult === 'Postpone' || (o.activePhase && o.issueFlag === 'Yes')) {
+      const apDate = o.followUpDate || '';
+      const dAP = apDate ? daysDiff(todayS, apDate) : null;
+      // Only show if followUpDate is within 7 days (or overdue), or no date set
+      if (!apDate || dAP <= 7) addTask({
         id: o.id + '_ap', oppId: o.id, source: 'active', category: 'crm',
-        type: 'upcoming', priority: 35, icon: '🔄',
+        type: dAP !== null && dAP < 0 ? 'overdue' : dAP === 0 ? 'today' : 'upcoming',
+        priority: dAP !== null && dAP < 0 ? 37 : 35, icon: '🔄',
         label: o.issueResult === 'Postpone' ? 'Postponed' : 'Active',
         labelColor: 'var(--gold)',
         firstName: o.firstName || '', lastName: o.lastName || '',
         activity: (o.activePhase || 'Active Phase') + (o.issueType ? ': ' + o.issueType : ''),
-        dueDate: o.issueFlag || todayS, estimate: Number(o.estimate) || 0,
+        dueDate: apDate, estimate: Number(o.estimate) || 0,
         projectType: o.projectType || '', stage: 'Active · ' + (o.activePhase || ''),
         customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
       });
     }
-    // Next step / follow-up date for active clients — 10 days before
+    // Next step / follow-up date for active clients — 7 days before
     const nsDate = o.followUpDate || '';
     if (nsDate) {
       const dNS = daysDiff(todayS, nsDate);
-      if (dNS !== null && dNS <= 10) addTask({
+      if (dNS !== null && dNS <= 7) addTask({
         id: o.id + '_ns', oppId: o.id, source: 'nextstep', category: 'crm',
         type: dNS < 0 ? 'overdue' : dNS === 0 ? 'today' : 'upcoming',
         priority: dNS < 0 ? 36 : dNS === 0 ? 32 : Math.max(28 - dNS, 18),
@@ -8578,7 +8584,7 @@ function _buildTasks(opps) {
     const due    = BL.isDueToday(o);
     const fuDate = o.followUpDate || '';
     const dFU    = fuDate ? daysDiff(todayS, fuDate) : null;
-    const upcoming = dFU !== null && dFU > 0 && dFU <= 10;
+    const upcoming = dFU !== null && dFU > 0 && dFU <= 7;
     if (days > 0 || due || upcoming) {
       addTask({
         id: o.id + '_fu', oppId: o.id, source: 'pipeline', category: 'crm',
@@ -8599,7 +8605,7 @@ function _buildTasks(opps) {
     const hcDate = o.homeCallDate || '';
     if (hcDate) {
       const dHC = daysDiff(todayS, hcDate);
-      if (dHC !== null && dHC >= 0 && dHC <= 10) addTask({
+      if (dHC !== null && dHC >= 0 && dHC <= 7) addTask({
         id: o.id + '_hc', oppId: o.id, source: 'homecall', category: 'crm',
         type: dHC === 0 ? 'today' : 'upcoming',
         priority: dHC === 0 ? 44 : 38, icon: '🏠',
@@ -8630,7 +8636,7 @@ function _buildTasks(opps) {
     const dv = o.deliveryDate || '';
     if (dv) {
       const daysTo = daysDiff(todayS, dv);
-      if (daysTo !== null && daysTo >= -14 && daysTo <= 10) {
+      if (daysTo !== null && daysTo >= -14 && daysTo <= 7) {
         const isToday = daysTo === 0;
         const is2     = daysTo >= 0 && daysTo <= 2;
         addTask({
@@ -8654,7 +8660,7 @@ function _buildTasks(opps) {
     const lr = o.linkReviewDate || '';
     if (lr) {
       const daysLR = daysDiff(todayS, lr);
-      if (daysLR !== null && daysLR <= 10) addTask({
+      if (daysLR !== null && daysLR <= 7) addTask({
         id: o.id + '_lr', oppId: o.id, source: 'review', category: 'mailing',
         type: daysLR < 0 ? 'overdue' : daysLR === 0 ? 'today' : 'upcoming',
         priority: daysLR < 0 ? 28 : daysLR === 0 ? 22 : 18, icon: '⭐',
