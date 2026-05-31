@@ -3487,10 +3487,10 @@ async function exportMileageExcel() {
     const tolls = parseFloat(r.tollsParking) || 0;
     const reimb = net > 0 ? +(net * RATE + tolls).toFixed(2) : 0;
     return [r.date||'', r.clientName||'', r.address||'',
-      r.stopHome1 ? '✓' : '', r.stopDC1 ? '✓' : '',
-      r.stopClient ? '✓' : '', r.stopHome2 ? '✓' : '', r.stopDC2 ? '✓' : '',
+      r.stopHome1 ? 'X' : '', r.stopDC1 ? 'X' : '',
+      r.stopClient ? 'X' : '', r.stopHome2 ? 'X' : '', r.stopDC2 ? 'X' : '',
       total, commute, +net.toFixed(1), tolls, reimb,
-      r.designPartner||'', r.isManual ? 'Manual Trip' : 'Home Call'];
+      r.designPartner||'', 'Home Call'];
   });
 
   // Subtotals row
@@ -3524,16 +3524,16 @@ function exportMileagePDF() {
     const reimb = net > 0 ? net * RATE + tolls : 0;
     totalMiles += total; totalNet += net; totalReimb += reimb; totalTolls += tolls;
     const bg = i % 2 === 0 ? '#fff' : '#f8f6f3';
-    const purpose = r.isManual ? 'Manual' : 'Home Call';
+    const purpose = 'Home Call';
     return `<tr style="background:${bg}">
       <td>${esc(r.date||'')}</td>
       <td>${esc(r.clientName||'')}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.address||'')}</td>
-      <td style="text-align:center;font-size:12px">${r.stopHome1?'✓':''}</td>
-      <td style="text-align:center;font-size:12px">${r.stopDC1?'✓':''}</td>
-      <td style="text-align:center;font-size:12px">${r.stopClient?'✓':''}</td>
-      <td style="text-align:center;font-size:12px">${r.stopHome2?'✓':''}</td>
-      <td style="text-align:center;font-size:12px">${r.stopDC2?'✓':''}</td>
+      <td style="text-align:center;font-size:12px;font-weight:700">${r.stopHome1?'X':''}</td>
+      <td style="text-align:center;font-size:12px;font-weight:700">${r.stopDC1?'X':''}</td>
+      <td style="text-align:center;font-size:12px;font-weight:700">${r.stopClient?'X':''}</td>
+      <td style="text-align:center;font-size:12px;font-weight:700">${r.stopHome2?'X':''}</td>
+      <td style="text-align:center;font-size:12px;font-weight:700">${r.stopDC2?'X':''}</td>
       <td style="text-align:right;font-weight:600">${total>0?total.toFixed(1):''}</td>
       <td style="text-align:right">${commute>0?commute.toFixed(1):''}</td>
       <td style="text-align:right;font-weight:600">${net>0?net.toFixed(1):''}</td>
