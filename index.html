@@ -4573,14 +4573,15 @@ async function renderPriorities() {
 
   const sourceLabel = {
     post30:'Post-30', post60:'Post-60', pipeline:'Follow-up',
-    delivery:'Delivery', review:'Link Review', issue:'Issue', active:'Active Phase'
+    delivery:'Delivery', review:'Link Review', issue:'Issue',
+    active:'Active Phase', thankyou:'Thank You', homecall:'Home Call', nextstep:'Next Step'
   };
 
   // ── CRM task row builder ──
   const crmRow = t => {
     const who = `${t.firstName||''} ${t.lastName||''}`.trim();
     const safeId = esc(t.id).replace(/'/g,"\\'");
-    const canReschedule = t.source === 'pipeline';
+    const canReschedule = t.source === 'pipeline' || t.source === 'nextstep';
     return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface-2);
       border:1px solid ${t.type==='overdue'?'rgba(224,80,80,.35)':'rgba(196,147,63,.25)'};
       border-radius:8px;margin-bottom:8px">
@@ -4658,12 +4659,33 @@ async function renderPriorities() {
     </div>
 
     <div class="container" style="margin-bottom:28px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
         <span style="font-family:var(--font-display);font-size:17px;color:var(--ink-10)">📋 CRM Activities</span>
         <span style="background:var(--ink-70);color:var(--ink-20);font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">${crmTasks.length}</span>
         <button onclick="clearCompletedTasks();renderPriorities()" style="margin-left:auto;font-size:10px;color:var(--ink-50);background:none;border:none;cursor:pointer">Reset completed</button>
       </div>
-      ${crmHTML}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <!-- Left: CRM Actives (calls, visits, deliveries, next steps) -->
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--ink-70)">
+            <span style="font-size:13px;font-weight:700;color:var(--ink-20)">📞 CRM Actives</span>
+            <span style="background:var(--ink-70);color:var(--ink-40);font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px">${crmTasks.filter(t=>t.category==='crm').length}</span>
+          </div>
+          ${crmTasks.filter(t => t.category === 'crm').length
+            ? crmTasks.filter(t => t.category === 'crm').map(crmRow).join('')
+            : `<div style="padding:20px;text-align:center;color:var(--ink-50);font-size:12px">✅ No pending CRM activities</div>`}
+        </div>
+        <!-- Right: Mailing / Post 30/60 -->
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--ink-70)">
+            <span style="font-size:13px;font-weight:700;color:var(--ink-20)">📧 Mailing / Post 30/60</span>
+            <span style="background:var(--ink-70);color:var(--ink-40);font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px">${crmTasks.filter(t=>t.category==='mailing').length}</span>
+          </div>
+          ${crmTasks.filter(t => t.category === 'mailing').length
+            ? crmTasks.filter(t => t.category === 'mailing').map(crmRow).join('')
+            : `<div style="padding:20px;text-align:center;color:var(--ink-50);font-size:12px">✅ No pending mailings</div>`}
+        </div>
+      </div>
     </div>
 
     <div class="container" style="margin-bottom:40px">
@@ -8459,177 +8481,206 @@ function _buildTasks(opps) {
   const tasks  = [];
   function addTask(t) { if (done.indexOf(t.id) < 0) tasks.push(t); }
 
-  // Post-30 / Post-60 delivery tasks (due within 7 days or overdue)
-  opps.filter(function(o){ return o.saleMade==='Yes'; }).forEach(function(o) {
-    var rec=p30.find(function(r){return r.oppId===o.id;}) || {};
-    var dv=o.deliveryDate||(rec.deliveryDate||'');
-    if (!dv) return;
-    var fu30=offsetDate(dv,30), d30=daysDiff(todayS,fu30);
-    var fu60=offsetDate(dv,60), d60=daysDiff(todayS,fu60);
-    if (d30!==null && d30<=7) addTask({id:o.id+'_p30',oppId:o.id,source:'post30',
-      type:d30<0?'overdue':d30===0?'today':'upcoming',priority:d30<0?52:42,icon:'📦',
-      label:d30<0?Math.abs(d30)+'d overdue':d30===0?'Due today':'In '+d30+'d',
-      labelColor:d30<0?'var(--red)':d30===0?'var(--gold)':'var(--green)',
-      firstName:o.firstName||'',lastName:o.lastName||'',
-      activity:'Post-30 Follow-Up (delivery: '+fmtDate(dv)+')',dueDate:fu30,
-      estimate:Number(o.estimate)||0,projectType:o.projectType||'',
-      stage:'Post-30',customerNumber:o.customerNumber||'',goldComp:o.goldComp||''});
-    if (d60!==null && d60<=7) addTask({id:o.id+'_p60',oppId:o.id,source:'post60',
-      type:d60<0?'overdue':d60===0?'today':'upcoming',priority:d60<0?50:40,icon:'🔔',
-      label:d60<0?Math.abs(d60)+'d overdue':d60===0?'Due today':'In '+d60+'d',
-      labelColor:d60<0?'var(--red)':d60===0?'var(--gold)':'var(--green)',
-      firstName:o.firstName||'',lastName:o.lastName||'',
-      activity:'Post-60 Follow-Up (delivery: '+fmtDate(dv)+')',dueDate:fu60,
-      estimate:Number(o.estimate)||0,projectType:o.projectType||'',
-      stage:'Post-60',customerNumber:o.customerNumber||'',goldComp:o.goldComp||''});
+  // ── 1. THANK YOU NOTE + GOOGLE REVIEW — immediately after sale, first 14 days ──
+  opps.filter(o => o.saleMade === 'Yes').forEach(o => {
+    const sd = o.saleDate || o.closeDate || '';
+    if (!sd) return;
+    const dSince = -(daysDiff(todayS, sd) || 0); // positive = days since sale
+    if (dSince < 0 || dSince > 14) return;
+    addTask({
+      id: o.id + '_ty', oppId: o.id, source: 'thankyou', category: 'mailing',
+      type: dSince === 0 ? 'today' : 'upcoming',
+      priority: dSince === 0 ? 55 : Math.max(48 - dSince * 2, 32),
+      icon: '🙏',
+      label: dSince === 0 ? 'Send today' : dSince + 'd ago',
+      labelColor: dSince === 0 ? 'var(--green)' : dSince <= 3 ? 'var(--gold)' : 'var(--ink-40)',
+      firstName: o.firstName || '', lastName: o.lastName || '',
+      customerNumber: o.customerNumber || '',
+      activity: 'Thank you note + request Google Review link',
+      dueDate: sd, estimate: Number(o.estimate) || 0,
+      projectType: o.projectType || '', stage: 'Post-Sale', goldComp: o.goldComp || '',
+    });
   });
 
-  // ── Active clients: Active Phase Result = Postpone → show in Tasks ──────
+  // ── 2. POST-30 / POST-60 — within 10 days or overdue ──
   opps.filter(o => o.saleMade === 'Yes').forEach(o => {
-    if (o.issueResult === 'Done') return;  // Done → removed from tasks
+    const rec = p30.find(r => r.oppId === o.id) || {};
+    const dv  = o.deliveryDate || rec.deliveryDate || '';
+    if (!dv) return;
+    const fu30 = offsetDate(dv, 30), d30 = daysDiff(todayS, fu30);
+    const fu60 = offsetDate(dv, 60), d60 = daysDiff(todayS, fu60);
+    if (d30 !== null && d30 <= 10) addTask({
+      id: o.id + '_p30', oppId: o.id, source: 'post30', category: 'mailing',
+      type: d30 < 0 ? 'overdue' : d30 === 0 ? 'today' : 'upcoming',
+      priority: d30 < 0 ? 52 : 42, icon: '📦',
+      label: d30 < 0 ? Math.abs(d30) + 'd overdue' : d30 === 0 ? 'Due today' : 'In ' + d30 + 'd',
+      labelColor: d30 < 0 ? 'var(--red)' : d30 === 0 ? 'var(--gold)' : 'var(--green)',
+      firstName: o.firstName || '', lastName: o.lastName || '',
+      activity: 'Post-30 Follow-Up (delivery: ' + fmtDate(dv) + ')', dueDate: fu30,
+      estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
+      stage: 'Post-30', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
+    });
+    if (d60 !== null && d60 <= 10) addTask({
+      id: o.id + '_p60', oppId: o.id, source: 'post60', category: 'mailing',
+      type: d60 < 0 ? 'overdue' : d60 === 0 ? 'today' : 'upcoming',
+      priority: d60 < 0 ? 50 : 40, icon: '🔔',
+      label: d60 < 0 ? Math.abs(d60) + 'd overdue' : d60 === 0 ? 'Due today' : 'In ' + d60 + 'd',
+      labelColor: d60 < 0 ? 'var(--red)' : d60 === 0 ? 'var(--gold)' : 'var(--green)',
+      firstName: o.firstName || '', lastName: o.lastName || '',
+      activity: 'Post-60 Follow-Up (delivery: ' + fmtDate(dv) + ')', dueDate: fu60,
+      estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
+      stage: 'Post-60', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
+    });
+  });
+
+  // ── 3. ACTIVE CLIENTS: postponed phase + next step date (10d before) ──
+  opps.filter(o => o.saleMade === 'Yes').forEach(o => {
+    if (o.issueResult === 'Done') return;
     if (o.issueResult === 'Postpone' || (o.activePhase && o.issueFlag)) {
-      const dueDate = o.issueFlag || localDateStr(new Date());
       addTask({
-        id: o.id+'_ap', oppId: o.id, source:'active',
+        id: o.id + '_ap', oppId: o.id, source: 'active', category: 'crm',
         type: 'upcoming', priority: 35, icon: '🔄',
         label: o.issueResult === 'Postpone' ? 'Postponed' : 'Active',
         labelColor: 'var(--gold)',
-        firstName: o.firstName||'', lastName: o.lastName||'',
-        activity: (o.activePhase||'Active Phase') + (o.issueType ? ': '+o.issueType : ''),
-        dueDate, estimate: Number(o.estimate)||0,
-        projectType: o.projectType||'', stage: 'Active · '+(o.activePhase||''),
-        customerNumber: o.customerNumber||'', goldComp: o.goldComp||'',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        activity: (o.activePhase || 'Active Phase') + (o.issueType ? ': ' + o.issueType : ''),
+        dueDate: o.issueFlag || todayS, estimate: Number(o.estimate) || 0,
+        projectType: o.projectType || '', stage: 'Active · ' + (o.activePhase || ''),
+        customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
+      });
+    }
+    // Next step / follow-up date for active clients — 10 days before
+    const nsDate = o.followUpDate || '';
+    if (nsDate) {
+      const dNS = daysDiff(todayS, nsDate);
+      if (dNS !== null && dNS <= 10) addTask({
+        id: o.id + '_ns', oppId: o.id, source: 'nextstep', category: 'crm',
+        type: dNS < 0 ? 'overdue' : dNS === 0 ? 'today' : 'upcoming',
+        priority: dNS < 0 ? 36 : dNS === 0 ? 32 : Math.max(28 - dNS, 18),
+        icon: '📌',
+        label: dNS < 0 ? Math.abs(dNS) + 'd overdue' : dNS === 0 ? 'Today' : 'In ' + dNS + 'd',
+        labelColor: dNS < 0 ? 'var(--red)' : dNS === 0 ? 'var(--gold)' : 'var(--ink-30)',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        customerNumber: o.customerNumber || '',
+        activity: (o.activePhase || 'Next Step') + (o.nextStep ? ': ' + o.nextStep.slice(0, 60) : ''),
+        dueDate: nsDate, estimate: Number(o.estimate) || 0,
+        projectType: o.projectType || '', stage: 'Active · ' + (o.activePhase || ''),
+        goldComp: o.goldComp || '',
       });
     }
   });
 
-  // ── Active pipeline: overdue & due today ──
+  // ── 4. PIPELINE: overdue + due today + upcoming 10d; home calls 2d before ──
   opps.forEach(o => {
     if (o.saleMade === 'Yes' || o.stage === 'Canceled') return;
-    const days = BL.getDaysOverdue(o);
-    const due  = BL.isDueToday(o);
-    if (days > 0 || due) {
+    const days   = BL.getDaysOverdue(o);
+    const due    = BL.isDueToday(o);
+    const fuDate = o.followUpDate || '';
+    const dFU    = fuDate ? daysDiff(todayS, fuDate) : null;
+    const upcoming = dFU !== null && dFU > 0 && dFU <= 10;
+    if (days > 0 || due || upcoming) {
       addTask({
-        id: o.id + '_fu', oppId: o.id,
-        type: days > 0 ? 'overdue' : 'today',
-        priority: days > 0 ? 30 + days : 20,
-        icon: days > 0 ? '⚠️' : '📅',
-        label: days > 0 ? days + 'd overdue' : 'Due today',
-        labelColor: days > 0 ? 'var(--red)' : 'var(--gold)',
+        id: o.id + '_fu', oppId: o.id, source: 'pipeline', category: 'crm',
+        type: days > 0 ? 'overdue' : due ? 'today' : 'upcoming',
+        priority: days > 0 ? 30 + Math.min(days, 20) : due ? 20 : Math.max(14 - (dFU || 0), 5),
+        icon: days > 0 ? '⚠️' : due ? '📅' : '📆',
+        label: days > 0 ? days + 'd overdue' : due ? 'Due today' : 'In ' + dFU + 'd',
+        labelColor: days > 0 ? 'var(--red)' : due ? 'var(--gold)' : 'var(--ink-30)',
         firstName: o.firstName || '', lastName: o.lastName || '',
         customerNumber: o.customerNumber || '',
-        saleDate: o.saleDate || o.closeDate || '',
-        projectType: o.projectType || '—',
-        estimate: Number(o.estimate) || 0,
-        goldComp: o.goldComp || '',
-        stage: o.stage || '',
-        activePhase: o.activePhase || '',
-        deliveryDate: o.deliveryDate || '',
-        delivery2Day: false,
-        linkReviewDate: o.linkReviewDate || '',
-        dueDate: o.followUpDate || '',
+        projectType: o.projectType || '—', estimate: Number(o.estimate) || 0,
+        goldComp: o.goldComp || '', stage: o.stage || '',
+        dueDate: fuDate,
         activity: o.nextStep || ('Follow-up: ' + (o.stage || 'Contact client')),
-        issueFlag: '', issueType: '', issueResult: '',
-        source: 'pipeline',
       });
     }
-    if (o.stage === 'Postponed') {
-      addTask({
-        id: o.id + '_pp', oppId: o.id,
-        type: 'postponed', priority: 15,
-        icon: '⏸️', label: 'Postponed', labelColor: 'var(--ink-40)',
+    // Home Call: 2 days before
+    const hcDate = o.homeCallDate || '';
+    if (hcDate) {
+      const dHC = daysDiff(todayS, hcDate);
+      if (dHC !== null && dHC >= 0 && dHC <= 2) addTask({
+        id: o.id + '_hc', oppId: o.id, source: 'homecall', category: 'crm',
+        type: dHC === 0 ? 'today' : 'upcoming',
+        priority: dHC === 0 ? 44 : 38, icon: '🏠',
+        label: dHC === 0 ? 'Today!' : 'In ' + dHC + 'd',
+        labelColor: dHC === 0 ? 'var(--green)' : 'var(--gold)',
         firstName: o.firstName || '', lastName: o.lastName || '',
         customerNumber: o.customerNumber || '',
-        saleDate: o.saleDate || o.closeDate || '',
-        projectType: o.projectType || '—',
-        estimate: Number(o.estimate) || 0,
-        goldComp: o.goldComp || '',
-        stage: 'Postponed', activePhase: '',
-        deliveryDate: '', delivery2Day: false, linkReviewDate: '',
-        dueDate: o.followUpDate || '',
-        activity: 'Postponed — queued for post-30/60 follow-up',
-        issueFlag: '', issueType: '', issueResult: '',
-        source: 'pipeline',
+        activity: 'Home Call' + (o.nextStep ? ': ' + o.nextStep.slice(0, 55) : ''),
+        dueDate: hcDate, estimate: Number(o.estimate) || 0,
+        projectType: o.projectType || '', stage: o.stage || '', goldComp: o.goldComp || '',
       });
     }
+    if (o.stage === 'Postponed') addTask({
+      id: o.id + '_pp', oppId: o.id, source: 'pipeline', category: 'crm',
+      type: 'postponed', priority: 15, icon: '⏸️',
+      label: 'Postponed', labelColor: 'var(--ink-40)',
+      firstName: o.firstName || '', lastName: o.lastName || '',
+      customerNumber: o.customerNumber || '',
+      projectType: o.projectType || '—', estimate: Number(o.estimate) || 0,
+      goldComp: o.goldComp || '', stage: 'Postponed',
+      dueDate: o.followUpDate || '',
+      activity: 'Postponed — queued for post-30/60 follow-up',
+    });
   });
 
-  // ── Sold clients: delivery & link review flags ──
+  // ── 5. SOLD CLIENTS: delivery (10d before) + link review (2d before) + issues ──
   opps.filter(o => o.saleMade === 'Yes').forEach(o => {
     const dv = o.deliveryDate || '';
     if (dv) {
       const daysTo = daysDiff(todayS, dv);
-      if (daysTo >= -14 && daysTo <= 2) {
-        const is2 = daysTo >= 0 && daysTo <= 2;
+      if (daysTo !== null && daysTo >= -14 && daysTo <= 10) {
         const isToday = daysTo === 0;
+        const is2     = daysTo >= 0 && daysTo <= 2;
         addTask({
-          id: o.id + '_dv', oppId: o.id,
-          type: is2 ? (isToday ? 'today' : 'upcoming') : 'overdue',
-          priority: is2 ? (isToday ? 40 : 35) : 25,
-          icon: '🚚',
-          label: isToday ? 'Delivery TODAY' : (daysTo > 0 ? 'Delivery in ' + daysTo + 'd' : 'Delivery ' + Math.abs(daysTo) + 'd ago'),
-          labelColor: isToday ? 'var(--green)' : (daysTo > 0 ? 'var(--gold)' : 'var(--ink-40)'),
+          id: o.id + '_dv', oppId: o.id, source: 'delivery', category: 'crm',
+          type: isToday ? 'today' : daysTo > 0 ? 'upcoming' : 'overdue',
+          priority: isToday ? 40 : daysTo > 0 ? 35 : 25, icon: '🚚',
+          label: isToday ? 'Delivery TODAY' : daysTo > 0 ? 'Delivery in ' + daysTo + 'd' : 'Delivery ' + Math.abs(daysTo) + 'd ago',
+          labelColor: isToday ? 'var(--green)' : daysTo > 0 ? 'var(--gold)' : 'var(--ink-40)',
           firstName: o.firstName || '', lastName: o.lastName || '',
           customerNumber: o.customerNumber || '',
-          saleDate: o.saleDate || o.closeDate || '',
-          projectType: o.projectType || '—',
-          estimate: Number(o.estimate) || 0,
-          goldComp: o.goldComp || '',
-          stage: 'Active Client', activePhase: o.activePhase || '',
-          deliveryDate: dv, delivery2Day: is2,
-          linkReviewDate: o.linkReviewDate || '',
-          dueDate: dv,
-          activity: isToday ? 'Delivery day — confirm arrival & client satisfaction' : (daysTo > 0 ? 'Prepare for delivery in ' + daysTo + 'd' : 'Post-delivery follow-up needed'),
+          projectType: o.projectType || '—', estimate: Number(o.estimate) || 0,
+          goldComp: o.goldComp || '', stage: 'Active Client', activePhase: o.activePhase || '',
+          deliveryDate: dv, delivery2Day: is2, linkReviewDate: o.linkReviewDate || '', dueDate: dv,
+          activity: isToday ? 'Delivery day — confirm arrival & client satisfaction'
+                  : daysTo > 0 ? 'Prepare for delivery in ' + daysTo + 'd'
+                  : 'Post-delivery follow-up needed',
           issueFlag: o.issueFlag || '', issueType: o.issueType || '', issueResult: o.issueResult || '',
-          source: 'delivery',
         });
       }
     }
     const lr = o.linkReviewDate || '';
     if (lr) {
       const daysLR = daysDiff(todayS, lr);
-      if (daysLR <= 0) {
-        addTask({
-          id: o.id + '_lr', oppId: o.id,
-          type: daysLR < 0 ? 'overdue' : 'today',
-          priority: daysLR < 0 ? 28 : 22,
-          icon: '⭐',
-          label: daysLR < 0 ? 'Review ' + Math.abs(daysLR) + 'd overdue' : 'Link Review Today',
-          labelColor: 'var(--gold)',
-          firstName: o.firstName || '', lastName: o.lastName || '',
-          customerNumber: o.customerNumber || '',
-          saleDate: o.saleDate || o.closeDate || '',
-          projectType: o.projectType || '—',
-          estimate: Number(o.estimate) || 0,
-          goldComp: o.goldComp || '',
-          stage: 'Link Review', activePhase: o.activePhase || '',
-          deliveryDate: o.deliveryDate || '', delivery2Day: false,
-          linkReviewDate: lr, dueDate: lr,
-          activity: 'Send survey link + thank-you note to client',
-          issueFlag: o.issueFlag || '', issueType: o.issueType || '', issueResult: o.issueResult || '',
-          source: 'review',
-        });
-      }
-    }
-    if (o.issueFlag === 'Yes' && o.issueResult !== 'Done') {
-      addTask({
-        id: o.id + '_iss', oppId: o.id,
-        type: 'overdue', priority: 50,
-        icon: '🔴', label: 'Open Issue', labelColor: 'var(--red)',
+      if (daysLR !== null && daysLR <= 2) addTask({
+        id: o.id + '_lr', oppId: o.id, source: 'review', category: 'mailing',
+        type: daysLR < 0 ? 'overdue' : daysLR === 0 ? 'today' : 'upcoming',
+        priority: daysLR < 0 ? 28 : daysLR === 0 ? 22 : 18, icon: '⭐',
+        label: daysLR < 0 ? 'Review ' + Math.abs(daysLR) + 'd overdue'
+             : daysLR === 0 ? 'Link Review Today' : 'Review in ' + daysLR + 'd',
+        labelColor: daysLR < 0 ? 'var(--red)' : daysLR === 0 ? 'var(--gold)' : 'var(--ink-30)',
         firstName: o.firstName || '', lastName: o.lastName || '',
         customerNumber: o.customerNumber || '',
-        saleDate: o.saleDate || o.closeDate || '',
-        projectType: o.projectType || '—',
-        estimate: Number(o.estimate) || 0,
-        goldComp: o.goldComp || '',
-        stage: 'Issue', activePhase: o.activePhase || '',
-        deliveryDate: o.deliveryDate || '', delivery2Day: false,
-        linkReviewDate: o.linkReviewDate || '', dueDate: todayS,
-        activity: 'Resolve issue: ' + (o.issueType || 'Review with client'),
-        issueFlag: 'Yes', issueType: o.issueType || '', issueResult: o.issueResult || '',
-        source: 'issue',
+        projectType: o.projectType || '—', estimate: Number(o.estimate) || 0,
+        goldComp: o.goldComp || '', stage: 'Link Review', activePhase: o.activePhase || '',
+        deliveryDate: o.deliveryDate || '', linkReviewDate: lr, dueDate: lr,
+        activity: 'Send survey link + thank-you note to client',
+        issueFlag: o.issueFlag || '', issueType: o.issueType || '', issueResult: o.issueResult || '',
       });
     }
+    if (o.issueFlag === 'Yes' && o.issueResult !== 'Done') addTask({
+      id: o.id + '_iss', oppId: o.id, source: 'issue', category: 'crm',
+      type: 'overdue', priority: 50, icon: '🔴',
+      label: 'Open Issue', labelColor: 'var(--red)',
+      firstName: o.firstName || '', lastName: o.lastName || '',
+      customerNumber: o.customerNumber || '',
+      projectType: o.projectType || '—', estimate: Number(o.estimate) || 0,
+      goldComp: o.goldComp || '', stage: 'Issue', activePhase: o.activePhase || '',
+      deliveryDate: o.deliveryDate || '', linkReviewDate: o.linkReviewDate || '', dueDate: todayS,
+      activity: 'Resolve issue: ' + (o.issueType || 'Review with client'),
+      issueFlag: 'Yes', issueType: o.issueType || '', issueResult: o.issueResult || '',
+    });
   });
 
   tasks.sort((a, b) => b.priority !== a.priority ? b.priority - a.priority : (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
@@ -10361,7 +10412,7 @@ async function renderActive() {
           : '', 'text-align:center')
       /* R: Notes */
       + TD(o.notes ? '<span style="color:var(--ink-40);font-style:italic;font-size:11px">'
-            + esc(o.notes.slice(0, 45)) + (o.notes.length > 45 ? '…' : '') + '</span>' : '')
+            + esc(o.notes.slice(0, 25)) + (o.notes.length > 25 ? '…' : '') + '</span>' : '')
       /* [S, T, U — EXCLUDED] */
       /* Action buttons */
       + '<td style="padding:5px 8px;border-bottom:1px solid var(--ink-70);text-align:center">'
@@ -10421,7 +10472,7 @@ async function renderActive() {
     + TH('Next Step','width:72px;text-align:center')
     + TH('Issue?','width:48px;text-align:center') + TH('Issue Type','width:80px')
     + TH('Action','width:80px') + TH('Result','width:56px;text-align:center')
-    + TH('Notes','width:90px')
+    + TH('Notes','width:55px')
     + TH('','width:72px')
     + '</tr></thead>';
 
