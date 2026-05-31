@@ -3486,7 +3486,8 @@ async function exportMileageExcel() {
     const net = Math.max(total - commute, 0);
     const tolls = parseFloat(r.tollsParking) || 0;
     const reimb = net > 0 ? +(net * RATE + tolls).toFixed(2) : 0;
-    return [r.date||'', r.clientName||'', r.address||'',
+    const _lastName = n => (n||'').trim().split(/\s+/).pop()||'';
+    return [r.date||'', _lastName(r.clientName), r.address||'',
       r.stopHome1 ? 'X' : '', r.stopDC1 ? 'X' : '',
       r.stopClient ? 'X' : '', r.stopHome2 ? 'X' : '', r.stopDC2 ? 'X' : '',
       total, commute, +net.toFixed(1), tolls, reimb,
@@ -3527,7 +3528,7 @@ function exportMileagePDF() {
     const purpose = 'Home Call';
     return `<tr style="background:${bg}">
       <td>${esc(r.date||'')}</td>
-      <td>${esc(r.clientName||'')}</td>
+      <td>${esc((r.clientName||'').trim().split(/\s+/).pop()||'')}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.address||'')}</td>
       <td style="text-align:center;font-size:12px;font-weight:700">${r.stopHome1?'X':''}</td>
       <td style="text-align:center;font-size:12px;font-weight:700">${r.stopDC1?'X':''}</td>
@@ -5107,7 +5108,7 @@ async function renderMileage() {
   // Auto-sync mileage from home-call opportunities
   (await DB.getAll()).filter(function(o){return o.homeCall==='Yes'&&o.homeCallDate;}).forEach(function(o){
     var rec=allRecs.find(function(r){return r.sourceOppId===o.id;});
-    var nm=(o.firstName+' '+o.lastName).trim();
+    var nm=(o.lastName||'').trim();
     if(!rec){
       rec={id:uid(),sourceOppId:o.id,date:o.homeCallDate,clientName:nm,address:o.address||'',
         leg1:'',leg2:'',leg3:'',leg4:'',leg5:'',commute:'',tolls:'',notes:'',purpose:'Home Call'};
