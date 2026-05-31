@@ -4574,8 +4574,8 @@ async function renderPriorities() {
 
   const sourceLabel = {
     post30:'Post-30', post60:'Post-60', pipeline:'Follow-up',
-    delivery:'Delivery', review:'Link Review', issue:'Issue',
-    active:'Active Phase', thankyou:'Thank You', homecall:'Home Call', nextstep:'Next Step'
+    delivery:'Delivery', review:'Thank You / Review', issue:'Issue',
+    active:'Active Phase', homecall:'Home Call', nextstep:'Next Step'
   };
 
   // ── CRM task row builder ──
@@ -8484,28 +8484,7 @@ function _buildTasks(opps) {
   const tasks  = [];
   function addTask(t) { if (done.indexOf(t.id) < 0) tasks.push(t); }
 
-  // ── 1. THANK YOU NOTE + GOOGLE REVIEW — immediately after sale, first 14 days ──
-  opps.filter(o => o.saleMade === 'Yes').forEach(o => {
-    const sd = o.saleDate || o.closeDate || '';
-    if (!sd) return;
-    const dSince = -(daysDiff(todayS, sd) || 0); // positive = days since sale
-    if (dSince < 0 || dSince > 7) return;
-    addTask({
-      id: o.id + '_ty', oppId: o.id, source: 'thankyou', category: 'mailing',
-      type: dSince === 0 ? 'today' : 'upcoming',
-      priority: dSince === 0 ? 55 : Math.max(48 - dSince * 2, 32),
-      icon: '🙏',
-      label: dSince === 0 ? 'Send today' : dSince + 'd ago',
-      labelColor: dSince === 0 ? 'var(--green)' : dSince <= 3 ? 'var(--gold)' : 'var(--ink-40)',
-      firstName: o.firstName || '', lastName: o.lastName || '',
-      customerNumber: o.customerNumber || '',
-      activity: 'Thank you note + request Google Review link',
-      dueDate: sd, estimate: Number(o.estimate) || 0,
-      projectType: o.projectType || '', stage: 'Post-Sale', goldComp: o.goldComp || '',
-    });
-  });
-
-  // ── 2. POST-30 / POST-60 — within 10 days or overdue ──
+  // ── 1. POST-30 / POST-60 — within 7 days or overdue ──
   opps.filter(o => o.saleMade === 'Yes').forEach(o => {
     const rec = p30.find(r => r.oppId === o.id) || {};
     const dv  = o.deliveryDate || rec.deliveryDate || '';
@@ -8663,7 +8642,7 @@ function _buildTasks(opps) {
       if (daysLR !== null && daysLR <= 7) addTask({
         id: o.id + '_lr', oppId: o.id, source: 'review', category: 'mailing',
         type: daysLR < 0 ? 'overdue' : daysLR === 0 ? 'today' : 'upcoming',
-        priority: daysLR < 0 ? 28 : daysLR === 0 ? 22 : 18, icon: '⭐',
+        priority: daysLR < 0 ? 28 : daysLR === 0 ? 22 : 18, icon: '🙏',
         label: daysLR < 0 ? 'Review ' + Math.abs(daysLR) + 'd overdue'
              : daysLR === 0 ? 'Link Review Today' : 'Review in ' + daysLR + 'd',
         labelColor: daysLR < 0 ? 'var(--red)' : daysLR === 0 ? 'var(--gold)' : 'var(--ink-30)',
@@ -8672,7 +8651,7 @@ function _buildTasks(opps) {
         projectType: o.projectType || '—', estimate: Number(o.estimate) || 0,
         goldComp: o.goldComp || '', stage: 'Link Review', activePhase: o.activePhase || '',
         deliveryDate: o.deliveryDate || '', linkReviewDate: lr, dueDate: lr,
-        activity: 'Send survey link + thank-you note to client',
+        activity: 'Thank you note + Google Review + survey link',
         issueFlag: o.issueFlag || '', issueType: o.issueType || '', issueResult: o.issueResult || '',
       });
     }
