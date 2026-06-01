@@ -3173,15 +3173,17 @@ function renderClientTimeline(query) {
   if (!el) return;
   const q = (query||'').trim().toLowerCase();
   if (!q) {
-    el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-50);font-size:12px">Enter a Customer #, email, or phone to view timeline</div>';
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-50);font-size:12px">Enter a Customer #, SO #, email, or phone to view timeline</div>';
     return;
   }
   DB.getAll().then(opps => {
-    // Find matching clients
+    // Find matching clients — search by customer#, SO#, email, phone, or last name
     const matches = opps.filter(o =>
       (o.customerNumber||'').toLowerCase().includes(q) ||
+      (o.saleOrderNumber||'').toLowerCase().includes(q) ||
       (o.email||'').toLowerCase().includes(q) ||
-      (o.phone||'').toLowerCase().replace(/[^0-9]/g,'').includes(q.replace(/[^0-9]/g,''))
+      (o.phone||'').toLowerCase().replace(/[^0-9]/g,'').includes(q.replace(/[^0-9]/g,'')) ||
+      (o.lastName||'').toLowerCase().includes(q)
     );
     if (!matches.length) {
       el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-50);font-size:12px">No clients found matching "'+esc(query)+'"</div>';
@@ -3211,10 +3213,11 @@ function renderClientTimeline(query) {
       }).join('');
 
       return '<div style="border-bottom:2px solid var(--ink-70)">'
-        +'<div style="padding:12px 18px;display:flex;align-items:center;gap:10px;background:var(--ink-80)">'
+        +'<div style="padding:12px 18px;display:flex;align-items:center;gap:10px;background:var(--ink-80);flex-wrap:wrap">'
         +'<div style="font-weight:700;font-size:13px;color:var(--ink-10)">'+esc(o.lastName)+', '+esc(o.firstName)+'</div>'
-        +(o.customerNumber?'<span style="font-size:11px;color:var(--gold);font-weight:700">#'+esc(o.customerNumber)+'</span>':'')
-        +'<span style="font-size:11px;color:var(--ink-50)">'+esc(o.projectType||'')+'</span>'
+        +(o.customerNumber?'<span style="font-size:11px;color:var(--gold);font-weight:700">Customer #'+esc(o.customerNumber)+'</span>':'')
+        +(o.saleOrderNumber?'<span style="font-size:11px;color:var(--ink-30);font-weight:600;background:var(--ink-70);padding:1px 7px;border-radius:4px">SO '+esc(o.saleOrderNumber)+'</span>':'')
+        +(o.projectType?'<span style="font-size:11px;color:var(--ink-40)">'+esc(o.projectType)+'</span>':'')
         +'</div>'
         +(allEvents.length ? rows : '<div style="padding:16px 20px;color:var(--ink-50);font-size:11px">No timeline events recorded yet</div>')
         +'</div>';
@@ -4520,14 +4523,15 @@ function gcalLink(title, dateStr, notes) {
 
 function _submitTask() {
   const t  = (document.getElementById('task-title-inp')?.value||'').trim();
+  const n  = (document.getElementById('task-notes-inp')?.value||'').trim();
+  const so = (document.getElementById('task-so-inp')?.value||'').trim();
   const d  = document.getElementById('task-date-inp')?.value||'';
   const p  = document.getElementById('task-prio-inp')?.value||'medium';
-  const so = (document.getElementById('task-so-inp')?.value||'').trim();
-  if (!t) { toast('Enter a task title', 'warn'); return; }
-  addTask(t, d, p, '', so);
-  const inp = document.getElementById('task-title-inp'); if(inp) inp.value='';
-  const di  = document.getElementById('task-date-inp');  if(di)  di.value='';
-  const si  = document.getElementById('task-so-inp');    if(si)  si.value='';
+  if (!t) { toast('Enter last name', 'warn'); return; }
+  addTask(t, d, p, n, so);
+  ['task-title-inp','task-notes-inp','task-so-inp','task-date-inp'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
 }
 
 window.addTask = addTask;
@@ -4612,16 +4616,17 @@ async function renderPriorities() {
         const isToday = t.dueDate === todayStr;
         const gcNotes = [t.soNumber?`SO: ${t.soNumber}`:'', t.notes].filter(Boolean).join('\n');
         const gc      = gcalLink(t.title, t.dueDate, gcNotes);
-        return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:8px;margin-bottom:8px">
-          <span style="font-size:15px;flex-shrink:0">${prioIcon[t.priority]||'⚪'}</span>
+        return `<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:8px;margin-bottom:7px">
+          <div style="font-weight:700;font-size:13px;color:var(--ink-10);min-width:80px;max-width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</div>
           <div style="flex:1;min-width:0;overflow:hidden">
-            <div style="font-weight:600;color:var(--ink-10)">${esc(t.title)}${t.soNumber?` <span style="font-size:10px;font-weight:700;background:rgba(196,147,63,.15);color:var(--gold);border-radius:4px;padding:1px 6px">SO ${esc(t.soNumber)}</span>`:''}</div>
-            ${t.notes?`<div style="font-size:11px;color:var(--ink-40)">${esc(t.notes)}</div>`:''}
+            ${t.notes?`<span style="font-size:12px;color:var(--ink-30)">${esc(t.notes)}</span>`:'<span style="font-size:12px;color:var(--ink-60)">—</span>'}
           </div>
-          ${t.dueDate?`<span style="font-size:11px;font-weight:700;color:${isOvr?'var(--red)':isToday?'var(--gold)':'var(--ink-30)'};white-space:nowrap;flex-shrink:0">${fmtDate(t.dueDate)}</span>`:''}
-          <a href="${gc}" target="_blank" rel="noopener" style="flex-shrink:0;background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.4);color:#4285f4;border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;text-decoration:none;white-space:nowrap">📅 Cal</a>
-          <button onclick="toggleTaskDone('${t.id}')" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:11px;font-weight:700;padding:4px 10px;cursor:pointer">✓</button>
-          <button onclick="deleteTask('${t.id}')" style="flex-shrink:0;background:rgba(224,80,80,.08);border:1px solid rgba(224,80,80,.3);color:var(--red);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer">🗑</button>
+          ${t.soNumber?`<span style="font-size:10px;font-weight:700;background:rgba(196,147,63,.15);color:var(--gold);border-radius:4px;padding:2px 7px;flex-shrink:0;white-space:nowrap">SO ${esc(t.soNumber)}</span>`:''}
+          ${t.dueDate?`<span style="font-size:11px;font-weight:700;color:${isOvr?'var(--red)':isToday?'var(--gold)':'var(--ink-40)'};white-space:nowrap;flex-shrink:0">${fmtDate(t.dueDate)}</span>`:''}
+          <span style="font-size:14px;flex-shrink:0" title="${t.priority||'medium'}">${prioIcon[t.priority]||'⚪'}</span>
+          <a href="${gc}" target="_blank" rel="noopener" style="flex-shrink:0;background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.4);color:#4285f4;border-radius:6px;font-size:10px;font-weight:700;padding:3px 8px;text-decoration:none;white-space:nowrap">📅</a>
+          <button onclick="toggleTaskDone('${t.id}')" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:10px;font-weight:700;padding:3px 10px;cursor:pointer">✓</button>
+          <button onclick="deleteTask('${t.id}')" style="flex-shrink:0;background:rgba(224,80,80,.08);border:1px solid rgba(224,80,80,.3);color:var(--red);border-radius:6px;font-size:10px;padding:3px 7px;cursor:pointer">🗑</button>
         </div>`;
       }).join('');
 
@@ -4696,11 +4701,14 @@ async function renderPriorities() {
         <span style="font-family:var(--font-display);font-size:17px;color:var(--gold)">✏️ My Tasks</span>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:10px">
-        <input id="task-title-inp" type="text" placeholder="Task description..." maxlength="120"
-          style="flex:2;min-width:200px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--ink-10);font-family:var(--font-body)"
+        <input id="task-title-inp" type="text" placeholder="Last Name" maxlength="60"
+          style="flex:1;min-width:110px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--ink-10);font-family:var(--font-body)"
           onkeydown="if(event.key==='Enter')_submitTask()">
-        <input id="task-so-inp" type="text" placeholder="SO # (optional)" maxlength="40"
-          style="width:130px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--ink-10);font-family:var(--font-body)"
+        <input id="task-notes-inp" type="text" placeholder="Note..." maxlength="160"
+          style="flex:3;min-width:180px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 12px;font-size:13px;color:var(--ink-10);font-family:var(--font-body)"
+          onkeydown="if(event.key==='Enter')_submitTask()">
+        <input id="task-so-inp" type="text" placeholder="SO #" maxlength="40"
+          style="width:90px;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--ink-10);font-family:var(--font-body)"
           onkeydown="if(event.key==='Enter')_submitTask()">
         <input id="task-date-inp" type="date"
           style="background:var(--ink-80);border:1px solid var(--ink-60);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--ink-10);font-family:var(--font-body);cursor:pointer">
@@ -4710,7 +4718,7 @@ async function renderPriorities() {
           <option value="medium" selected>🟡 Medium</option>
           <option value="low">⚪ Low</option>
         </select>
-        <button onclick="_submitTask()" style="background:var(--gold);color:var(--bg);border:none;border-radius:6px;padding:7px 18px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">+ Add</button>
+        <button onclick="_submitTask()" style="background:var(--gold);color:var(--bg);border:none;border-radius:6px;padding:7px 16px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">+ Add</button>
       </div>
       ${taskHTML}
       ${doneHTML}
