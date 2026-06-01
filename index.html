@@ -9120,7 +9120,11 @@ async function renderSettings() {
 
       <div class="tab-section" style="margin-top:20px">
         <h3>💾 Data Management</h3>
-        <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">Export or clear local data. Supabase data is not affected.</p>
+        <p style="font-size:12px;color:var(--ink-40);margin-bottom:12px">Export or clear local data. Supabase data is not affected by Export/Inspect actions.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <button onclick="fixLinkReviewDates()" class="btn btn-ghost btn-sm" style="border-color:var(--gold);color:var(--gold)">🔧 Fix Link Review Dates → Sale+3d</button>
+        </div>
+        <p style="font-size:11px;color:var(--ink-50);margin-bottom:12px">↑ Updates <strong>all sold clients</strong> whose Link Review date does not match Sale+3d. Safe to run multiple times.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button onclick="exportLocalData()" class="btn btn-ghost btn-sm">📦 Export Local Backup</button>
           <button onclick="inspectLocalStorage()" class="btn btn-ghost btn-sm">🔬 Inspect localStorage</button>
@@ -9132,6 +9136,43 @@ async function renderSettings() {
       </div>
     </div>`;
 }
+
+/* ══════════════════════════════════════════════════
+   MIGRATION: Fix Link Review Dates to Sale+3d
+   Updates all sold opps where linkReviewDate ≠ saleDate+3.
+   Safe to run multiple times (idempotent).
+══════════════════════════════════════════════════ */
+async function fixLinkReviewDates() {
+  const opps = await DB.getAll();
+  const toFix = opps.filter(o => {
+    if (o.saleMade !== 'Yes') return false;
+    const sd = o.saleDate || o.closeDate || '';
+    if (!sd) return false;
+    const correct = offsetDate(sd, 3);
+    return o.linkReviewDate !== correct;
+  });
+  if (!toFix.length) {
+    toast('All Link Review dates already correct ✓', 'success');
+    return;
+  }
+  const msg = `Update Link Review dates for ${toFix.length} client(s) to Sale+3d?\n\nThis overwrites the existing dates. Cannot be undone.`;
+  if (!confirm(msg)) return;
+  let ok = 0, fail = 0;
+  for (const o of toFix) {
+    const sd = o.saleDate || o.closeDate || '';
+    const updated = { ...o, linkReviewDate: offsetDate(sd, 3) };
+    try {
+      await DB.save(updated);
+      ok++;
+    } catch(e) {
+      console.warn('fixLinkReview error:', o.id, e);
+      fail++;
+    }
+  }
+  DB._invalidateCache();
+  toast(`✓ Updated ${ok} record(s)${fail ? ` — ${fail} failed` : ''}.  Link Review = Sale+3d`, ok > 0 ? 'success' : 'error');
+}
+window.fixLinkReviewDates = fixLinkReviewDates;
 
 /* ══════════════════════════════════════════════════
    SCHEMA SQL BUILDER — single idempotent script
