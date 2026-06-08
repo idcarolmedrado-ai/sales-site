@@ -4324,28 +4324,69 @@ async function exportPipelineExcel() {
   await _ensureXLSX();
   if (typeof XLSX === 'undefined') { toast('Excel library not loaded — check internet connection', 'error'); return; }
   const opps = await DB.getAll();
-  // All leads sorted by close date desc (including sold, for full picture)
-  const list = opps.slice().sort((a,b)=>(b.closeDate||'').localeCompare(a.closeDate||''));
-  const hdr = ['Last Name','First Name','Project Type','Stage','Sale Result','Probability %',
-               'Estimate ($)','Weighted ($)','Close Date','Follow-Up Date',
-               'Lead Source','Gold Comp','Notes'];
+
+  // Find the 2 most recent months that have leads with a closeDate
+  const months = [...new Set(
+    opps.map(o => (o.closeDate || '').substring(0,7)).filter(m => m)
+  )].sort().reverse().slice(0, 2);
+
+  if (!months.length) { toast('No leads with close dates found', 'warn'); return; }
+
+  // Filter to those 2 months, sorted by month desc then urgency desc
+  const list = opps
+    .filter(o => months.includes((o.closeDate||'').substring(0,7)))
+    .sort((a,b) => (b.closeDate||'').localeCompare(a.closeDate||'') ||
+                   BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
+
+  // Format a date string as MM/DD/YYYY
+  const fmtXL = d => {
+    if (!d) return '';
+    const [y,m,day] = d.split('-');
+    return `${m}/${day}/${y}`;
+  };
+  const fmtMoney = v => v > 0 ? `$${Number(v).toLocaleString('en-US')}` : '—';
+
+  const hdr = ['Last Name','First Name','Project Type','Stage','Sale Result',
+               'Probability','Estimate','Weighted','Close Date','Follow-Up Date',
+               'Lead Source','GoldComp','Notes'];
+
   const rows = list.map(o => [
-    o.lastName  || '', o.firstName || '',
-    o.projectType || '', o.stage || '',
-    o.saleMade === 'Yes' ? 'Sale Made' : (o.stage === 'Closed Lost' ? 'Sale Lost' : '—'),
-    Number(o.probability) || 0,
-    Number(o.estimate)    || 0,
-    Math.round(BL.getWeighted(o)),
-    o.closeDate    || '', o.followUpDate || '',
-    o.leadSource   || '', o.goldComp     || '',
-    o.notes        || ''
+    o.lastName    || '',
+    o.firstName   || '',
+    o.projectType || '',
+    o.stage       || '',
+    o.saleMade === 'Yes' ? 'Sale Made' : (o.stage === 'Closed Lost' ? 'Sale Lost' : 'In Progress'),
+    o.probability ? `${o.probability}%` : '0%',
+    fmtMoney(o.estimate),
+    fmtMoney(Math.round(BL.getWeighted(o))),
+    fmtXL(o.closeDate),
+    fmtXL(o.followUpDate),
+    o.leadSource || '',
+    o.goldComp   || '',
+    o.notes      || ''
   ]);
+
+  const monthLabels = months.map(m => {
+    const [y,mo] = m.split('-');
+    return new Date(+y, +mo-1, 1).toLocaleString('en-US',{month:'long',year:'numeric'});
+  }).join(' & ');
+
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([hdr, ...rows]);
-  ws['!cols'] = [14,12,14,14,10,10,12,12,10,10,12,8,30].map(w=>({wch:w}));
+
+  // Column widths
+  ws['!cols'] = [14,12,14,14,12,9,12,12,11,11,12,8,32].map(w=>({wch:w}));
+
+  // Bold header row
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let C = range.s.c; C <= range.e.c; C++) {
+    const cell = ws[XLSX.utils.encode_cell({r:0, c:C})];
+    if (cell) cell.s = { font:{bold:true}, fill:{fgColor:{rgb:'B8872F'}}, alignment:{horizontal:'center'} };
+  }
+
   XLSX.utils.book_append_sheet(wb, ws, 'Pipeline');
-  XLSX.writeFile(wb, 'Pipeline_' + new Date().toISOString().slice(0,10) + '.xlsx');
-  toast('Pipeline exported to Excel (' + list.length + ' leads)', 'success');
+  XLSX.writeFile(wb, `Pipeline_${months[0]}_${months[months.length-1]}.xlsx`);
+  toast(`Exported ${list.length} leads — ${monthLabels}`, 'success');
 }
 window.exportPipelineExcel = exportPipelineExcel;
 
