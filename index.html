@@ -1432,16 +1432,20 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
           <div class="field"><label for="f-closeDate" data-i18n="lbl_closedate">Expected Close Date</label>
             <input id="f-closeDate" type="date" onchange="onFieldChange()"></div>
           <div class="field"><label for="f-nextStep" data-i18n="lbl_next">Next Step</label>
-            <select id="f-nextStep"><option value="">Select…</option></select></div>
+            <select id="f-nextStep" onchange="document.getElementById('f-nextStepOther').style.display=this.value==='Other'?'block':'none'"><option value="">Select…</option></select>
+            <input id="f-nextStepOther" type="text" placeholder="Describe next step…" maxlength="120"
+              style="display:none;margin-top:6px;width:100%;box-sizing:border-box;background:#fff;border:1px solid var(--ink-60);border-radius:8px;padding:9px 12px;font-size:13px;font-family:var(--font-body)"></div>
           <div class="field"><label for="f-homeCall" data-i18n="lbl_hc">Home Call?</label>
             <select id="f-homeCall" onchange="onFieldChange()">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
           <div class="field"><label for="f-homeCallDate" data-i18n="lbl_hcdate">Home Call Date</label>
             <input id="f-homeCallDate" type="date"></div>
-          <div class="field"><label for="f-saleMade" data-i18n="lbl_sale">Sale Made? <span class="field-tip" data-tip="Auto-set from Stage. Closed Won → Yes, anything else → No.">?</span></label>
-            <select id="f-saleMade" onchange="onFieldChange()" disabled style="opacity:.7">
-              <option value="">—</option><option>Yes</option><option>No</option>
+          <div class="field"><label for="f-saleMade">Sale Result</label>
+            <select id="f-saleMade" onchange="onFieldChange()">
+              <option value="">—</option>
+              <option value="Yes">Sale Made</option>
+              <option value="No">Sale Lost</option>
             </select></div>
           <div class="field" id="lostReasonField" style="display:none"><label for="f-lostReason">Lost Reason *</label>
             <select id="f-lostReason" onchange="onFieldChange()">
@@ -2081,7 +2085,7 @@ const LOOKUP = {
   // Stages: 'Closed Won' is the ONLY stage that counts as a sale.
   // Legacy 'Sale Made' rows are treated as 'Closed Won' on read.
   // Legacy 'Canceled' rows are treated as 'Closed Lost' on read.
-  stages: ['New Lead','Home Call','Design in Progress','Quote Sent','Follow-up','Pending Decision','Closed Won','Closed Lost','Postponed'],
+  stages: ['New Lead','Home Call','Design in Progress','Quote Sent','Follow-up','Pending Decision','Postponed'],
   // Loss reasons — sized for an interior designer's actual deal-loss patterns.
   lostReasons: [
     'Price / Budget',
@@ -2089,10 +2093,10 @@ const LOOKUP = {
     'Timing — project on hold or canceled',
     'Scope changed / Decided to DIY',
   ],
-  projectTypes: ['Living Room','Dining','Bedroom','Home Office','Outdoor','Lighting','Rugs & Flooring','Decor','Window Treatment','Drapery','Clearance','Mix'],
-  nextSteps: ['Schedule Home Visit','Presentation','Presentation / Quote','Follow-Up Call','Send Proposal','Awaiting Decision','Postpone'],
+  projectTypes: ['Living Room','Dining','Bedroom','Home Office','Kitchen','Outdoor','Lighting','Rugs & Flooring','Decor','Window Treatment','Drapery','GoldComp','Clearance','Mix'],
+  nextSteps: ['Schedule Home Visit','Presentation','Presentation / Quote','Follow-Up Call','Send Proposal','Awaiting Decision','Postpone','Other'],
   probabilities: [0,10,25,50,70,75,85,90,100],
-  leadSources: ['Referral','Walk-in','Website','Instagram','Repeat Client','Builder'],
+  leadSources: ['Referral','Walk-in','Website','Instagram','Repeat Client','Trade'],
   get months() { return T('months') || ['January','February','March','April','May','June','July','August','September','October','November','December']; },
   monthGoals: [28000,28000,30000,32000,32000,35000,35000,35000,33000,33000,30000,28000],
   stageColors: {
@@ -5862,7 +5866,12 @@ async function editLead(id) {
   document.getElementById('f-probability').value  = String(o.probability || 0);
   const _epv = document.getElementById('probVal'); if (_epv) { _epv.textContent = (o.probability||0)+'%'; _epv.style.color = (o.probability||0)>=70?'var(--green)':(o.probability||0)>=40?'var(--gold)':'var(--red)'; }
   document.getElementById('f-estimate').value     = o.estimate    || '';
-  document.getElementById('f-nextStep').value     = o.nextStep    || '';
+  const _nsKnown = LOOKUP.nextSteps.slice(0,-1); // all except 'Other'
+  const _nsVal   = o.nextStep || '';
+  const _nsEl    = document.getElementById('f-nextStep');
+  const _nsOther = document.getElementById('f-nextStepOther');
+  if (_nsEl) _nsEl.value = _nsKnown.includes(_nsVal) ? _nsVal : (_nsVal ? 'Other' : '');
+  if (_nsOther) { _nsOther.value = _nsKnown.includes(_nsVal) ? '' : _nsVal; _nsOther.style.display = (_nsEl?.value === 'Other') ? 'block' : 'none'; }
   document.getElementById('f-followUpDate').value = o.followUpDate || '';
   document.getElementById('f-homeCall').value     = o.homeCall    || '';
   document.getElementById('f-homeCallDate').value = o.homeCallDate || '';
@@ -6174,21 +6183,35 @@ function _renderPipelineCards(list) {
   }).join('') + '</div>';
 }
 
+// Auto-probability by stage (only sets if user hasn't manually changed it)
+const _STAGE_PROB = {
+  'New Lead': 10, 'Home Call': 30, 'Design in Progress': 50,
+  'Quote Sent': 65, 'Follow-up': 50, 'Pending Decision': 85, 'Postponed': 20
+};
+
 function onFieldChange() {
   updateAutoFields();
 
-  // Stage is the source of truth for sale-state. saleMade auto-syncs.
-  const st  = document.getElementById('f-stage')?.value   || '';
-  const sma = document.getElementById('f-saleMade');
+  // Auto-fill probability when stage changes (skip if Sale Result is set)
+  const stageForProb = document.getElementById('f-stage')?.value || '';
+  const saleRes      = document.getElementById('f-saleMade')?.value || '';
+  const psrEl        = document.getElementById('f-probability');
+  const pvEl         = document.getElementById('probVal');
+  if (stageForProb && _STAGE_PROB[stageForProb] !== undefined && !saleRes && psrEl) {
+    psrEl.value = _STAGE_PROB[stageForProb];
+    if (pvEl) { const p = _STAGE_PROB[stageForProb]; pvEl.textContent = p+'%'; pvEl.style.color = p>=70?'var(--green)':p>=40?'var(--gold)':'var(--red)'; }
+  }
+
+  // Sale Result (f-saleMade) is now the source of truth for won/lost state.
+  const saleResult = document.getElementById('f-saleMade')?.value || '';
   const psr = document.getElementById('f-probability');
   const sd  = document.getElementById('f-saleDate');
   const cd  = document.getElementById('f-closeDate');
   const lrf = document.getElementById('lostReasonField');
 
-  const isWon  = st === 'Closed Won'  || st === 'Sale Made';
-  const isLost = st === 'Closed Lost' || st === 'Canceled';
+  const isWon  = saleResult === 'Yes';
+  const isLost = saleResult === 'No';
 
-  if (sma) sma.value = isWon ? 'Yes' : 'No';
   if (isWon) {
     if (psr && Number(psr.value) < 100) { psr.value = 100; const pv = document.getElementById('probVal'); if (pv) { pv.textContent = '100%'; pv.style.color = 'var(--green)'; } }
     if (sd && !sd.value) sd.value = todayStr();
@@ -6343,16 +6366,17 @@ async function saveLead() {
   const existingId  = document.getElementById('leadId').value;
   const stage       = document.getElementById('f-stage').value;
   // Stage is the source of truth. saleMade follows.
-  const isSold      = stage === 'Closed Won'  || stage === 'Sale Made';
-  const isLost      = stage === 'Closed Lost';
+  const saleResultVal = document.getElementById('f-saleMade')?.value || '';
+  const isSold      = saleResultVal === 'Yes' || stage === 'Closed Won' || stage === 'Sale Made'; // keep legacy compat
+  const isLost      = saleResultVal === 'No'  || stage === 'Closed Lost';
   const isCanceled  = stage === 'Canceled' || isLost;
   const isPostponed = stage === 'Postponed';
   const saleMade    = isSold ? 'Yes' : 'No';
   const lostReason  = document.getElementById('f-lostReason')?.value || '';
 
-  // Closed Lost requires a reason
+  // Sale Lost requires a reason
   if (isLost && !lostReason) {
-    toast('Pick a Lost Reason — required when stage is Closed Lost', 'error');
+    toast('Pick a Lost Reason — required when Sale Result is Sale Lost', 'error');
     document.getElementById('f-lostReason')?.focus();
     return;
   }
@@ -6418,7 +6442,9 @@ async function saveLead() {
     stage,
     probability:    Number(document.getElementById('f-probability').value) || 0,
     estimate:       Number(document.getElementById('f-estimate').value)    || 0,
-    nextStep:       document.getElementById('f-nextStep').value,
+    nextStep:       document.getElementById('f-nextStep').value === 'Other'
+                    ? (document.getElementById('f-nextStepOther')?.value?.trim() || 'Other')
+                    : document.getElementById('f-nextStep').value,
     followUpDate:   document.getElementById('f-followUpDate').value,
     homeCall:       document.getElementById('f-homeCall').value,
     homeCallDate:   document.getElementById('f-homeCallDate').value,
