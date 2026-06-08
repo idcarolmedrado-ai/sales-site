@@ -1242,6 +1242,9 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
     <button onclick="printPage('page-pipeline')" class="print-btn" title="Print or Save as PDF">
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg><span data-i18n="btn_print">Print / PDF</span>
     </button>
+    <button onclick="exportPipelineExcel()" class="print-btn" title="Export Pipeline to Excel">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M6 7l3 3-3 3M10 13h4"/></svg> Excel
+    </button>
     <button class="btn btn-primary" onclick="openNewLead()" data-i18n="btn_new_lead">+ New Lead</button>
   </div>
   </div>
@@ -4151,7 +4154,16 @@ async function renderPipeline() {
       return cnt ? `<button class="filter-chip ${state.stageFilter===s?'active':''}" onclick="setStageFilter('${s}')">${s} <span style="opacity:.5">(${cnt})</span></button>` : '';
     }).join('');
 
-  // Pipeline: exclude Sale Made=YES (those are in Actives)
+  // Count ALL leads per close-date month (including sold — for the header badge)
+  const _allByMonth = {};
+  opps.forEach(o => {
+    const mk = (o.closeDate || o.saleDate || '').substring(0,7) || 'no-date';
+    if (!_allByMonth[mk]) _allByMonth[mk] = { total:0, sold:0 };
+    _allByMonth[mk].total++;
+    if (o.saleMade === 'Yes') _allByMonth[mk].sold++;
+  });
+
+  // Pipeline table: exclude Sale Made=YES (those are in Actives)
   let list = opps.filter(o => o.saleMade !== 'Yes');
   if (state.stageFilter) list = list.filter(o=>o.stage===state.stageFilter);
   if (search) list = list.filter(o=>`${o.firstName} ${o.lastName} ${o.projectType} ${o.stage} ${o.email} ${o.leadSource} ${o.notes}`.toLowerCase().includes(search));
@@ -4267,10 +4279,15 @@ async function renderPipeline() {
     }).join('');
 
     const lostBadge    = lostCnt
-      ? `<span style="margin-left:8px;padding:2px 8px;border-radius:10px;font-size:10px;background:rgba(224,80,80,.14);color:var(--red);font-weight:700">${lostCnt} lost</span>`
+      ? `<span style="margin-left:6px;padding:2px 8px;border-radius:10px;font-size:10px;background:rgba(224,80,80,.14);color:var(--red);font-weight:700">${lostCnt} lost</span>`
       : '';
     const weightedBadge = weighted > 0
-      ? `<span style="margin-left:8px;padding:2px 8px;border-radius:10px;font-size:10px;background:rgba(196,152,80,.14);color:var(--gold-dk);font-weight:700">≈${fmt$(Math.round(weighted))}</span>`
+      ? `<span style="margin-left:6px;padding:2px 8px;border-radius:10px;font-size:10px;background:rgba(196,152,80,.14);color:var(--gold-dk);font-weight:700">≈${fmt$(Math.round(weighted))}</span>`
+      : '';
+    const totalLeads = _allByMonth[k]?.total || allInMonth.length;
+    const soldCnt    = _allByMonth[k]?.sold  || 0;
+    const soldBadge  = soldCnt
+      ? `<span style="margin-left:6px;padding:2px 8px;border-radius:10px;font-size:10px;background:rgba(76,175,125,.14);color:var(--green);font-weight:700">${soldCnt} sold</span>`
       : '';
 
     return `<div style="margin-bottom:10px">
@@ -4281,9 +4298,9 @@ async function renderPipeline() {
         <span style="font-weight:700;font-size:13px;color:var(--ink-10)">${label}</span>
         <span style="margin-left:8px;padding:2px 8px;border-radius:10px;font-size:10px;
                      background:rgba(90,130,200,.12);color:var(--ink-30);font-weight:700">
-          ${allInMonth.length} lead${allInMonth.length!==1?'s':''}
+          ${totalLeads} lead${totalLeads!==1?'s':''}
         </span>
-        ${weightedBadge}${lostBadge}
+        ${soldBadge}${weightedBadge}${lostBadge}
       </div>
       <div id="${secId}" style="border:1px solid var(--ink-60);border-top:none;border-radius:0 0 8px 8px;overflow:hidden">
         <div style="overflow-x:auto">
@@ -4302,6 +4319,33 @@ async function renderPipeline() {
 
 function setStageFilter(s) { state.stageFilter = s; renderPipeline(); }
 function probColor(p) { return p>=90?'var(--green)':p>=75?'var(--gold)':p>=50?'#FFA500':'var(--ink-40)'; }
+
+async function exportPipelineExcel() {
+  const opps = await DB.getAll();
+  // All leads sorted by close date desc (including sold, for full picture)
+  const list = opps.slice().sort((a,b)=>(b.closeDate||'').localeCompare(a.closeDate||''));
+  const hdr = ['Last Name','First Name','Project Type','Stage','Sale Result','Probability %',
+               'Estimate ($)','Weighted ($)','Close Date','Follow-Up Date',
+               'Lead Source','Gold Comp','Notes'];
+  const rows = list.map(o => [
+    o.lastName  || '', o.firstName || '',
+    o.projectType || '', o.stage || '',
+    o.saleMade === 'Yes' ? 'Sale Made' : (o.stage === 'Closed Lost' ? 'Sale Lost' : '—'),
+    Number(o.probability) || 0,
+    Number(o.estimate)    || 0,
+    Math.round(BL.getWeighted(o)),
+    o.closeDate    || '', o.followUpDate || '',
+    o.leadSource   || '', o.goldComp     || '',
+    o.notes        || ''
+  ]);
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([hdr, ...rows]);
+  ws['!cols'] = [14,12,14,14,10,10,12,12,10,10,12,8,30].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Pipeline');
+  XLSX.writeFile(wb, 'Pipeline_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  toast('Pipeline exported to Excel (' + list.length + ' leads)', 'success');
+}
+window.exportPipelineExcel = exportPipelineExcel;
 
 /* ══════════════════════════════════════════════════
    KANBAN VIEW
