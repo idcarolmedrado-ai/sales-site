@@ -4321,6 +4321,8 @@ function setStageFilter(s) { state.stageFilter = s; renderPipeline(); }
 function probColor(p) { return p>=90?'var(--green)':p>=75?'var(--gold)':p>=50?'#FFA500':'var(--ink-40)'; }
 
 async function exportPipelineExcel() {
+  await _ensureXLSX();
+  if (typeof XLSX === 'undefined') { toast('Excel library not loaded — check internet connection', 'error'); return; }
   const opps = await DB.getAll();
   // All leads sorted by close date desc (including sold, for full picture)
   const list = opps.slice().sort((a,b)=>(b.closeDate||'').localeCompare(a.closeDate||''));
