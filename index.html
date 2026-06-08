@@ -6318,9 +6318,8 @@ function onFieldChange() {
 }
 
 function onDeliveryDateChange() {
-  const dv = document.getElementById('f-deliveryDate')?.value || '';
-  const lr = document.getElementById('f-linkReviewDate');
-  if (lr && dv) lr.value = offsetDate(dv, 5);  // auto: delivery + 5 days
+  // Link Review Date is auto-set to saleDate+3 on save.
+  // Changing delivery date does NOT affect link review.
 }
 
 function onActivePhaseResultChange() {
