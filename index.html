@@ -4534,9 +4534,48 @@ function _submitTask() {
   });
 }
 
+function editTask(id) {
+  const arr = _loadTasks();
+  const t = arr.find(x => x.id === id);
+  if (!t) return;
+  // Pre-fill the form with task data
+  const ti = document.getElementById('task-title-inp'); if (ti) ti.value = t.title || '';
+  const ni = document.getElementById('task-notes-inp'); if (ni) ni.value = t.notes || '';
+  const si = document.getElementById('task-so-inp');    if (si) si.value = t.soNumber || '';
+  const di = document.getElementById('task-date-inp');  if (di) di.value = t.dueDate || '';
+  const pi = document.getElementById('task-prio-inp');  if (pi) pi.value = t.priority || 'medium';
+  // Mark form as editing this task
+  const btn = document.querySelector('#page-priorities button[onclick="_submitTask()"]');
+  if (btn) { btn.textContent = '💾 Update'; btn.setAttribute('onclick', `_updateTask('${id}')`); btn.style.background = 'var(--gold)'; }
+  if (ti) ti.focus();
+}
+
+function _updateTask(id) {
+  const t  = (document.getElementById('task-title-inp')?.value||'').trim();
+  const n  = (document.getElementById('task-notes-inp')?.value||'').trim();
+  const so = (document.getElementById('task-so-inp')?.value||'').trim();
+  const d  = document.getElementById('task-date-inp')?.value||'';
+  const p  = document.getElementById('task-prio-inp')?.value||'medium';
+  if (!t) { toast('Enter last name', 'warn'); return; }
+  const arr = _loadTasks();
+  const idx = arr.findIndex(x => x.id === id);
+  if (idx >= 0) {
+    arr[idx] = { ...arr[idx], title: t, notes: n, soNumber: so, dueDate: d, priority: p };
+    Store.save('tasks', arr);
+  }
+  // Reset form back to Add mode
+  ['task-title-inp','task-notes-inp','task-so-inp','task-date-inp'].forEach(el => { const e = document.getElementById(el); if(e) e.value=''; });
+  const btn = document.querySelector('#page-priorities button[onclick^="_updateTask"]');
+  if (btn) { btn.textContent = '+ Add'; btn.setAttribute('onclick', '_submitTask()'); }
+  renderPriorities();
+  try { if (typeof _calYear !== 'undefined') renderCalendar(); } catch(e){}
+}
+
 window.addTask = addTask;
 window.toggleTaskDone = toggleTaskDone;
 window.deleteTask = deleteTask;
+window.editTask = editTask;
+window._updateTask = _updateTask;
 window.markFollowUpDone = markFollowUpDone;
 window.rescheduleFollowUp = rescheduleFollowUp;
 window._submitTask = _submitTask;
@@ -4625,6 +4664,7 @@ async function renderPriorities() {
           ${t.dueDate?`<span style="font-size:11px;font-weight:700;color:${isOvr?'var(--red)':isToday?'var(--gold)':'var(--ink-40)'};white-space:nowrap;flex-shrink:0">${fmtDate(t.dueDate)}</span>`:''}
           <span style="font-size:14px;flex-shrink:0" title="${t.priority||'medium'}">${prioIcon[t.priority]||'⚪'}</span>
           <a href="${gc}" target="_blank" rel="noopener" style="flex-shrink:0;background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.4);color:#4285f4;border-radius:6px;font-size:10px;font-weight:700;padding:3px 8px;text-decoration:none;white-space:nowrap">📅</a>
+          <button onclick="editTask('${t.id}')" style="flex-shrink:0;background:rgba(196,147,63,.1);border:1px solid rgba(196,147,63,.4);color:var(--gold);border-radius:6px;font-size:10px;padding:3px 7px;cursor:pointer">✏️</button>
           <button onclick="toggleTaskDone('${t.id}')" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:10px;font-weight:700;padding:3px 10px;cursor:pointer">✓</button>
           <button onclick="deleteTask('${t.id}')" style="flex-shrink:0;background:rgba(224,80,80,.08);border:1px solid rgba(224,80,80,.3);color:var(--red);border-radius:6px;font-size:10px;padding:3px 7px;cursor:pointer">🗑</button>
         </div>`;
