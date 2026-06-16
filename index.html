@@ -4157,7 +4157,8 @@ async function renderPipeline() {
   // Count ALL leads per close-date month (including sold — for the header badge)
   const _allByMonth = {};
   opps.forEach(o => {
-    const mk = (o.closeDate || o.saleDate || '').substring(0,7) || 'no-date';
+    const _isLostOpp = o.stage === 'Sale Lost' || o.stage === 'Closed Lost';
+    const mk = (o.closeDate || o.saleDate || (_isLostOpp ? (o.followUpDate || o.createdAt) : '') || '').substring(0,7) || 'no-date';
     if (!_allByMonth[mk]) _allByMonth[mk] = { total:0, sold:0 };
     _allByMonth[mk].total++;
     if (o.saleMade === 'Yes') _allByMonth[mk].sold++;
@@ -4185,7 +4186,8 @@ async function renderPipeline() {
   // ── Group by close-date month (YYYY-MM), no-date at end ──
   const monthGroups = {};
   list.forEach(o => {
-    const key = (o.closeDate||'').substring(0,7) || 'no-date';
+    const _isLost = o.stage === 'Sale Lost' || o.stage === 'Closed Lost';
+    const key = (o.closeDate || (_isLost ? (o.followUpDate || o.createdAt) : '') || '').substring(0,7) || 'no-date';
     if (!monthGroups[key]) monthGroups[key] = [];
     monthGroups[key].push(o);
   });
@@ -4227,9 +4229,9 @@ async function renderPipeline() {
   const sectionsHTML = sortedKeys.map((k, sIdx) => {
     const leads  = monthGroups[k];
 
-    // Closed Lost always at bottom; others sorted by urgency desc
-    const active = leads.filter(o => o.stage !== 'Closed Lost');
-    const lost   = leads.filter(o => o.stage === 'Closed Lost');
+    // Lost leads always at bottom; others sorted by urgency desc
+    const active = leads.filter(o => o.stage !== 'Closed Lost' && o.stage !== 'Sale Lost');
+    const lost   = leads.filter(o => o.stage === 'Closed Lost' || o.stage === 'Sale Lost');
     active.sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
     lost.sort((a,b)   => (b.closeDate||'').localeCompare(a.closeDate||''));
     const allInMonth = [...active, ...lost];
