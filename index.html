@@ -2088,7 +2088,7 @@ const LOOKUP = {
   // Stages: 'Closed Won' is the ONLY stage that counts as a sale.
   // Legacy 'Sale Made' rows are treated as 'Closed Won' on read.
   // Legacy 'Canceled' rows are treated as 'Closed Lost' on read.
-  stages: ['New Lead','Home Call','Design in Progress','Quote Sent','Follow-up','Pending Decision','Postponed'],
+  stages: ['New Lead','Home Call','Design in Progress','Quote Sent','Follow-up','Pending Decision','Postponed','Sale Lost'],
   // Loss reasons — sized for an interior designer's actual deal-loss patterns.
   lostReasons: [
     'Price / Budget',
@@ -6273,7 +6273,7 @@ function _renderPipelineCards(list) {
 // Auto-probability by stage (only sets if user hasn't manually changed it)
 const _STAGE_PROB = {
   'New Lead': 10, 'Home Call': 30, 'Design in Progress': 50,
-  'Quote Sent': 65, 'Follow-up': 50, 'Pending Decision': 85, 'Postponed': 20
+  'Quote Sent': 65, 'Follow-up': 50, 'Pending Decision': 85, 'Postponed': 20, 'Sale Lost': 0
 };
 
 function onFieldChange() {
@@ -6454,7 +6454,7 @@ async function saveLead() {
   // Stage is the source of truth. saleMade follows.
   const saleResultVal = document.getElementById('f-saleMade')?.value || '';
   const isSold      = saleResultVal === 'Yes' || stage === 'Closed Won' || stage === 'Sale Made'; // keep legacy compat
-  const isLost      = saleResultVal === 'No'  || stage === 'Closed Lost';
+  const isLost      = saleResultVal === 'No'  || stage === 'Closed Lost' || stage === 'Sale Lost';
   const isCanceled  = stage === 'Canceled' || isLost;
   const isPostponed = stage === 'Postponed';
   const saleMade    = isSold ? 'Yes' : 'No';
