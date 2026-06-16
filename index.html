@@ -1239,7 +1239,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
       <button class="active" onclick="setPipeView('table')">☰ Table</button>
       <button onclick="setPipeView('kanban')">▦ Kanban</button>
     </div>
-    <button onclick="printPage('page-pipeline')" class="print-btn" title="Print or Save as PDF">
+    <button onclick="printCurrentMonthPipeline()" class="print-btn" title="Print current month only">
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7V2h10v5M5 14H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="5" y="11" width="10" height="8" rx="1"/></svg><span data-i18n="btn_print">Print / PDF</span>
     </button>
     <button onclick="exportPipelineExcel()" class="print-btn" title="Export Pipeline to Excel">
@@ -4292,7 +4292,7 @@ async function renderPipeline() {
       ? `<span style="margin-left:6px;padding:2px 8px;border-radius:10px;font-size:10px;background:rgba(76,175,125,.14);color:var(--green);font-weight:700">${soldCnt} sold</span>`
       : '';
 
-    return `<div style="margin-bottom:10px">
+    return `<div data-month="${k}" style="margin-bottom:10px">
       <div onclick="toggleSalesSection('${secId}')"
            style="display:flex;align-items:center;gap:0;padding:7px 14px;background:var(--ink-70);
                   border-radius:8px 8px 0 0;cursor:pointer;border:1px solid var(--ink-60);user-select:none">
@@ -4327,18 +4327,18 @@ async function exportPipelineExcel() {
   if (typeof XLSX === 'undefined') { toast('Excel library not loaded — check internet connection', 'error'); return; }
   const opps = await DB.getAll();
 
-  // Find the 2 most recent months that have leads with a closeDate
-  const months = [...new Set(
-    opps.map(o => (o.closeDate || '').substring(0,7)).filter(m => m)
-  )].sort().reverse().slice(0, 2);
-
-  if (!months.length) { toast('No leads with close dates found', 'warn'); return; }
-
-  // Filter to those 2 months, sorted by month desc then urgency desc
+  // Current month only (YYYY-MM)
+  const curMonth = todayStr().substring(0, 7);
+  const _isLostStage = o => o.stage === 'Sale Lost' || o.stage === 'Closed Lost';
   const list = opps
-    .filter(o => months.includes((o.closeDate||'').substring(0,7)))
-    .sort((a,b) => (b.closeDate||'').localeCompare(a.closeDate||'') ||
-                   BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
+    .filter(o => {
+      const dateKey = (o.closeDate || (_isLostStage(o) ? (o.followUpDate || o.createdAt) : '') || '').substring(0,7);
+      return dateKey === curMonth;
+    })
+    .sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
+
+  const months = [curMonth];
+  if (!list.length) { toast('No leads found for current month', 'warn'); return; }
 
   // Format a date string as MM/DD/YYYY
   const fmtXL = d => {
@@ -4391,6 +4391,19 @@ async function exportPipelineExcel() {
   toast(`Exported ${list.length} leads — ${monthLabels}`, 'success');
 }
 window.exportPipelineExcel = exportPipelineExcel;
+
+function printCurrentMonthPipeline() {
+  const curMonth = todayStr().substring(0, 7);
+  const sections = document.querySelectorAll('#pipelineTableWrap > div[data-month]');
+  const hidden = [];
+  sections.forEach(s => {
+    if (s.dataset.month !== curMonth) { s.style.display = 'none'; hidden.push(s); }
+  });
+  const restore = () => hidden.forEach(s => s.style.display = '');
+  window.addEventListener('afterprint', restore, { once: true });
+  printPage('page-pipeline');
+}
+window.printCurrentMonthPipeline = printCurrentMonthPipeline;
 
 /* ══════════════════════════════════════════════════
    KANBAN VIEW
