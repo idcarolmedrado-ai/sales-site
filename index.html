@@ -1748,7 +1748,7 @@ const STRINGS = {
     mile_subtotal:'Month Subtotal', mile_trips:'trip', mile_trips_p:'trips',
     mile_warn:'⚠️ If the trip starts or ends at your home, you must deduct your daily commute distance.',
     mile_irs:'IRS Standard Rate',
-    mile_home_call:'🏠 Home Call',
+    mile_home_call:'Home Call',
     mile_manual:'Manual Trip',
     mile_sign_designer:'DESIGNER SIGNATURE',
     mile_sign_dcl:'DCL SIGNATURE',
@@ -1933,7 +1933,7 @@ const STRINGS = {
     mile_subtotal:'Subtotal do Mês', mile_trips:'viagem', mile_trips_p:'viagens',
     mile_warn:'⚠️ Se a viagem começa ou termina em sua casa, é necessário deduzir o percurso diário de commute.',
     mile_irs:'Taxa Padrão IRS',
-    mile_home_call:'🏠 Visita Domiciliar',
+    mile_home_call:'Visita Domiciliar',
     mile_manual:'Viagem Manual',
     mile_sign_designer:'ASSINATURA DA CONSULTORA',
     mile_sign_dcl:'ASSINATURA DO DCL',
@@ -5545,23 +5545,23 @@ async function renderMileage() {
                   border-radius:0 0 var(--r-lg) var(--r-lg);overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;table-layout:fixed">
           <colgroup>
-            <col style="width:8%"><col style="width:10%"><col style="width:14%">
-            <col style="width:3%"><col style="width:3%"><col style="width:3%">
-            <col style="width:3%"><col style="width:3%">
-            <col style="width:8%"><col style="width:8%"><col style="width:6%">
-            <col style="width:7%"><col style="width:8%">
-            <col style="width:7%"><col style="width:9%">
+            <col style="width:7.5%"><col style="width:9%"><col style="width:14%">
+            <col style="width:4%"><col style="width:4%"><col style="width:4%">
+            <col style="width:4%"><col style="width:4%">
+            <col style="width:7.5%"><col style="width:7.5%"><col style="width:6%">
+            <col style="width:6%"><col style="width:7.5%">
+            <col style="width:6%"><col style="width:8.5%">
           </colgroup>
           <thead>
             <tr>
               ${th(T('mile_th_date'))}
               ${th(T('mile_th_client'))}
               ${th(T('mile_th_address'))}
-              ${th(T('mile_th_home'),'center')}
-              ${th('DC','center')}
-              ${th(T('mile_th_client_stop'),'center')}
-              ${th(T('mile_th_home'),'center')}
-              ${th('DC','center')}
+              ${th(T('mile_th_home'),'center','font-size:9px;letter-spacing:0;padding:8px 2px')}
+              ${th('DC','center','font-size:9px;letter-spacing:0;padding:8px 2px')}
+              ${th(T('mile_th_client_stop'),'center','font-size:9px;letter-spacing:0;padding:8px 2px')}
+              ${th(T('mile_th_home'),'center','font-size:9px;letter-spacing:0;padding:8px 2px')}
+              ${th('DC','center','font-size:9px;letter-spacing:0;padding:8px 2px')}
               ${th(T('mile_th_total'),'right')}
               ${th(T('mile_th_commute'),'right')}
               ${th(T('mile_th_net'),'right','color:var(--gold)')}
