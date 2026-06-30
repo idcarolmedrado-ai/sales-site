@@ -1758,6 +1758,10 @@ const STRINGS = {
     mile_save:'Save Changes',
     mile_cancel:'Cancel',
     mile_delete:'Delete Row',
+    mile_linked_title:'Linked Sales Order',
+    mile_linked_none:'Manual entry — not linked to a sales order.',
+    mile_so_project:'Project', mile_so_stage:'Stage',
+    mile_so_estimate:'Estimate', mile_so_number:'SO #', mile_so_hcdate:'Home Call Date',
     mile_no_records:'No trips recorded for this period.',
     mile_month_all:'All Months',
     mile_month_nav_prev:'◀ Previous',
@@ -1939,6 +1943,10 @@ const STRINGS = {
     mile_save:'Salvar Alterações',
     mile_cancel:'Cancelar',
     mile_delete:'Excluir',
+    mile_linked_title:'Pedido de Venda Vinculado',
+    mile_linked_none:'Entrada manual — não vinculada a um pedido de venda.',
+    mile_so_project:'Projeto', mile_so_stage:'Etapa',
+    mile_so_estimate:'Estimativa', mile_so_number:'SO #', mile_so_hcdate:'Data da Visita',
     mile_no_records:'Nenhuma viagem registrada para este período.',
     mile_month_all:'Todos os Meses',
     mile_month_nav_prev:'◀ Anterior',
@@ -4986,6 +4994,26 @@ function getMileageRecords() { return Store.load('mileage'); }
 function saveMileageRecord(rec) { Store.upsert('mileage', rec, 'id'); }
 function deleteMileageRecord(id) { Store.remove('mileage', id, 'id'); }
 
+/* ── User-intent overrides for the auto-sync (LOCAL-ONLY) ─────────────
+   These two lists are NEVER pushed to Supabase, so they survive a hard
+   refresh (Ctrl+Shift+R) — the cloud hydrate only rewrites the 'mileage'
+   namespace, never these. They tell the home-call auto-sync to respect
+   what the user did by hand:
+     • mileageEdited  → mileage row ids the user edited → don't revert them
+     • mileageDeleted → sourceOppIds the user deleted   → don't recreate them */
+function getMileEditedIds() { return Store.load('mileageEdited'); }
+function markMileEdited(id) {
+  if (!id) return;
+  const s = getMileEditedIds();
+  if (!s.includes(id)) { s.push(id); Store.save('mileageEdited', s); }
+}
+function getMileTombstones() { return Store.load('mileageDeleted'); }
+function markMileDeleted(sourceOppId) {
+  if (!sourceOppId) return;
+  const s = getMileTombstones();
+  if (!s.includes(sourceOppId)) { s.push(sourceOppId); Store.save('mileageDeleted', s); }
+}
+
 
 /* ════════════════════════════════════════════════════
    RENDER: POST 30
@@ -5261,15 +5289,23 @@ async function renderMileage() {
   const MS = window._mileState;
 
   let allRecs = getMileageRecords();
-  // Auto-sync mileage from home-call opportunities
+  // Auto-sync mileage from home-call opportunities.
+  // Respects the user's manual edits/deletions via the local override lists.
+  const _mileEdited     = getMileEditedIds();
+  const _mileTombstones = getMileTombstones();
+  // Safety net: hide any deleted trip that came back via a cloud re-hydrate.
+  allRecs = allRecs.filter(r => !(r.sourceOppId && _mileTombstones.includes(r.sourceOppId)));
   (await DB.getAll()).filter(function(o){return o.homeCall==='Yes'&&o.homeCallDate;}).forEach(function(o){
+    // User deleted this auto trip on purpose → never recreate it.
+    if(_mileTombstones.includes(o.id)) return;
     var rec=allRecs.find(function(r){return r.sourceOppId===o.id;});
     var nm=(o.lastName||'').trim();
     if(!rec){
       rec={id:uid(),sourceOppId:o.id,date:o.homeCallDate,clientName:nm,address:o.address||'',
         leg1:'',leg2:'',leg3:'',leg4:'',leg5:'',commute:'',tolls:'',notes:'',purpose:'Home Call'};
       allRecs.push(rec); saveMileageRecord(rec);
-    } else {
+    } else if(!_mileEdited.includes(rec.id)){
+      // Only refresh from the opportunity if the user hasn't hand-edited this row.
       var changed=false;
       if(rec.date!==o.homeCallDate){rec.date=o.homeCallDate;changed=true;}
       if(rec.clientName!==nm){rec.clientName=nm;changed=true;}
@@ -5364,7 +5400,7 @@ async function renderMileage() {
     const isAuto = !r.isManual && r.sourceOppId;
 
     rows.push(`<tr style="background:${rowBg}">
-      <td style="padding:3px 6px;min-width:128px">${inp(r.id,'date',r.date,'118px','date')}</td>
+      <td style="padding:3px 6px;min-width:128px"><input onchange="updateMileageDate('${r.id}',this.value)" value="${esc(String(r.date||''))}" type="date" style="width:118px;background:var(--ink-80);border:1px solid var(--ink-60);color:var(--ink-10);border-radius:5px;padding:3px 5px;font-size:12px;font-family:var(--font-body)"></td>
       <td style="padding:3px 6px;min-width:130px">${inp(r.id,'clientName',r.clientName,'118px','text','')}</td>
       <td style="padding:3px 6px;min-width:160px">${inp(r.id,'address',r.address,'148px','text','')}</td>
       <td style="padding:3px 5px;min-width:40px">${legChk(r.id,'stopHome1',r.stopHome1)}</td>
@@ -5585,7 +5621,16 @@ function updateMileage(id, field, value) {
   const rec  = recs.find(r => r.id === id);
   if (!rec) return;
   rec[field] = value;
-  Store.save('mileage', recs);
+  markMileEdited(id);            // protect this row from the home-call auto-sync revert
+  Store.save('mileage', recs);   // local
+  _cloudSync('mileage', rec);    // push to Supabase so the edit survives a hard refresh
+}
+
+/* Editing the trip date may move it to another month — re-render so it
+   lands in (and is grouped under) the correct month tab right away. */
+function updateMileageDate(id, value) {
+  updateMileage(id, 'date', value);
+  renderMileage();
 }
 
 function recalcLegSum(id) {
@@ -5653,6 +5698,8 @@ function addMileageRow() {
 }
 
 function deleteMileageRow(id) {
+  const rec = getMileageRecords().find(r => r.id === id);
+  if (rec && rec.sourceOppId) markMileDeleted(rec.sourceOppId); // keep auto-sync from recreating it
   deleteMileageRecord(id);
   renderMileage();
 }
@@ -8562,11 +8609,46 @@ async function copyForSheets() {
 ══════════════════════════════════════════════════ */
 let _editingMileId = null;
 
-function openEditMileage(id) {
+async function openEditMileage(id) {
   _editingMileId = id;
   const recs = getMileageRecords();
   const r    = recs.find(x => x.id === id);
   if (!r) return;
+
+  /* ── Linked Sales Order / opportunity panel ──
+     Auto-synced trips carry sourceOppId pointing at the opportunity that
+     created them. Look it up so the user can see which SO this trip belongs to. */
+  let linkedHtml;
+  const linkedOpp = r.sourceOppId
+    ? (await DB.getAll()).find(o => o.id === r.sourceOppId)
+    : null;
+  if (linkedOpp) {
+    const cli = [linkedOpp.firstName, linkedOpp.lastName].filter(Boolean).join(' ') || '—';
+    const soNo = linkedOpp.saleOrderNumber || linkedOpp.customerNumber || '—';
+    const est  = linkedOpp.estimate ? '$' + Number(linkedOpp.estimate).toLocaleString('en-US') : '—';
+    const soRow = (lbl, val) => `<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0">
+        <span style="color:var(--ink-40)">${lbl}</span>
+        <span style="color:var(--ink-10);font-weight:600;text-align:right">${esc(String(val))}</span></div>`;
+    linkedHtml = `
+      <div style="grid-column:1/-1;background:var(--ink-70);border:1px solid var(--gold-dk);
+                  border-radius:9px;padding:12px 14px;margin-bottom:4px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+                    color:var(--gold);margin-bottom:8px">🔗 ${T('mile_linked_title')}</div>
+        <div style="font-size:13px;line-height:1.5">
+          <div style="font-weight:700;color:white;font-size:15px;margin-bottom:6px">${esc(cli)}</div>
+          ${soRow(T('mile_so_number'),   soNo)}
+          ${soRow(T('mile_so_project'),  linkedOpp.projectType || '—')}
+          ${soRow(T('mile_so_stage'),    linkedOpp.stage || '—')}
+          ${soRow(T('mile_so_estimate'), est)}
+          ${soRow(T('mile_so_hcdate'),   linkedOpp.homeCallDate || '—')}
+        </div>
+      </div>`;
+  } else {
+    linkedHtml = `
+      <div style="grid-column:1/-1;background:var(--ink-70);border:1px dashed var(--ink-60);
+                  border-radius:9px;padding:10px 14px;margin-bottom:4px;font-size:12px;
+                  color:var(--ink-40);font-style:italic">${T('mile_linked_none')}</div>`;
+  }
 
   const fld = (label, field, val, type='text') => `
     <div>
@@ -8585,6 +8667,7 @@ function openEditMileage(id) {
     </div>`;
 
   document.getElementById('mileEditFields').innerHTML = `
+    ${linkedHtml}
     ${fld(T('mile_th_date'), 'date', r.date, 'date')}
     ${fld(T('mile_th_client'), 'clientName', r.clientName)}
     ${fld(T('mile_th_address'), 'address', r.address)}
@@ -8625,7 +8708,12 @@ function saveMileEdit() {
   });
   const recs = getMileageRecords();
   const idx  = recs.findIndex(r => r.id === _editingMileId);
-  if (idx >= 0) { Object.assign(recs[idx], updates); Store.save('mileage', recs); }
+  if (idx >= 0) {
+    Object.assign(recs[idx], updates);
+    markMileEdited(recs[idx].id);        // protect from the auto-sync revert
+    Store.save('mileage', recs);         // local
+    _cloudSync('mileage', recs[idx]);    // push to Supabase so it survives a hard refresh
+  }
   closeMileEdit();
   renderMileage();
   toast(T('toast_saved'), 'success');
@@ -8639,6 +8727,8 @@ function closeMileEdit() {
 function deleteMileEditRow() {
   if (!_editingMileId) return;
   if (!confirm(T('mile_delete') + '?')) return;
+  const rec = getMileageRecords().find(r => r.id === _editingMileId);
+  if (rec && rec.sourceOppId) markMileDeleted(rec.sourceOppId); // keep auto-sync from recreating it
   deleteMileageRecord(_editingMileId);
   closeMileEdit();
   renderMileage();
