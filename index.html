@@ -5356,7 +5356,7 @@ async function renderMileage() {
   monthRecs.forEach(r => {
     const net = Math.max((parseFloat(r.totalMiles)||0)-(parseFloat(r.commuteDeduct)||0), 0);
     totalNetMiles += net;
-    totalReimb    += net * RATE + (parseFloat(r.tollsParking)||0);
+    totalReimb    += net > 0 ? net * RATE + (parseFloat(r.tollsParking)||0) : 0;
   });
 
   /* ── Build table rows ── */
@@ -5498,13 +5498,13 @@ async function renderMileage() {
           <div>
             <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
                         text-transform:uppercase;color:var(--ink-40)">${T('mile_th_net')}</div>
-            <div style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">${totalNetMiles.toFixed(1)} mi</div>
+            <div id="hdr-net" style="font-weight:700;color:var(--gold);font-size:14px;margin-top:2px">${totalNetMiles.toFixed(1)} mi</div>
           </div>
           <div style="width:1px;height:32px;background:var(--ink-60)"></div>
           <div>
             <div style="font-size:10px;font-weight:700;letter-spacing:.1em;
                         text-transform:uppercase;color:var(--ink-40)">${T('mile_th_reimb')}</div>
-            <div style="font-weight:700;color:var(--green);font-size:16px;margin-top:2px">$${totalReimb.toFixed(2)}</div>
+            <div id="hdr-reimb" style="font-weight:700;color:var(--green);font-size:16px;margin-top:2px">$${totalReimb.toFixed(2)}</div>
           </div>
           <div style="flex:1"></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -5687,6 +5687,13 @@ function recalcMileSubtotals() {
   const sr = document.getElementById('subtotal-reimb');
   if (sn) sn.textContent = totalNet.toFixed(1);
   if (sr) sr.textContent = '$'+totalReimb.toFixed(2);
+
+  // Keep the top header KPIs (Net Miles / Total Reimb.) in sync with the
+  // live month subtotal so they never drift apart while editing.
+  const hn = document.getElementById('hdr-net');
+  const hr = document.getElementById('hdr-reimb');
+  if (hn) hn.textContent = totalNet.toFixed(1) + ' mi';
+  if (hr) hr.textContent = '$'+totalReimb.toFixed(2);
 }
 
 function updateMileageCalc(id, field, value) {
