@@ -14771,14 +14771,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   window._sbAuthClient = sbClient;
 
   /* ── Password recovery: Supabase sends #access_token=...&type=recovery in the hash.
-     detectSessionInUrl:true means the client already parsed the hash and stored the
-     session by the time we reach this code. We just need to show the right panel. ── */
+     detectSessionInUrl:true parses that hash ASYNCHRONOUSLY. We must wait for it to
+     finish before touching the URL — clearing the hash synchronously raced supabase-js
+     and threw the recovery tokens away, so the session was never stored and the later
+     updateUser() call failed with "Auth session missing!". ── */
   const _hashP = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
   if (_hashP.get('type') === 'recovery') {
+    const { data: { session: _recSession } } = await sbClient.auth.getSession();
     history.replaceState(null, '', window.location.pathname); // clean the hash from URL
     document.getElementById('configScreen').style.display = 'none';
     document.getElementById('authGate').style.display = 'flex';
     showNewPassPanel();
+    if (!_recSession) {
+      const _e = document.getElementById('newPassError');
+      if (_e) {
+        _e.textContent = 'This reset link has already been used or expired. Request a new one.';
+        _e.style.display = 'block';
+      }
+    }
     return; // page reloads after setNewPassword() succeeds
   }
 
