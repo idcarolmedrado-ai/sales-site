@@ -1525,7 +1525,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
           </div>
           <div class="field">
             <label for="f-saleDate">Sale Date</label>
-            <input id="f-saleDate" type="date">
+            <input id="f-saleDate" type="date" onchange="onSaleDateChange()">
           </div>
           <div class="field">
             <label for="f-deliveryDate">Delivery Date</label>
@@ -1533,7 +1533,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
           </div>
           <div class="field">
             <label for="f-linkReviewDate">Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: sale+3d)</span></label>
-            <input id="f-linkReviewDate" type="date">
+            <input id="f-linkReviewDate" type="date" readonly title="Calculated automatically: Sale Date + 3 days" style="opacity:.75;cursor:not-allowed">
           </div>
           <div class="field">
             <label for="f-issueFlag">Next Follow-up <span style="font-size:10px;color:var(--gold)">(Date)</span></label>
@@ -6096,7 +6096,14 @@ function openNewLead() {
   ['f-firstName','f-lastName','f-email','f-phone','f-address','f-notes'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  ['f-stage','f-projectType','f-probability','f-nextStep','f-leadSource','f-cadence','f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-followUpDate','f-estimate'].forEach(id => {
+  ['f-stage','f-projectType','f-probability','f-nextStep','f-leadSource','f-cadence','f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-followUpDate','f-estimate','f-closeDate'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  // Sale Information + outcome fields — these are read by saveLead() regardless of
+  // section visibility, so leaving them populated would leak the previous lead's
+  // sale data (customer #, amount, sale date …) into a brand-new lead.
+  ['f-customerNumber','f-saleOrderNumber','f-saleAmount','f-activePhase','f-saleDate',
+   'f-deliveryDate','f-linkReviewDate','f-issueFlag','f-lostReason','f-goldCompValue'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('deleteBtn').style.display = 'none';
@@ -6173,6 +6180,8 @@ async function editLead(id) {
   _sf('f-saleDate',       o.saleDate || o.closeDate);
   _sf('f-deliveryDate',   o.deliveryDate);
   _sf('f-linkReviewDate', o.linkReviewDate);
+  // Show the derived value so what's on screen matches what saveLead() will store
+  if (o.saleMade === 'Yes' && (o.saleDate || o.closeDate)) onSaleDateChange();
   _sf('f-issueFlag',      o.issueFlag);
   _sf('f-issueType',      o.issueType);
   _sf('f-issueResult',    o.issueResult);
@@ -6493,6 +6502,7 @@ function onFieldChange() {
     if (psr && Number(psr.value) < 100) { psr.value = 100; const pv = document.getElementById('probVal'); if (pv) { pv.textContent = '100%'; pv.style.color = 'var(--green)'; } }
     if (sd && !sd.value) sd.value = todayStr();
     if (cd && !cd.value) cd.value = todayStr();
+    onSaleDateChange();   // keep Link Review Date = Sale Date + 3
   }
   if (isLost) {
     if (psr && Number(psr.value) > 0) { psr.value = 0; const pv = document.getElementById('probVal'); if (pv) { pv.textContent = '0%'; pv.style.color = 'var(--red)'; } }
@@ -6511,8 +6521,16 @@ function onFieldChange() {
 }
 
 function onDeliveryDateChange() {
-  // Link Review Date is auto-set to saleDate+3 on save.
+  // Link Review Date is derived from saleDate+3.
   // Changing delivery date does NOT affect link review.
+}
+
+/* Link Review Date = Sale Date + 3 days. Kept in sync live in the form so the
+   value shown always matches what saveLead() will store. */
+function onSaleDateChange() {
+  const sd = document.getElementById('f-saleDate')?.value || '';
+  const lr = document.getElementById('f-linkReviewDate');
+  if (lr) lr.value = sd ? offsetDate(sd, 3) : '';
 }
 
 function onActivePhaseResultChange() {
@@ -6707,12 +6725,12 @@ async function saveLead() {
 
   // ── Delivery & link review ──
   const deliveryDate    = document.getElementById('f-deliveryDate')?.value || '';
-  const _formLrDate     = document.getElementById('f-linkReviewDate')?.value || '';
-  const _wasAlreadySold = existingRec?.saleMade === 'Yes';
-  // Auto-set link review to saleDate+3 only when newly marking as sold and field is empty
-  const linkReviewDate  = _formLrDate
-    || (!_wasAlreadySold && isSold ? offsetDate(saleDate || todayStr(), 3) : '')
-    || (existingRec?.linkReviewDate || '');
+  // Business rule: Link Review Date is ALWAYS Sale Date + 3 days.
+  // Recomputed on every save so changing the sale date keeps it in sync.
+  const _lrBase         = saleDate || existingRec?.saleDate || closeDate || '';
+  const linkReviewDate  = (isSold && _lrBase)
+    ? offsetDate(_lrBase, 3)
+    : ((document.getElementById('f-linkReviewDate')?.value || '') || (existingRec?.linkReviewDate || ''));
 
   const opp = {
     id:             existingId || uid(),
