@@ -1399,13 +1399,15 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
     <div id="leadForm">
       <input type="hidden" id="leadId">
 
+      <div id="returningClientBanner" style="display:none;background:rgba(196,147,63,.10);border:1px solid var(--gold-dk);border-radius:10px;padding:12px 14px;margin-bottom:14px"></div>
+
       <div class="form-section">
         <div class="form-section-title" data-i18n="sec_contact">👤 Contact Information</div>
         <div class="form-grid">
-          <div class="field"><label for="f-firstName" data-i18n="lbl_first">First Name *</label><input id="f-firstName" type="text" required placeholder="Maria"></div>
-          <div class="field"><label for="f-lastName" data-i18n="lbl_last">Last Name *</label><input id="f-lastName" type="text" required placeholder="Alvarez"></div>
-          <div class="field" id="field-email"><label for="f-email" data-i18n="lbl_email">Email</label><input id="f-email" type="email" placeholder="maria@email.com" oninput="validateFieldLive('email')"><div class="field-error">Please enter a valid email address</div></div>
-          <div class="field" id="field-phone"><label for="f-phone" data-i18n="lbl_phone">Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000"></div>
+          <div class="field"><label for="f-firstName" data-i18n="lbl_first">First Name *</label><input id="f-firstName" type="text" required placeholder="Maria" oninput="rcOnInput()"></div>
+          <div class="field"><label for="f-lastName" data-i18n="lbl_last">Last Name *</label><input id="f-lastName" type="text" required placeholder="Alvarez" oninput="rcOnInput()"></div>
+          <div class="field" id="field-email"><label for="f-email" data-i18n="lbl_email">Email</label><input id="f-email" type="email" placeholder="maria@email.com" oninput="validateFieldLive('email');rcOnInput()"><div class="field-error">Please enter a valid email address</div></div>
+          <div class="field" id="field-phone"><label for="f-phone" data-i18n="lbl_phone">Phone</label><input id="f-phone" type="tel" placeholder="305-555-0000" oninput="rcOnInput()"></div>
           <div class="field span-2"><label for="f-address" data-i18n="lbl_address">Address</label><input id="f-address" type="text" placeholder="100 Brickell Ave, Miami FL"></div>
         </div>
       </div>
@@ -1417,11 +1419,11 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
             <select id="f-projectType" onchange="onFieldChange()"><option value="">Select…</option></select></div>
           <div class="field"><label for="f-leadSource" data-i18n="lbl_source">Lead Source</label>
             <select id="f-leadSource"><option value="">Select…</option></select></div>
-          <div class="field"><label for="f-cadence">Cadence <span class="field-tip" data-tip="Assign contact to an email marketing cadence/persona">?</span></label>
+          <div class="field" id="field-cadence"><label for="f-cadence">Cadence <span class="field-tip" data-tip="Assign contact to an email marketing cadence/persona">?</span></label>
             <select id="f-cadence" onchange="onFieldChange()"><option value="">— None —</option></select></div>
-          <div class="field"><label for="f-stage" data-i18n="lbl_stage">Stage</label>
+          <div class="field" id="field-stagewrap"><label for="f-stage" data-i18n="lbl_stage">Stage</label>
             <select id="f-stage" onchange="onFieldChange()"><option value="">Select…</option></select></div>
-          <div class="field"><label for="f-probability" data-i18n="lbl_prob">Probability (%)</label>
+          <div class="field" id="field-probwrap"><label for="f-probability" data-i18n="lbl_prob">Probability (%)</label>
             <div class="prob-slider-wrap">
               <input id="f-probability" type="range" min="0" max="100" step="5" value="0" class="prob-slider"
                 oninput="document.getElementById('probVal').textContent=this.value+'%';document.getElementById('probVal').style.color=this.value>=70?'var(--green)':this.value>=40?'var(--gold)':'var(--red)';onFieldChange()">
@@ -1432,19 +1434,19 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
             <div id="totalSaleDisplay" style="display:none;font-size:11px;color:var(--gold);margin-top:4px;font-weight:700"></div></div>
           <div class="field"><label for="f-followUpDate" data-i18n="lbl_followup">Follow-Up Date</label>
             <input id="f-followUpDate" type="date" onchange="onFieldChange()"></div>
-          <div class="field"><label for="f-closeDate" data-i18n="lbl_closedate">Expected Close Date</label>
+          <div class="field" id="field-closedate"><label for="f-closeDate" data-i18n="lbl_closedate">Expected Close Date</label>
             <input id="f-closeDate" type="date" onchange="onFieldChange()"></div>
-          <div class="field"><label for="f-nextStep" data-i18n="lbl_next">Next Step</label>
+          <div class="field" id="field-nextstep"><label for="f-nextStep" data-i18n="lbl_next">Next Step</label>
             <select id="f-nextStep" onchange="document.getElementById('f-nextStepOther').style.display=this.value==='Other'?'block':'none'"><option value="">Select…</option></select>
             <input id="f-nextStepOther" type="text" placeholder="Describe next step…" maxlength="120"
               style="display:none;margin-top:6px;width:100%;box-sizing:border-box;background:#fff;border:1px solid var(--ink-60);border-radius:8px;padding:9px 12px;font-size:13px;font-family:var(--font-body)"></div>
-          <div class="field"><label for="f-homeCall" data-i18n="lbl_hc">Home Call?</label>
+          <div class="field" id="field-homecall" style="display:none"><label for="f-homeCall" data-i18n="lbl_hc">Home Call?</label>
             <select id="f-homeCall" onchange="onFieldChange()">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select></div>
-          <div class="field"><label for="f-homeCallDate" data-i18n="lbl_hcdate">Home Call Date</label>
+          <div class="field" id="field-homecalldate"><label for="f-homeCallDate" data-i18n="lbl_hcdate">Home Call Date</label>
             <input id="f-homeCallDate" type="date"></div>
-          <div class="field"><label for="f-saleMade">Sale Result</label>
+          <div class="field" id="field-saleresult"><label for="f-saleMade">Sale Result</label>
             <select id="f-saleMade" onchange="onFieldChange()">
               <option value="">—</option>
               <option value="Yes">Sale Made</option>
@@ -1454,7 +1456,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
             <select id="f-lostReason" onchange="onFieldChange()">
               <option value="">Select reason…</option>
             </select></div>
-          <div class="field"><label for="f-goldComp" data-i18n="lbl_gc">GoldComp?</label>
+          <div class="field" id="field-goldcomp"><label for="f-goldComp" data-i18n="lbl_gc">GoldComp?</label>
             <select id="f-goldComp" onchange="toggleGoldCompValue()">
               <option value="">—</option><option>Yes</option><option>No</option>
             </select>
@@ -1492,7 +1494,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
       </div>
 
       <div class="form-section" id="activeClientSection" style="display:none">
-        <div class="form-section-title">✅ Active Client Info</div>
+        <div class="form-section-title">✅ Sale Information</div>
         <div class="form-grid">
           <div class="field">
             <label for="f-customerNumber">Customer #</label>
@@ -1511,10 +1513,11 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
             <label for="f-activePhase">Active Phase</label>
             <select id="f-activePhase">
               <option value="">—</option>
+              <option>Home Call</option>
               <option>Design Review</option>
+              <option>CPU</option>
+              <option>Installation</option>
               <option>Balance Due</option>
-              <option>Exchange</option>
-              <option>Cancelation</option>
               <option>GoldComp</option>
               <option>Issue</option>
               <option>Other</option>
@@ -1522,7 +1525,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
           </div>
           <div class="field">
             <label for="f-saleDate">Sale Date</label>
-            <input id="f-saleDate" type="date">
+            <input id="f-saleDate" type="date" onchange="onSaleDateChange()">
           </div>
           <div class="field">
             <label for="f-deliveryDate">Delivery Date</label>
@@ -1530,23 +1533,11 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
           </div>
           <div class="field">
             <label for="f-linkReviewDate">Link Review Date <span style="font-size:10px;color:var(--gold)">(auto: sale+3d)</span></label>
-            <input id="f-linkReviewDate" type="date">
+            <input id="f-linkReviewDate" type="date" readonly title="Calculated automatically: Sale Date + 3 days" style="opacity:.75;cursor:not-allowed">
           </div>
           <div class="field">
             <label for="f-issueFlag">Next Follow-up <span style="font-size:10px;color:var(--gold)">(Date)</span></label>
             <input id="f-issueFlag" type="date">
-          </div>
-          <div class="field">
-            <label for="f-issueType">Details</label>
-            <input id="f-issueType" type="text" placeholder="Notes, details about this phase…" maxlength="300">
-          </div>
-          <div class="field">
-            <label for="f-issueResult">Active Phase Result</label>
-            <select id="f-issueResult" onchange="onActivePhaseResultChange()">
-              <option value="">—</option>
-              <option>Done</option>
-              <option>Postpone</option>
-            </select>
           </div>
         </div>
       </div>
@@ -1585,14 +1576,6 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
           <label for="f-cancelReason">Reason for Cancellation</label>
           <select id="f-cancelReason">
             <option value="">Select reason…</option>
-            <option>Budget constraints</option>
-            <option>Chose competitor</option>
-            <option>Project postponed</option>
-            <option>No longer interested</option>
-            <option>Unable to reach client</option>
-            <option>Design/style mismatch</option>
-            <option>Timing not right</option>
-            <option>Other</option>
           </select>
         </div>
         <div class="field" style="margin-top:8px">
@@ -1789,9 +1772,9 @@ const STRINGS = {
 
     // Stage display (stored in EN, displayed in selected lang)
     stage_new:'New Lead', stage_hc:'Home Call',
-    stage_design:'Design in Progress', stage_quote:'Quote Sent',
+    stage_design:'Design in Progress', stage_quote:'Send Quote',
     stage_followup:'Follow-up', stage_pending:'Pending Decision',
-    stage_sale:'Sale Made', stage_postponed:'Postponed', stage_canceled:'Canceled',
+    stage_sale:'Sale Made', stage_postponed:'Postpone', stage_canceled:'Canceled',
     stage_lost:'Closed Lost',
 
     // Months
@@ -2097,17 +2080,23 @@ const LOOKUP = {
   // Legacy 'Sale Made' rows are treated as 'Closed Won' on read.
   // Legacy 'Canceled' rows are treated as 'Closed Lost' on read.
   stages: ['New Lead','Home Call','Design in Progress','Quote Sent','Follow-up','Pending Decision','Postponed','Sale Lost'],
-  // Loss reasons — sized for an interior designer's actual deal-loss patterns.
+  // Loss reasons — single unified list used by BOTH Lost Reason and
+  // Cancellation Reason (they describe the same thing). Sized for an
+  // interior designer's actual deal-loss patterns.
   lostReasons: [
     'Price / Budget',
     'Lost to competitor',
     'Timing — project on hold or canceled',
     'Scope changed / Decided to DIY',
+    "Couldn't reach client",
+    'Style / design mismatch',
+    'No longer interested',
+    'Other',
   ],
-  projectTypes: ['Living Room','Dining','Bedroom','Home Office','Kitchen','Outdoor','Lighting','Rugs & Flooring','Decor','Window Treatment','Drapery','GoldComp','Clearance','Mix'],
+  projectTypes: ['Living Room','Dining','Bedroom','Home Office','Kitchen','Outdoor','Lighting','Rugs & Flooring','Decor','Window Treatment','Drapery','GoldComp','Clearance','Mix','Parts'],
   nextSteps: ['Schedule Home Visit','Presentation','Presentation / Quote','Follow-Up Call','Send Proposal','Awaiting Decision','Postpone','Other'],
   probabilities: [0,10,25,50,70,75,85,90,100],
-  leadSources: ['Referral','Walk-in','Website','Instagram','Repeat Client','Trade'],
+  leadSources: ['Referral','Walk-in','Website','Repeat Client','Trade','Telephone Sales','App'],
   get months() { return T('months') || ['January','February','March','April','May','June','July','August','September','October','November','December']; },
   monthGoals: [28000,28000,30000,32000,32000,35000,35000,35000,33000,33000,30000,28000],
   stageColors: {
@@ -2523,13 +2512,13 @@ www.carolmedrado.com`
     return map[stage] || '';
   },
 
-  /* Auto-suggest probability from stage */
+  /* Auto-suggest probability from stage.
+     Single source of truth = _STAGE_PROB (defined later, read at call time)
+     so the two maps can never drift apart again. */
   suggestProbability(stage) {
-    const map = {
-      'New Lead':10,'Home Call':25,'Design in Progress':50,
-      'Quote Sent':75,'Follow-up':50,'Pending Decision':85,'Sale Made':100
-    };
-    return map[stage] !== undefined ? map[stage] : null;
+    if (typeof _STAGE_PROB !== 'undefined' && _STAGE_PROB[stage] !== undefined) return _STAGE_PROB[stage];
+    if (stage === 'Sale Made' || stage === 'Closed Won') return 100;
+    return null;
   },
 
   /* KPIs (mirrors Dashboard sheet) */
@@ -5972,11 +5961,12 @@ function initDropdowns() {
     if (first) el.appendChild(first);
     items.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); });
   };
-  sel('f-stage', LOOKUP.stages);
+  fillStageSelect();
   sel('f-projectType', LOOKUP.projectTypes);
   sel('f-nextStep', LOOKUP.nextSteps);
   sel('f-leadSource', LOOKUP.leadSources);
   sel('f-lostReason', LOOKUP.lostReasons);
+  sel('f-cancelReason', LOOKUP.lostReasons);
   // f-cadence — populated from PERSONAS
   const _cadEl = document.getElementById('f-cadence');
   if (_cadEl) {
@@ -5984,6 +5974,118 @@ function initDropdowns() {
     PERSONAS.forEach(p => { const o=document.createElement('option'); o.value=p.id; o.textContent=p.label; _cadEl.appendChild(o); });
   }
   // f-probability is now a range slider, not a select dropdown
+}
+
+/* Lead-form Stage dropdown: curated set of user-selectable stages.
+   The stored VALUES stay canonical ('Quote Sent' / 'Postponed') so the Kanban
+   board and existing deals never break — only the visible label is remapped
+   via stageLabel() ('Send Quote' / 'Postpone'). On edit, any legacy/other stage
+   is appended so an old deal's stage is never dropped. */
+const FORM_STAGES = ['Home Call','Design in Progress','Quote Sent','Pending Decision','Postponed'];
+function fillStageSelect(extraVal) {
+  const el = document.getElementById('f-stage');
+  if (!el || !el.options) return;
+  const first = el.options[0];   // preserve the "Select…" placeholder (i18n-aware)
+  const cur = el.value;
+  el.innerHTML = '';
+  if (first) el.appendChild(first);
+  const vals = FORM_STAGES.slice();
+  if (extraVal && !vals.includes(extraVal)) vals.push(extraVal);
+  vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = stageLabel(v) || v; el.appendChild(o); });
+  if (cur) el.value = cur;
+}
+
+/* ── Field visibility: one form covering the whole deal lifecycle ──
+   Leads are already in-development clients, so the full field set shows for
+   both new and existing deals. The only difference for a brand-new lead
+   (isNew=true) is that the outcome-driven sections start hidden until a
+   Sale Result is chosen. */
+function applyPhaseVisibility(isNew) {
+  const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
+  // Leads are already in-development clients — show the full field set, not a
+  // trimmed version. (Returning-client recognition still runs separately.)
+  show('field-cadence',      true);
+  show('field-stagewrap',    true);
+  show('field-probwrap',     true);
+  show('field-closedate',    true);
+  show('field-nextstep',     true);
+  show('field-homecalldate', true);
+  show('field-saleresult',   true);
+  show('field-homecall',     false);   // Home Call? Yes/No is derived on save
+  const isWon = document.getElementById('f-saleMade')?.value === 'Yes';
+  show('field-goldcomp', isWon);
+  if (isNew) {
+    ['activeClientSection','lostReasonField','cancelReasonSection','auditTrailSection']
+      .forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
+  }
+}
+
+/* ── Returning-client recognition (new leads only) ──────────── */
+let _rcCache = null;
+async function rcLoadCache() { try { _rcCache = await DB.getAll(); } catch (e) { _rcCache = []; } }
+function _rcDigits(s) { return (s || '').replace(/\D/g, ''); }
+let _rcTimer = null;
+function rcOnInput() {
+  if (state.editingId) return;              // only while creating a fresh lead
+  clearTimeout(_rcTimer);
+  _rcTimer = setTimeout(rcRender, 220);
+}
+function _rcMatches() {
+  if (!Array.isArray(_rcCache) || !_rcCache.length) return [];
+  const fn = document.getElementById('f-firstName').value.trim().toLowerCase();
+  const ln = document.getElementById('f-lastName').value.trim().toLowerCase();
+  const em = document.getElementById('f-email').value.trim().toLowerCase();
+  const ph = _rcDigits(document.getElementById('f-phone').value);
+  const nameKey = (fn + ' ' + ln).trim();
+  return _rcCache.filter(o => {
+    if (em && o.email && o.email.toLowerCase() === em) return true;
+    if (ph.length >= 7 && _rcDigits(o.phone) === ph) return true;
+    if (nameKey.length > 3 && fn && ln &&
+        (((o.firstName||'') + ' ' + (o.lastName||'')).trim().toLowerCase() === nameKey)) return true;
+    return false;
+  });
+}
+function rcRender() {
+  const banner = document.getElementById('returningClientBanner');
+  if (!banner || state.editingId) { if (banner) banner.style.display = 'none'; return; }
+  const matches = _rcMatches();
+  if (!matches.length) { banner.style.display = 'none'; banner.innerHTML = ''; window._rcMatch = null; return; }
+  const sorted = matches.slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  const m = sorted[0];
+  const deals = matches.length;
+  const total = matches.reduce((s, o) => s + (Number(o.saleAmount) || Number(o.estimate) || 0), 0);
+  window._rcMatch = m; window._rcAll = matches;
+  const nm = esc(((m.firstName || '') + ' ' + (m.lastName || '')).trim());
+  banner.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+    + '<span style="font-size:18px">🔁</span>'
+    + '<div style="flex:1;min-width:180px">'
+    +   '<div style="font-weight:700;font-size:13px;color:var(--gold-dk)">Looks like a returning client — ' + nm + '?</div>'
+    +   '<div style="font-size:11px;color:var(--ink-40)">' + deals + ' record' + (deals > 1 ? 's' : '') + ' · ' + fmt$(total) + ' total</div>'
+    + '</div>'
+    + '<button type="button" class="btn btn-primary btn-sm" onclick="rcPull()">Pull details</button>'
+    + '</div>';
+  banner.style.display = '';
+}
+function rcPull() {
+  const m = window._rcMatch; if (!m) return;
+  const setIf = (id, v) => { const e = document.getElementById(id); if (e && !e.value && v) e.value = v; };
+  setIf('f-email', m.email);
+  setIf('f-phone', m.phone);
+  setIf('f-address', m.address);
+  const ls = document.getElementById('f-leadSource'); if (ls && !ls.value) ls.value = 'Repeat Client';
+  validateFieldLive('email');
+  onFieldChange();
+  const banner = document.getElementById('returningClientBanner');
+  const all = window._rcAll || [];
+  const deals = all.length;
+  const total = all.reduce((s, o) => s + (Number(o.saleAmount) || Number(o.estimate) || 0), 0);
+  const nm = esc(((m.firstName || '') + ' ' + (m.lastName || '')).trim());
+  if (banner) banner.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px">'
+    + '<span style="font-size:18px">✅</span>'
+    + '<div><div style="font-weight:700;font-size:13px;color:var(--gold-dk)">Loaded ' + nm + "'s details</div>"
+    + '<div style="font-size:11px;color:var(--ink-40)">' + deals + ' project' + (deals > 1 ? 's' : '') + ' · ' + fmt$(total) + ' · marked as Repeat Client</div></div></div>';
 }
 
 function openNewLead() {
@@ -5994,7 +6096,14 @@ function openNewLead() {
   ['f-firstName','f-lastName','f-email','f-phone','f-address','f-notes'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  ['f-stage','f-projectType','f-probability','f-nextStep','f-leadSource','f-cadence','f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-followUpDate','f-estimate'].forEach(id => {
+  ['f-stage','f-projectType','f-probability','f-nextStep','f-leadSource','f-cadence','f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-followUpDate','f-estimate','f-closeDate'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  // Sale Information + outcome fields — these are read by saveLead() regardless of
+  // section visibility, so leaving them populated would leak the previous lead's
+  // sale data (customer #, amount, sale date …) into a brand-new lead.
+  ['f-customerNumber','f-saleOrderNumber','f-saleAmount','f-activePhase','f-saleDate',
+   'f-deliveryDate','f-linkReviewDate','f-issueFlag','f-lostReason','f-goldCompValue'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('deleteBtn').style.display = 'none';
@@ -6005,7 +6114,14 @@ function openNewLead() {
   const _cr = document.getElementById('f-cancelReason'); if (_cr) _cr.value = '';
   const _cn = document.getElementById('f-cancelNotes'); if (_cn) _cn.value = '';
   _updateCancelSection();
-  updateAutoFields();
+  // Rebuild the curated Stage dropdown; blank = user picks one of the 5 stages
+  fillStageSelect();
+  const _st = document.getElementById('f-stage'); if (_st) _st.value = '';
+  applyPhaseVisibility(true);
+  // Returning-client recognition: reset banner + warm the cache
+  const _rcB = document.getElementById('returningClientBanner'); if (_rcB) { _rcB.style.display = 'none'; _rcB.innerHTML=''; }
+  rcLoadCache();
+  onFieldChange();
   document.getElementById('leadModal').classList.add('open');
   setTimeout(() => { window._formSnapshot = _getFormSnapshot(); }, 50);
 }
@@ -6026,6 +6142,7 @@ async function editLead(id) {
   document.getElementById('f-address').value      = o.address   || '';
   document.getElementById('f-projectType').value  = o.projectType || '';
   document.getElementById('f-leadSource').value   = o.leadSource  || '';
+  fillStageSelect(o.stage);   // preserve legacy/other stages so they're never dropped on edit
   document.getElementById('f-stage').value        = o.stage       || '';
   document.getElementById('f-probability').value  = String(o.probability || 0);
   const _epv = document.getElementById('probVal'); if (_epv) { _epv.textContent = (o.probability||0)+'%'; _epv.style.color = (o.probability||0)>=70?'var(--green)':(o.probability||0)>=40?'var(--gold)':'var(--red)'; }
@@ -6063,6 +6180,8 @@ async function editLead(id) {
   _sf('f-saleDate',       o.saleDate || o.closeDate);
   _sf('f-deliveryDate',   o.deliveryDate);
   _sf('f-linkReviewDate', o.linkReviewDate);
+  // Show the derived value so what's on screen matches what saveLead() will store
+  if (o.saleMade === 'Yes' && (o.saleDate || o.closeDate)) onSaleDateChange();
   _sf('f-issueFlag',      o.issueFlag);
   _sf('f-issueType',      o.issueType);
   _sf('f-issueResult',    o.issueResult);
@@ -6074,6 +6193,9 @@ async function editLead(id) {
   const _acs = document.getElementById('activeClientSection');
   if (_acs) _acs.style.display = (o.saleMade === 'Yes' || o.stage === 'Sale Made' || o.stage === 'Closed Won') ? '' : 'none';
   document.getElementById('deleteBtn').style.display = 'inline-flex';
+  // Editing an existing deal: reveal the progression fields (same form grows)
+  applyPhaseVisibility(false);
+  const _rcB = document.getElementById('returningClientBanner'); if (_rcB) { _rcB.style.display = 'none'; _rcB.innerHTML=''; }
   updateAutoFields();
   _updateCancelSection();
   _showAuditTrail(id);
@@ -6380,6 +6502,7 @@ function onFieldChange() {
     if (psr && Number(psr.value) < 100) { psr.value = 100; const pv = document.getElementById('probVal'); if (pv) { pv.textContent = '100%'; pv.style.color = 'var(--green)'; } }
     if (sd && !sd.value) sd.value = todayStr();
     if (cd && !cd.value) cd.value = todayStr();
+    onSaleDateChange();   // keep Link Review Date = Sale Date + 3
   }
   if (isLost) {
     if (psr && Number(psr.value) > 0) { psr.value = 0; const pv = document.getElementById('probVal'); if (pv) { pv.textContent = '0%'; pv.style.color = 'var(--red)'; } }
@@ -6388,6 +6511,9 @@ function onFieldChange() {
 
   const acs = document.getElementById('activeClientSection');
   if (acs) acs.style.display = isWon ? '' : 'none';
+  // GoldComp is a sale-time concept — only surface it once the deal is won
+  const gcf = document.getElementById('field-goldcomp');
+  if (gcf) gcf.style.display = isWon ? '' : 'none';
   _updateCancelSection();
 
   const pv = document.getElementById('probVal');
@@ -6395,8 +6521,16 @@ function onFieldChange() {
 }
 
 function onDeliveryDateChange() {
-  // Link Review Date is auto-set to saleDate+3 on save.
+  // Link Review Date is derived from saleDate+3.
   // Changing delivery date does NOT affect link review.
+}
+
+/* Link Review Date = Sale Date + 3 days. Kept in sync live in the form so the
+   value shown always matches what saveLead() will store. */
+function onSaleDateChange() {
+  const sd = document.getElementById('f-saleDate')?.value || '';
+  const lr = document.getElementById('f-linkReviewDate');
+  if (lr) lr.value = sd ? offsetDate(sd, 3) : '';
 }
 
 function onActivePhaseResultChange() {
@@ -6521,6 +6655,12 @@ async function saveLead() {
   // Input validation
   const _email = document.getElementById('f-email').value.trim();
   if (_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(_email)) { toast('Please enter a valid email address', 'error'); return; }
+  // At least one way to reach the client (email OR phone)
+  const _phoneVal = document.getElementById('f-phone').value.trim();
+  if (!_email && !_phoneVal) { toast('Add at least an email or a phone', 'error'); document.getElementById('f-phone')?.focus(); return; }
+  // Project Type is genuinely required (the label always said so)
+  const _projType = document.getElementById('f-projectType').value;
+  if (!_projType) { toast('Project Type is required', 'error'); document.getElementById('f-projectType')?.focus(); return; }
   const _estVal = Number(document.getElementById('f-estimate').value);
   if (_estVal && _estVal < 0) { toast('Estimate must be a positive number', 'error'); return; }
   const _saVal = Number(document.getElementById('f-saleAmount')?.value);
@@ -6585,12 +6725,12 @@ async function saveLead() {
 
   // ── Delivery & link review ──
   const deliveryDate    = document.getElementById('f-deliveryDate')?.value || '';
-  const _formLrDate     = document.getElementById('f-linkReviewDate')?.value || '';
-  const _wasAlreadySold = existingRec?.saleMade === 'Yes';
-  // Auto-set link review to saleDate+3 only when newly marking as sold and field is empty
-  const linkReviewDate  = _formLrDate
-    || (!_wasAlreadySold && isSold ? offsetDate(saleDate || todayStr(), 3) : '')
-    || (existingRec?.linkReviewDate || '');
+  // Business rule: Link Review Date is ALWAYS Sale Date + 3 days.
+  // Recomputed on every save so changing the sale date keeps it in sync.
+  const _lrBase         = saleDate || existingRec?.saleDate || closeDate || '';
+  const linkReviewDate  = (isSold && _lrBase)
+    ? offsetDate(_lrBase, 3)
+    : ((document.getElementById('f-linkReviewDate')?.value || '') || (existingRec?.linkReviewDate || ''));
 
   const opp = {
     id:             existingId || uid(),
@@ -6609,7 +6749,11 @@ async function saveLead() {
                     ? (document.getElementById('f-nextStepOther')?.value?.trim() || 'Other')
                     : document.getElementById('f-nextStep').value,
     followUpDate:   document.getElementById('f-followUpDate').value,
-    homeCall:       document.getElementById('f-homeCall').value,
+    // Home Call? Yes/No is derived, not asked: a date (or the stage passing
+    // Home Call) means the visit happened. Falls back to any existing value.
+    homeCall:       (document.getElementById('f-homeCallDate').value || stage === 'Home Call')
+                      ? 'Yes'
+                      : (document.getElementById('f-homeCall').value || 'No'),
     homeCallDate:   document.getElementById('f-homeCallDate').value,
     saleMade:       saleMade,
     lostReason:     isLost ? lostReason : '',
