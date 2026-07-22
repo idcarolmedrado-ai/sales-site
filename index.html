@@ -1494,7 +1494,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
       </div>
 
       <div class="form-section" id="activeClientSection" style="display:none">
-        <div class="form-section-title">✅ Active Client Info</div>
+        <div class="form-section-title">✅ Sale Information</div>
         <div class="form-grid">
           <div class="field">
             <label for="f-customerNumber">Customer #</label>
@@ -1513,10 +1513,11 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
             <label for="f-activePhase">Active Phase</label>
             <select id="f-activePhase">
               <option value="">—</option>
+              <option>Home Call</option>
               <option>Design Review</option>
+              <option>CPU</option>
+              <option>Installation</option>
               <option>Balance Due</option>
-              <option>Exchange</option>
-              <option>Cancelation</option>
               <option>GoldComp</option>
               <option>Issue</option>
               <option>Other</option>
@@ -1537,18 +1538,6 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
           <div class="field">
             <label for="f-issueFlag">Next Follow-up <span style="font-size:10px;color:var(--gold)">(Date)</span></label>
             <input id="f-issueFlag" type="date">
-          </div>
-          <div class="field">
-            <label for="f-issueType">Details</label>
-            <input id="f-issueType" type="text" placeholder="Notes, details about this phase…" maxlength="300">
-          </div>
-          <div class="field">
-            <label for="f-issueResult">Active Phase Result</label>
-            <select id="f-issueResult" onchange="onActivePhaseResultChange()">
-              <option value="">—</option>
-              <option>Done</option>
-              <option>Postpone</option>
-            </select>
           </div>
         </div>
       </div>
@@ -1783,9 +1772,9 @@ const STRINGS = {
 
     // Stage display (stored in EN, displayed in selected lang)
     stage_new:'New Lead', stage_hc:'Home Call',
-    stage_design:'Design in Progress', stage_quote:'Quote Sent',
+    stage_design:'Design in Progress', stage_quote:'Send Quote',
     stage_followup:'Follow-up', stage_pending:'Pending Decision',
-    stage_sale:'Sale Made', stage_postponed:'Postponed', stage_canceled:'Canceled',
+    stage_sale:'Sale Made', stage_postponed:'Postpone', stage_canceled:'Canceled',
     stage_lost:'Closed Lost',
 
     // Months
@@ -2104,10 +2093,10 @@ const LOOKUP = {
     'No longer interested',
     'Other',
   ],
-  projectTypes: ['Living Room','Dining','Bedroom','Home Office','Kitchen','Outdoor','Lighting','Rugs & Flooring','Decor','Window Treatment','Drapery','GoldComp','Clearance','Mix'],
+  projectTypes: ['Living Room','Dining','Bedroom','Home Office','Kitchen','Outdoor','Lighting','Rugs & Flooring','Decor','Window Treatment','Drapery','GoldComp','Clearance','Mix','Parts'],
   nextSteps: ['Schedule Home Visit','Presentation','Presentation / Quote','Follow-Up Call','Send Proposal','Awaiting Decision','Postpone','Other'],
   probabilities: [0,10,25,50,70,75,85,90,100],
-  leadSources: ['Referral','Walk-in','Website','Instagram','Repeat Client','Trade'],
+  leadSources: ['Referral','Walk-in','Website','Repeat Client','Trade','Telephone Sales','App'],
   get months() { return T('months') || ['January','February','March','April','May','June','July','August','September','October','November','December']; },
   monthGoals: [28000,28000,30000,32000,32000,35000,35000,35000,33000,33000,30000,28000],
   stageColors: {
@@ -5972,7 +5961,7 @@ function initDropdowns() {
     if (first) el.appendChild(first);
     items.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); });
   };
-  sel('f-stage', LOOKUP.stages);
+  fillStageSelect();
   sel('f-projectType', LOOKUP.projectTypes);
   sel('f-nextStep', LOOKUP.nextSteps);
   sel('f-leadSource', LOOKUP.leadSources);
@@ -5987,22 +5976,44 @@ function initDropdowns() {
   // f-probability is now a range slider, not a select dropdown
 }
 
-/* ── Progressive disclosure: one form that grows with the deal ──
-   isNew = true  → lean intake (contact + project essentials only)
-   isNew = false → editing an existing deal, reveal the progression
-                   fields so it can advance to a sale in the SAME form. */
+/* Lead-form Stage dropdown: curated set of user-selectable stages.
+   The stored VALUES stay canonical ('Quote Sent' / 'Postponed') so the Kanban
+   board and existing deals never break — only the visible label is remapped
+   via stageLabel() ('Send Quote' / 'Postpone'). On edit, any legacy/other stage
+   is appended so an old deal's stage is never dropped. */
+const FORM_STAGES = ['Home Call','Design in Progress','Quote Sent','Pending Decision','Postponed'];
+function fillStageSelect(extraVal) {
+  const el = document.getElementById('f-stage');
+  if (!el || !el.options) return;
+  const first = el.options[0];   // preserve the "Select…" placeholder (i18n-aware)
+  const cur = el.value;
+  el.innerHTML = '';
+  if (first) el.appendChild(first);
+  const vals = FORM_STAGES.slice();
+  if (extraVal && !vals.includes(extraVal)) vals.push(extraVal);
+  vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = stageLabel(v) || v; el.appendChild(o); });
+  if (cur) el.value = cur;
+}
+
+/* ── Field visibility: one form covering the whole deal lifecycle ──
+   Leads are already in-development clients, so the full field set shows for
+   both new and existing deals. The only difference for a brand-new lead
+   (isNew=true) is that the outcome-driven sections start hidden until a
+   Sale Result is chosen. */
 function applyPhaseVisibility(isNew) {
   const show = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
-  show('field-cadence',      !isNew);
-  show('field-stagewrap',    !isNew);
-  show('field-probwrap',     !isNew);
-  show('field-closedate',    !isNew);
-  show('field-nextstep',     !isNew);
-  show('field-homecalldate', !isNew);
-  show('field-saleresult',   !isNew);
+  // Leads are already in-development clients — show the full field set, not a
+  // trimmed version. (Returning-client recognition still runs separately.)
+  show('field-cadence',      true);
+  show('field-stagewrap',    true);
+  show('field-probwrap',     true);
+  show('field-closedate',    true);
+  show('field-nextstep',     true);
+  show('field-homecalldate', true);
+  show('field-saleresult',   true);
   show('field-homecall',     false);   // Home Call? Yes/No is derived on save
   const isWon = document.getElementById('f-saleMade')?.value === 'Yes';
-  show('field-goldcomp', !isNew && isWon);
+  show('field-goldcomp', isWon);
   if (isNew) {
     ['activeClientSection','lostReasonField','cancelReasonSection','auditTrailSection']
       .forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
@@ -6096,8 +6107,9 @@ function openNewLead() {
   const _cr = document.getElementById('f-cancelReason'); if (_cr) _cr.value = '';
   const _cn = document.getElementById('f-cancelNotes'); if (_cn) _cn.value = '';
   _updateCancelSection();
-  // Stage defaults to New Lead; phase visibility trims the form to the essentials
-  const _st = document.getElementById('f-stage'); if (_st) _st.value = 'New Lead';
+  // Rebuild the curated Stage dropdown; blank = user picks one of the 5 stages
+  fillStageSelect();
+  const _st = document.getElementById('f-stage'); if (_st) _st.value = '';
   applyPhaseVisibility(true);
   // Returning-client recognition: reset banner + warm the cache
   const _rcB = document.getElementById('returningClientBanner'); if (_rcB) { _rcB.style.display = 'none'; _rcB.innerHTML=''; }
@@ -6123,6 +6135,7 @@ async function editLead(id) {
   document.getElementById('f-address').value      = o.address   || '';
   document.getElementById('f-projectType').value  = o.projectType || '';
   document.getElementById('f-leadSource').value   = o.leadSource  || '';
+  fillStageSelect(o.stage);   // preserve legacy/other stages so they're never dropped on edit
   document.getElementById('f-stage').value        = o.stage       || '';
   document.getElementById('f-probability').value  = String(o.probability || 0);
   const _epv = document.getElementById('probVal'); if (_epv) { _epv.textContent = (o.probability||0)+'%'; _epv.style.color = (o.probability||0)>=70?'var(--green)':(o.probability||0)>=40?'var(--gold)':'var(--red)'; }
