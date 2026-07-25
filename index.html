@@ -1072,16 +1072,18 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M1 4l7 5 7-5"/></svg>
       <span data-i18n="nav_mailing">Mailing</span>
     </button>
-    <button class="nav-tab" onclick="navigate('active')" data-page="active">
+    <!-- Active / Post 30 / Post 60 tabs retired (Phase 1) — replaced by date-anchored alerts in Priorities.
+         Hidden, not deleted: their pages still work via #hash if needed. -->
+    <button class="nav-tab" onclick="navigate('active')" data-page="active" style="display:none">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="14" height="14" rx="2"/><path d="M4 5h8M4 8h8M4 11h5"/></svg>
       <span>Active</span>
       <span id="tasksBadge" style="background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px">0</span>
     </button>
-    <button class="nav-tab" onclick="navigate('post30')" data-page="post30">
+    <button class="nav-tab" onclick="navigate('post30')" data-page="post30" style="display:none">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="2" width="14" height="12" rx="1.5"/><path d="M5 8h6M5 11h4"/><circle cx="8" cy="5" r="1.5"/></svg>
       <span data-i18n="nav_post30">Post 30</span>
     </button>
-    <button class="nav-tab" onclick="navigate('post60')" data-page="post60">
+    <button class="nav-tab" onclick="navigate('post60')" data-page="post60" style="display:none">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="2" width="14" height="12" rx="1.5"/><path d="M5 8h6M5 11h4"/><circle cx="8" cy="5" r="1.5" fill="currentColor"/></svg>
       <span data-i18n="nav_post60">Post 60</span>
     </button>
@@ -4719,8 +4721,8 @@ async function renderPriorities() {
   const prioIcon = {high:'🔴', medium:'🟡', low:'⚪'};
 
   const sourceLabel = {
-    post30:'Post-30', post60:'Post-60', pipeline:'Follow-up',
-    delivery:'Delivery', review:'Thank You / Review', issue:'Issue',
+    sale3:'Thank-You + Review', sale23:'30-Day Window', del20:'GoldComp Offer', del3:'Delivery Confirm',
+    pipeline:'Follow-up', delivery:'Delivery', review:'Thank You / Review', issue:'Issue',
     active:'Active Phase', homecall:'Home Call', nextstep:'Next Step'
   };
 
@@ -4741,6 +4743,7 @@ async function renderPriorities() {
       </div>
       ${t.dueDate?`<span style="font-size:11px;font-weight:600;color:${dateColor};white-space:nowrap;flex-shrink:0">${fmtDate(t.dueDate)}</span>`:''}
       <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${t.labelColor}22;color:${t.labelColor};flex-shrink:0;white-space:nowrap">${esc(t.label)}</span>
+      ${t.emailType?`<button onclick="openAlertEmail('${t.oppId}','${t.emailType}')" title="Open ready-to-send email" style="flex-shrink:0;background:rgba(59,99,176,.1);border:1px solid rgba(59,99,176,.4);color:var(--blue);border-radius:6px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">✉️</button>`:''}
       ${canReschedule?`<button onclick="rescheduleFollowUp('${t.oppId}')" style="flex-shrink:0;background:rgba(196,147,63,.1);border:1px solid rgba(196,147,63,.4);color:var(--gold);border-radius:6px;font-size:10px;padding:3px 7px;cursor:pointer">📅</button>`:''}
       <button onclick="markTaskComplete('${safeId}');renderPriorities()" style="flex-shrink:0;background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.4);color:var(--green);border-radius:6px;font-size:10px;font-weight:700;padding:3px 9px;cursor:pointer">✓ Done</button>
     </div>`;
@@ -4829,7 +4832,7 @@ async function renderPriorities() {
         <!-- Right: Mailing / Post 30/60 -->
         <div>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--ink-70)">
-            <span style="font-size:13px;font-weight:700;color:var(--ink-20)">📧 Mailing / Post 30/60</span>
+            <span style="font-size:13px;font-weight:700;color:var(--ink-20)">📧 Email Follow-ups</span>
             <span style="background:var(--ink-70);color:var(--ink-40);font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px">${crmTasks.filter(t=>t.category==='mailing').length}</span>
           </div>
           ${crmTasks.filter(t => t.category === 'mailing').length
@@ -5947,6 +5950,109 @@ function closeEmailPreview() {
 function copyEmailToClipboard() {
   const body = document.getElementById('emailPreviewBody').textContent;
   navigator.clipboard.writeText(body).then(() => toast('Email body copied to clipboard', 'success'));
+}
+
+/* ══════════════════════════════════════════════════
+   ALERT EMAIL TEMPLATES  (Phase 1 — semi-automatic)
+   Ready-to-send drafts opened by the colored alerts in
+   Priorities. Carol reviews / personalizes, then copies
+   or opens in Gmail. NOTHING is sent automatically.
+══════════════════════════════════════════════════ */
+
+// Google Review link — short "cid" link to the Ethan Allen Cary listing (opens the reviews panel).
+const GOOGLE_REVIEW_LINK = 'https://www.google.com/maps?cid=10199760709307058382';
+
+function buildAlertEmail(o, type) {
+  const first = (o.firstName || 'there').trim();
+  const deliv = o.deliveryDate ? fmtDate(o.deliveryDate) : '[delivery date]';
+  const sign  = '\n\nWarmly,\nCarol Medrado\nEthan Allen';
+  switch (type) {
+    case 'sale3': return {
+      label: 'Thank You + Review',
+      subject: `Thank you, ${first} — it was a joy working with you`,
+      body:
+`Hi ${first},
+
+Thank you so much for choosing to work with me on your project — it truly means a lot. I loved helping bring your vision to life.
+
+If you have a moment, I'd be so grateful if you'd share a few words about your experience. It helps other homeowners find me and means the world to a small design practice:
+
+⭐ Click here to leave a quick review: ${GOOGLE_REVIEW_LINK}
+
+As always, I'm just a message away if you need anything.` + sign
+    };
+    case 'sale23': return {
+      label: '30-Day Delivery Window',
+      subject: `A quick note about your delivery window, ${first}`,
+      body:
+`Hi ${first},
+
+I hope you're doing wonderful! As you approach the 30-day mark since your order, I wanted to send a friendly reminder.
+
+Your order includes a 30-day window to schedule delivery with no additional delivery fee. If you'd like to lock in a delivery date, just let me know and I'll take care of the arrangements.
+
+I'd also love to hear how your space is coming along as you plan for the new pieces — any questions or ideas, I'm always happy to help you think it through.` + sign
+    };
+    case 'del20': return {
+      label: 'GoldComp Follow-up',
+      subject: `Getting ready for your delivery, ${first} — one idea to consider`,
+      body:
+`Hi ${first},
+
+Your delivery is getting close — I'm so excited for you! I wanted to check in to make sure everything is on track and to answer any questions about your order.
+
+Before we finalize, I also wanted to mention the GoldComp option. Many clients love adding it at this stage, and it's easy to include now while your order is still open.
+
+Would you like me to send over the details? Just reply and I'll walk you through it.` + sign
+    };
+    case 'del3': return {
+      label: 'Delivery Confirmation',
+      subject: `Your delivery is almost here, ${first} — let's confirm the details`,
+      body:
+`Hi ${first},
+
+Your delivery is just a few days away! I wanted to confirm a few details so everything goes smoothly:
+
+• Delivery date: ${deliv}
+• Please make sure the space is clear and any existing furniture has been removed from the area beforehand.
+• I [will / will not] be present at the delivery to oversee the setup — (edit this line before sending).
+
+If anything has changed on your end, just let me know and we'll adjust. I can't wait for you to enjoy your new pieces!` + sign
+    };
+    default: return { label: 'Email', subject: '', body: '' };
+  }
+}
+
+function buildAlertMailUrl(provider, o, tpl) {
+  const to = encodeURIComponent(o.email || '');
+  const su = encodeURIComponent(tpl.subject);
+  const bo = encodeURIComponent(tpl.body);
+  return provider === 'outlook'
+    ? `https://outlook.live.com/mail/0/deeplink/compose?to=${to}&subject=${su}&body=${bo}`
+    : `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}&body=${bo}`;
+}
+
+async function openAlertEmail(id, type) {
+  const o = await getOppById(id);
+  if (!o) return;
+  const tpl = buildAlertEmail(o, type);
+
+  document.getElementById('emailPreviewTitle').textContent   = `${o.firstName||''} ${o.lastName||''}`.trim();
+  document.getElementById('emailPreviewSubject').textContent = tpl.subject;
+  document.getElementById('emailPreviewBody').textContent    = tpl.body;
+  document.getElementById('emailFrameworkBadges').innerHTML  =
+    `<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:.06em;background:rgba(59,99,176,.12);color:var(--blue);border:1px solid rgba(59,99,176,.25)">${esc(tpl.label)}</span>`;
+  document.getElementById('emailTechniquesList').innerHTML   =
+    'Ready-to-send draft — review and personalize before sending. Nothing is sent automatically.';
+
+  if (o.email) {
+    document.getElementById('openGmailBtn').onclick   = () => window.open(buildAlertMailUrl('gmail',   o, tpl), '_blank');
+    document.getElementById('openOutlookBtn').onclick = () => window.open(buildAlertMailUrl('outlook', o, tpl), '_blank');
+  } else {
+    document.getElementById('openGmailBtn').onclick   = () => toast(T('toast_no_email'),'error');
+    document.getElementById('openOutlookBtn').onclick = () => toast(T('toast_no_email'),'error');
+  }
+  document.getElementById('emailPreviewModal').classList.add('open');
 }
 
 /* ══════════════════════════════════════════════════
@@ -8908,35 +9014,65 @@ function _buildTasks(opps) {
   const tasks  = [];
   function addTask(t) { if (done.indexOf(t.id) < 0) tasks.push(t); }
 
-  // ── 1. POST-30 / POST-60 — within 7 days or overdue ──
+  // ── 1. DATE-ANCHORED CLIENT ALERTS (Phase 1) ──
+  //    Replaces the retired Post-30 / Post-60 cadence.
+  //    Sale-anchored:     +3d  thank-you + Google review
+  //                       +23d 30-day delivery window + space follow-up
+  //    Delivery-anchored: -20d order follow-up + GoldComp offer
+  //                       -3d  confirm delivery details
+  //    Each carries emailType → shows the ✉️ button + ready template.
+  const labelFor = d => d < 0 ? Math.abs(d) + 'd overdue' : d === 0 ? 'Today' : 'In ' + d + 'd';
   opps.filter(o => o.saleMade === 'Yes').forEach(o => {
-    const rec = p30.find(r => r.oppId === o.id) || {};
-    const dv  = o.deliveryDate || rec.deliveryDate || '';
-    if (!dv) return;
-    const fu30 = offsetDate(dv, 30), d30 = daysDiff(todayS, fu30);
-    const fu60 = offsetDate(dv, 60), d60 = daysDiff(todayS, fu60);
-    if (d30 !== null && d30 <= 7) addTask({
-      id: o.id + '_p30', oppId: o.id, source: 'post30', category: 'mailing',
-      type: d30 < 0 ? 'overdue' : d30 === 0 ? 'today' : 'upcoming',
-      priority: d30 < 0 ? 52 : 42, icon: '📦',
-      label: d30 < 0 ? Math.abs(d30) + 'd overdue' : d30 === 0 ? 'Due today' : 'In ' + d30 + 'd',
-      labelColor: d30 < 0 ? 'var(--red)' : d30 === 0 ? 'var(--gold)' : 'var(--green)',
-      firstName: o.firstName || '', lastName: o.lastName || '',
-      activity: 'Post-30 Follow-Up (delivery: ' + fmtDate(dv) + ')', dueDate: fu30,
-      estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
-      stage: 'Post-30', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
-    });
-    if (d60 !== null && d60 <= 7) addTask({
-      id: o.id + '_p60', oppId: o.id, source: 'post60', category: 'mailing',
-      type: d60 < 0 ? 'overdue' : d60 === 0 ? 'today' : 'upcoming',
-      priority: d60 < 0 ? 50 : 40, icon: '🔔',
-      label: d60 < 0 ? Math.abs(d60) + 'd overdue' : d60 === 0 ? 'Due today' : 'In ' + d60 + 'd',
-      labelColor: d60 < 0 ? 'var(--red)' : d60 === 0 ? 'var(--gold)' : 'var(--green)',
-      firstName: o.firstName || '', lastName: o.lastName || '',
-      activity: 'Post-60 Follow-Up (delivery: ' + fmtDate(dv) + ')', dueDate: fu60,
-      estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
-      stage: 'Post-60', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
-    });
+    // ·· Sale-anchored (needs a sale date) ··
+    if (o.saleDate) {
+      const a3 = offsetDate(o.saleDate, 3), d3 = daysDiff(todayS, a3);
+      if (d3 >= -21 && d3 <= 7) addTask({
+        id: o.id + '_sale3', oppId: o.id, source: 'sale3', category: 'mailing',
+        type: d3 < 0 ? 'overdue' : d3 === 0 ? 'today' : 'upcoming',
+        priority: d3 < 0 ? 27 : d3 === 0 ? 25 : 23, icon: '⭐',
+        label: labelFor(d3), labelColor: 'var(--green)', emailType: 'sale3',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        activity: 'Thank-you + Google review email', dueDate: a3,
+        estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
+        stage: 'Post-Sale', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
+      });
+      const a23 = offsetDate(o.saleDate, 23), d23 = daysDiff(todayS, a23);
+      if (d23 >= -21 && d23 <= 7) addTask({
+        id: o.id + '_sale23', oppId: o.id, source: 'sale23', category: 'mailing',
+        type: d23 < 0 ? 'overdue' : d23 === 0 ? 'today' : 'upcoming',
+        priority: d23 < 0 ? 31 : d23 === 0 ? 29 : 26, icon: '📩',
+        label: labelFor(d23), labelColor: 'var(--blue)', emailType: 'sale23',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        activity: '30-day delivery window reminder + space follow-up', dueDate: a23,
+        estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
+        stage: 'Post-Sale', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
+      });
+    }
+    // ·· Delivery-anchored (needs a delivery date) ··
+    if (o.deliveryDate) {
+      const b20 = offsetDate(o.deliveryDate, -20), e20 = daysDiff(todayS, b20);
+      if (e20 >= -21 && e20 <= 10) addTask({
+        id: o.id + '_del20', oppId: o.id, source: 'del20', category: 'mailing',
+        type: e20 < 0 ? 'overdue' : e20 === 0 ? 'today' : 'upcoming',
+        priority: e20 < 0 ? 38 : e20 === 0 ? 36 : 33, icon: '✨',
+        label: labelFor(e20), labelColor: 'var(--purple)', emailType: 'del20',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        activity: 'Order follow-up + offer GoldComp (delivery: ' + fmtDate(o.deliveryDate) + ')',
+        dueDate: b20, estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
+        stage: 'Pre-Delivery', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
+      });
+      const b3 = offsetDate(o.deliveryDate, -3), e3 = daysDiff(todayS, b3);
+      if (e3 >= -7 && e3 <= 7) addTask({
+        id: o.id + '_del3', oppId: o.id, source: 'del3', category: 'crm',
+        type: e3 < 0 ? 'overdue' : e3 === 0 ? 'today' : 'upcoming',
+        priority: e3 < 0 ? 48 : e3 === 0 ? 46 : 43, icon: '🚚',
+        label: labelFor(e3), labelColor: e3 < 0 ? 'var(--red)' : 'var(--gold)', emailType: 'del3',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        activity: 'Confirm delivery details (delivery: ' + fmtDate(o.deliveryDate) + ')',
+        dueDate: b3, estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
+        stage: 'Pre-Delivery', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
+      });
+    }
   });
 
   // ── 3. ACTIVE CLIENTS: postponed phase + next step date (10d before) ──
@@ -9060,25 +9196,9 @@ function _buildTasks(opps) {
         });
       }
     }
-    const lr = o.linkReviewDate || '';
-    if (lr) {
-      const daysLR = daysDiff(todayS, lr);
-      if (daysLR !== null && daysLR <= 7) addTask({
-        id: o.id + '_lr', oppId: o.id, source: 'review', category: 'mailing',
-        type: daysLR < 0 ? 'overdue' : daysLR === 0 ? 'today' : 'upcoming',
-        priority: daysLR < 0 ? 28 : daysLR === 0 ? 22 : 18, icon: '🙏',
-        label: daysLR < 0 ? 'Review ' + Math.abs(daysLR) + 'd overdue'
-             : daysLR === 0 ? 'Link Review Today' : 'Review in ' + daysLR + 'd',
-        labelColor: daysLR < 0 ? 'var(--red)' : daysLR === 0 ? 'var(--gold)' : 'var(--ink-30)',
-        firstName: o.firstName || '', lastName: o.lastName || '',
-        customerNumber: o.customerNumber || '',
-        projectType: o.projectType || '—', estimate: Number(o.estimate) || 0,
-        goldComp: o.goldComp || '', stage: 'Link Review', activePhase: o.activePhase || '',
-        deliveryDate: o.deliveryDate || '', linkReviewDate: lr, dueDate: lr,
-        activity: 'Thank you note + Google Review + survey link',
-        issueFlag: o.issueFlag || '', issueType: o.issueType || '', issueResult: o.issueResult || '',
-      });
-    }
+    // ── Post-delivery review (linkReview) RETIRED per Carol — the review request now
+    //    happens once, at sale+3 (see the "_sale3" alert above). To bring back a second
+    //    post-delivery review touchpoint later, re-enable this block. ──
     if (o.issueFlag === 'Yes' && o.issueResult !== 'Done') addTask({
       id: o.id + '_iss', oppId: o.id, source: 'issue', category: 'crm',
       type: 'overdue', priority: 50, icon: '🔴',
@@ -9115,7 +9235,7 @@ async function _updateTasksWidget(opps) {
   // Count by type for the summary chips
   const bySource = {};
   tasks.forEach(t => { bySource[t.source] = (bySource[t.source]||0) + 1; });
-  const sourceNames = {post30:'Post-30', post60:'Post-60', pipeline:'Follow-up', delivery:'Delivery', review:'Link Review', issue:'Issue', active:'Active'};
+  const sourceNames = {sale3:'Thank-You', sale23:'30-Day', del20:'GoldComp', del3:'Delivery Confirm', pipeline:'Follow-up', delivery:'Delivery', review:'Link Review', issue:'Issue', active:'Active', homecall:'Home Call', nextstep:'Next Step'};
   const chips = Object.entries(bySource).map(([src, cnt]) =>
     `<span style="background:var(--ink-70);color:var(--ink-20);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap">${sourceNames[src]||src}: ${cnt}</span>`
   ).join('');
