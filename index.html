@@ -4818,28 +4818,35 @@ async function renderPriorities() {
         <span style="background:var(--ink-70);color:var(--ink-20);font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">${crmTasks.length}</span>
         <button onclick="clearCompletedTasks();renderPriorities()" style="margin-left:auto;font-size:10px;color:var(--ink-50);background:none;border:none;cursor:pointer">Reset completed</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-        <!-- Left: CRM Actives (calls, visits, deliveries, next steps) -->
-        <div>
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--ink-70)">
-            <span style="font-size:13px;font-weight:700;color:var(--ink-20)">📞 CRM Actives</span>
-            <span style="background:var(--ink-70);color:var(--ink-40);font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px">${crmTasks.filter(t=>t.category==='crm').length}</span>
-          </div>
-          ${crmTasks.filter(t => t.category === 'crm').length
-            ? crmTasks.filter(t => t.category === 'crm').map(crmRow).join('')
-            : `<div style="padding:20px;text-align:center;color:var(--ink-50);font-size:12px">✅ No pending CRM activities</div>`}
-        </div>
-        <!-- Right: Mailing / Post 30/60 -->
-        <div>
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--ink-70)">
-            <span style="font-size:13px;font-weight:700;color:var(--ink-20)">📧 Email Follow-ups</span>
-            <span style="background:var(--ink-70);color:var(--ink-40);font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px">${crmTasks.filter(t=>t.category==='mailing').length}</span>
-          </div>
-          ${crmTasks.filter(t => t.category === 'mailing').length
-            ? crmTasks.filter(t => t.category === 'mailing').map(crmRow).join('')
-            : `<div style="padding:20px;text-align:center;color:var(--ink-50);font-size:12px">✅ No pending mailings</div>`}
-        </div>
-      </div>
+      ${(() => {
+        // ── Six color-coded alert groups (each color = one alert type) ──
+        const GROUPS = [
+          { icon:'⭐', name:'Thank-You + Review',    sub:'Sale +3 days',            color:'#3D9E6B', srcs:['sale3'] },
+          { icon:'📩', name:'30-Day Delivery Window', sub:'Sale +23 days',           color:'#3B63B0', srcs:['sale23'] },
+          { icon:'✨', name:'GoldComp Offer',         sub:'Delivery −20 days',       color:'#8870C8', srcs:['del20'] },
+          { icon:'🚚', name:'Delivery Confirmation',  sub:'Delivery −3 days',        color:'#D98324', srcs:['del3'] },
+          { icon:'🌱', name:'Leads — Follow-up',      sub:'Not yet sold · by stage', color:'#64748B', srcs:['pipeline','homecall'] },
+          { icon:'🔧', name:'Post-Sale — by Stage',   sub:'Active clients',          color:'#0E9AA7', srcs:['active','nextstep','delivery','issue'] },
+        ];
+        return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">
+          ${GROUPS.map(g => {
+            const items = crmTasks.filter(t => g.srcs.includes(t.source));
+            return `<div style="border:1px solid var(--ink-70);border-top:3px solid ${g.color};border-radius:12px;overflow:hidden;background:var(--surface-2)">
+              <div style="display:flex;align-items:center;gap:8px;padding:11px 14px;background:${g.color}14;border-bottom:1px solid var(--ink-70)">
+                <span style="font-size:16px">${g.icon}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:700;color:${g.color};line-height:1.2">${g.name}</div>
+                  <div style="font-size:10px;color:var(--ink-40)">${g.sub}</div>
+                </div>
+                <span style="background:${g.color};color:#fff;font-size:11px;font-weight:700;min-width:22px;text-align:center;padding:2px 7px;border-radius:11px">${items.length}</span>
+              </div>
+              <div style="padding:10px 10px 4px;max-height:440px;overflow-y:auto">
+                ${items.length ? items.map(crmRow).join('') : `<div style="padding:18px;text-align:center;color:var(--ink-50);font-size:12px">✓ Nothing pending</div>`}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      })()}
     </div>
 
     <div class="container" style="margin-bottom:40px">
