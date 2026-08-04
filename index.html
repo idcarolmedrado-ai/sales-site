@@ -10590,14 +10590,20 @@ function _saveTaskModal(taskId) {
   closeTaskModal();
   toast(T('cal_task_added'), 'success');
 }
-/* SO number → open the full opportunity form for that sale order (if a deal matches). */
+/* SO number → open the full opportunity form for that sale order. If no deal matches
+   that SO, offer to start a new sale with the SO number pre-filled. */
 async function openSaleOrder(so) {
   if (!so) return;
   const norm = s => String(s || '').trim().toLowerCase();
   const opps = await DB.getAll();
   const o = opps.find(x => norm(x.saleOrderNumber) === norm(so));
-  if (o) editLead(o.id);
-  else toast('No deal found for SO ' + so, 'info');
+  if (o) { editLead(o.id); return; }
+  if (confirm('Nenhuma venda encontrada para a SO ' + so + '.\n\nCriar uma nova venda com esse número de pedido?')) {
+    openNewLead();
+    const soEl = document.getElementById('f-saleOrderNumber');
+    if (soEl) soEl.value = so;
+    toast('Nova venda iniciada — SO ' + so + ' já preenchido', 'info');
+  }
 }
 window.openTaskModal = openTaskModal;
 window.closeTaskModal = closeTaskModal;
