@@ -8171,7 +8171,7 @@ async function showKPIDetail(key) {
               onclick="closeKPIAndEdit('${o.id}')">
             <td style="padding:8px 10px;font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</td>
             <td style="padding:8px 10px;color:var(--ink-20);font-size:11px">${esc(o.projectType||'—')}</td>
-            <td style="padding:8px 10px;text-align:right;color:var(--ink-30);font-size:11px">${fmt$(Number(o.estimate))}</td>
+            <td style="padding:8px 10px;text-align:right;color:var(--ink-30);font-size:11px">${fmt$(Number(o.saleAmount) || Number(o.estimate) || 0)}</td>
             <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--gold)">${fmt$(Number(o.goldCompValue)||0)}</td>
             <td style="padding:8px 10px;text-align:right">
               <button onclick="event.stopPropagation();closeKPIAndEdit('${o.id}')"
