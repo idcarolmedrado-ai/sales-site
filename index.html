@@ -1831,6 +1831,9 @@ const STRINGS = {
     sales_th_date:'Close Date', sales_th_client:'Client',
     sales_th_project:'Project Type', sales_th_source:'Lead Source',
     sales_th_value:'Sale Value', sales_th_gc:'GoldComp', sales_gc_sold:'GoldComp sold',
+    cal_add_task:'Add Task', cal_add_hint:'Click a day to add a task',
+    cal_prompt_date:'Task date (YYYY-MM-DD):', cal_bad_date:'Invalid format. Use YYYY-MM-DD',
+    cal_prompt_title:(d)=>`New task on ${d}:`, cal_task_added:'Task added to calendar',
     sales_th_quarter:'Quarter', sales_th_hc:'Home Call',
     sales_th_notes:'Notes',
     sales_chart_title:'Monthly Closed Sales — 2026',
@@ -2017,6 +2020,9 @@ const STRINGS = {
     sales_th_date:'Data de Fechamento', sales_th_client:'Cliente',
     sales_th_project:'Tipo de Projeto', sales_th_source:'Fonte do Lead',
     sales_th_value:'Valor da Venda', sales_th_gc:'GoldComp', sales_gc_sold:'GoldComp vendido',
+    cal_add_task:'Adicionar Tarefa', cal_add_hint:'Clique em um dia para adicionar uma tarefa',
+    cal_prompt_date:'Data da tarefa (AAAA-MM-DD):', cal_bad_date:'Formato inválido. Use AAAA-MM-DD',
+    cal_prompt_title:(d)=>`Nova tarefa em ${d}:`, cal_task_added:'Tarefa adicionada ao calendário',
     sales_th_quarter:'Trimestre', sales_th_hc:'Visita',
     sales_th_notes:'Observações',
     sales_chart_title:'Vendas Fechadas Mensais — 2026',
@@ -10493,7 +10499,7 @@ async function renderCalendar() {
       const action = e.type === 'task' ? "navigate('priorities')" : `editLead('${e.id}')`;
       return `<span class="cal-event ${e.type}" onclick="event.stopPropagation();${action}" title="${esc(e.tip)}: ${esc(e.label)}">${esc(e.label.split(' ')[0])}</span>`;
     }).join('') + (dayEvents.length > 3 ? `<span style="font-size:8px;color:var(--ink-40)">+${dayEvents.length-3} more</span>` : '');
-    gridHTML += `<div class="cal-day${isToday?' today':''}"><div class="cal-day-num">${d}</div>${evHTML}</div>`;
+    gridHTML += `<div class="cal-day${isToday?' today':''}" style="cursor:pointer" title="${T('cal_add_hint')}" onclick="addCalendarTask('${ds}')"><div class="cal-day-num">${d}</div>${evHTML}</div>`;
   }
 
   // Pad end
@@ -10520,11 +10526,29 @@ async function renderCalendar() {
         <div class="cal-month-label">${monthNames[_calMonth]} ${_calYear}</div>
         <button onclick="_calMonth++;if(_calMonth>11){_calMonth=0;_calYear++;}renderCalendar()">Next ▶</button>
         <button onclick="_calYear=${today.getFullYear()};_calMonth=${today.getMonth()};renderCalendar()" style="margin-left:auto">Today</button>
+        <button onclick="addCalendarTask()" style="background:var(--gold);color:var(--ink);font-weight:700;border-color:var(--gold-dk)">+ ${T('cal_add_task')}</button>
       </div>
-      <div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">${legend}</div>
+      <div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${legend}<span style="font-size:11px;color:var(--ink-40);margin-left:4px">— ${T('cal_add_hint')}</span></div>
       <div class="cal-grid">${gridHTML}</div>
     </div>`;
 }
+
+/* Add a personal task straight from the Calendar. Saves to the same 'tasks' store
+   the Priorities tab uses, so it shows in both places (and addTask re-renders both). */
+function addCalendarTask(ds) {
+  let date = ds;
+  if (!date) {
+    date = window.prompt(T('cal_prompt_date'), localDateStr(new Date()));
+    if (!date) return;
+    date = date.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast(T('cal_bad_date'), 'error'); return; }
+  }
+  const title = window.prompt(T('cal_prompt_title')(fmtDate(date)));
+  if (!title || !title.trim()) return;
+  addTask(title.trim(), date, 'medium', '', '');
+  toast(T('cal_task_added'), 'success');
+}
+window.addCalendarTask = addCalendarTask;
 
 /* ══════════════════════════════════════════════════
    PAGINATION UTILITY
