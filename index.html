@@ -1687,7 +1687,7 @@ const STRINGS = {
     kpi_prob:'Avg Probability',     kpi_prob_d:'Active pipeline',
     kpi_hot:'Hot Leads (≥75%)',     kpi_hot_d:'High-probability opps',
     kpi_total:'Total Est. Pipeline',kpi_total_d:'Sum of all estimates',
-    kpi_winrate:'Win Rate (YTD)',    kpi_winrate_d:'Sales ÷ total opps',
+    kpi_winrate:'Win Rate',          kpi_winrate_d:'Won ÷ decided (won+lost)',
 
     // Insights
     insights_title:'💡 Insights & Recommendations',
@@ -1872,7 +1872,7 @@ const STRINGS = {
     kpi_prob:'Probabilidade Média', kpi_prob_d:'Pipeline ativo',
     kpi_hot:'Leads Quentes (≥75%)', kpi_hot_d:'Oportunidades de alta probabilidade',
     kpi_total:'Pipeline Total Estimada',kpi_total_d:'Soma de todas as estimativas',
-    kpi_winrate:'Taxa de Fechamento (Ano)',kpi_winrate_d:'Vendas ÷ total de oportunidades',
+    kpi_winrate:'Taxa de Fechamento',kpi_winrate_d:'Ganhos ÷ decididos (ganhos+perdidos)',
 
     // Insights
     insights_title:'💡 Insights & Recomendações',
@@ -2528,9 +2528,13 @@ www.carolmedrado.com`
     const src = monthFilter ? opps.filter(o => this.getMonthAuto(o) === monthFilter) : opps;
     const sold   = src.filter(o => isClosedWon(o));
     const active = src.filter(o => !isClosedWon(o) && o.stage !== 'Canceled');
-    const overdue = opps.filter(o => this.isOverdue(o));
-    const dueToday = opps.filter(o => this.isDueToday(o));
-    const hot = opps.filter(o => !isClosedWon(o) && (Number(o.probability)||0) >= 75);
+    // Month-scoped for the KPI cards — respect the selected month filter (like Sales/GoldComp).
+    // When no month is selected, src === opps, so these equal the all-time counts.
+    const overdue  = src.filter(o => this.isOverdue(o));
+    const dueToday = src.filter(o => this.isDueToday(o));
+    const hot      = src.filter(o => !isClosedWon(o) && (Number(o.probability)||0) >= 75);
+    // Global (all months) — the nav bell badge must always show today's live overdue count.
+    const overdueAll = opps.filter(o => this.isOverdue(o));
 
     const totalSales   = sold.reduce((s,o) => s + (Number(o.estimate)||0), 0);
     const gcSales      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
@@ -2541,12 +2545,14 @@ www.carolmedrado.com`
     const convRate     = src.length ? (sold.length/src.length)*100 : 0;
     const gcPct        = totalSales ? (gcSales/totalSales)*100 : 0;
     const avgProb      = active.length ? active.reduce((s,o)=>s+(Number(o.probability)||0),0)/active.length : 0;
-    const winRate      = opps.length ? (opps.filter(o=>isClosedWon(o)).length/opps.length)*100 : 0;
+    const lostCount    = src.filter(o => isClosedLost(o)).length;   // month-scoped
+    const decidedCount = sold.length + lostCount;                    // won + lost (decided deals)
+    const winRate      = decidedCount ? (sold.length/decidedCount)*100 : 0; // won ÷ decided, this month
 
     return {
       opps: src.length, sold: sold.length, active: active.length,
       totalSales, gcSales, gcPct, weightedPipe, totalEst,
-      overdue: overdue.length, dueToday: dueToday.length,
+      overdue: overdue.length, overdueAll: overdueAll.length, dueToday: dueToday.length,
       homeCalls, avgVal, convRate, avgProb, winRate,
       hotCount: hot.length,
       overdueList: overdue.sort((a,b)=>this.getUrgencyScore(b)-this.getUrgencyScore(a)).slice(0,6)
@@ -2617,9 +2623,16 @@ www.carolmedrado.com`
   },
 
   /* Priority-sorted insights — scored by urgency × value */
-  generateInsights(kpis, opps) {
+  generateInsights(kpis, opps, monthFilter=null) {
     const today    = new Date();
-    const curGoal  = getGoalForMonth(today.getMonth());
+    // Goal for the month being viewed (selected filter), else the current calendar month
+    let _goalIdx = today.getMonth(), _goalYr = today.getFullYear();
+    if (monthFilter) {
+      const _p = String(monthFilter).split(' ');
+      const _i = LOOKUP.months.indexOf(_p[0]);
+      if (_i >= 0) { _goalIdx = _i; _goalYr = parseInt(_p[1], 10) || _goalYr; }
+    }
+    const curGoal  = getGoalForMonth(_goalIdx, _goalYr);
     const pctToGoal = curGoal ? (kpis.totalSales / curGoal) * 100 : 0;
     const gap      = Math.max(curGoal - kpis.totalSales, 0);
     const candidates = [];
@@ -2866,7 +2879,9 @@ www.carolmedrado.com`
 
     candidates.sort((a,b) => b.score - a.score);
     if (candidates[0]) candidates[0].isPriority1 = true;
-    return candidates.slice(0, 8);
+    // Return the full ranked list — the dashboard shows the top few and promotes the
+    // next-highest-priority insight into any slot the user dismisses.
+    return candidates;
   }
 };
 
@@ -4002,12 +4017,14 @@ async function renderDashboard() {
   document.getElementById('k-total-est').textContent = fmt$(kpis.totalEst);
   document.getElementById('k-winrate').textContent = Math.round(kpis.winRate) + '%';
 
-  // Overdue badge in nav
-  document.getElementById('overdueCount').textContent = kpis.overdue;
+  // Overdue badge in nav — always the live, all-months count (not the month-filtered card value)
+  document.getElementById('overdueCount').textContent = kpis.overdueAll;
 
   // Insights — with dismiss-and-persist support
   const _dismissedIns = _getDismissedInsights();
-  const allInsights   = BL.generateInsights(kpis, opps);
+  // Insights follow the selected month — same period the KPI cards reflect.
+  const monthOpps     = state.monthFilter ? opps.filter(o => BL.getMonthAuto(o) === state.monthFilter) : opps;
+  const allInsights   = BL.generateInsights(kpis, monthOpps, state.monthFilter);
   // Stable fingerprint: hash of title so dismissed state survives re-renders
   const _insKey = title => title.replace(/\s+/g,'').toLowerCase().slice(0,40);
   const visibleInsights = allInsights.filter(ins => !_dismissedIns.has(_insKey(ins.title))).slice(0, 5);
@@ -7816,9 +7833,11 @@ async function runAllTests() {
     for(let i=11;i>=0;i--){const d=new Date(yr,11-i,1);last12.push({key:d.toISOString().slice(0,7),val:rev[d.toISOString().slice(0,7)]||0});}
     return last12.length===12||'Got '+last12.length;
   });
-  test('SIM T112: analytics win rate = sold/total * 100', () => {
+  test('SIM T112: win rate = won / decided (won+lost) * 100', () => {
     const kpis=BL.calcKPIs(sim);
-    const expected=(20/100)*100;
+    const won     = sim.filter(o=>isClosedWon(o)).length;
+    const decided = sim.filter(o=>isClosed(o)).length; // won + lost (Closed Lost / Canceled)
+    const expected= decided ? (won/decided)*100 : 0;
     return Math.abs(kpis.winRate-expected)<0.01||'Got '+kpis.winRate+' expected '+expected;
   });
   test('SIM T113: analytics convRate uses filtered src length', () => {
@@ -8080,7 +8099,7 @@ async function showKPIDetail(key) {
     overdue: {
       label: 'Overdue Follow-ups',
       render: () => {
-        const ovr = opps.filter(o=>BL.isOverdue(o)).sort((a,b)=>BL.getDaysOverdue(b)-BL.getDaysOverdue(a));
+        const ovr = filtered.filter(o=>BL.isOverdue(o)).sort((a,b)=>BL.getDaysOverdue(b)-BL.getDaysOverdue(a));
         if (!ovr.length) return '<div style="color:var(--green);padding:20px;text-align:center;font-size:15px">✓ No overdue follow-ups — great work!</div>';
         return miniTable([['Client','Stage','Days Overdue','Estimate','Win Tier'],...ovr.map(o=>[o.firstName+' '+o.lastName,o.stage||'—',BL.getDaysOverdue(o)+'d',fmt$(Number(o.estimate)),BL.getWinTier(o).label])]);
       }
@@ -8212,24 +8231,24 @@ async function showKPIDetail(key) {
       }
     },
     winrate: {
-      label: 'Win Rate (YTD)',
+      label: 'Win Rate',
       render: () => {
         const r = Math.round(kpis.winRate);
+        const decidedTotal = filtered.filter(o=>isClosed(o)).length; // won + lost this period
         const bySource = LOOKUP.leadSources.map(s=>({
           label:s,
-          total: filtered.filter(o=>o.leadSource===s).length,
-          won:   filtered.filter(o=>o.leadSource===s && isClosedWon(o)).length
-        })).filter(x=>x.total>0);
-        const maxWR = Math.max(...bySource.map(x=>x.total),1);
+          decided: filtered.filter(o=>o.leadSource===s && isClosed(o)).length,
+          won:     filtered.filter(o=>o.leadSource===s && isClosedWon(o)).length
+        })).filter(x=>x.decided>0);
         return `<div style="display:grid;grid-template-columns:auto 1fr;gap:24px">
           <div style="text-align:center">${ring(r,'var(--green)',100)}
-            <div style="font-size:11px;color:var(--ink-40);margin-top:6px">${kpis.sold} of ${filtered.length} opps</div>
+            <div style="font-size:11px;color:var(--ink-40);margin-top:6px">${kpis.sold} won of ${decidedTotal} decided</div>
           </div>
           <div><div class="label" style="margin-bottom:12px">Win Rate by Lead Source</div>
             ${bySource.map(x=>`<div class="bar-row">
               <div class="bar-label">${x.label}</div>
-              <div class="bar-track"><div class="bar-fill green" style="width:${x.total?Math.round(x.won/x.total*100):0}%"></div></div>
-              <div class="bar-val">${x.won}/${x.total} (${x.total?Math.round(x.won/x.total*100):0}%)</div>
+              <div class="bar-track"><div class="bar-fill green" style="width:${x.decided?Math.round(x.won/x.decided*100):0}%"></div></div>
+              <div class="bar-val">${x.won}/${x.decided} (${x.decided?Math.round(x.won/x.decided*100):0}%)</div>
             </div>`).join('')}
           </div></div>`;
       }
