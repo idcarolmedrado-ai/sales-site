@@ -2536,7 +2536,9 @@ www.carolmedrado.com`
     // Global (all months) — the nav bell badge must always show today's live overdue count.
     const overdueAll = opps.filter(o => this.isOverdue(o));
 
-    const totalSales   = sold.reduce((s,o) => s + (Number(o.estimate)||0), 0);
+    // Sales revenue uses the actual sold amount (saleAmount), falling back to estimate
+    // only when saleAmount is blank. (estimate is the *expected* value.)
+    const totalSales   = sold.reduce((s,o) => s + (Number(o.saleAmount) || Number(o.estimate) || 0), 0);
     // Total GoldComp sold = sum of the GoldComp Value field only (no estimate fallback,
     // which used to wrongly count the whole product when the value was left blank).
     const gcCount      = sold.filter(o=>o.goldComp==='Yes').length;
@@ -2571,7 +2573,7 @@ www.carolmedrado.com`
       const src  = opps.filter(o => this.getMonthAuto(o) === key);
       const sold = src.filter(o => isClosedWon(o));
       const active = src.filter(o => !isClosedWon(o) && o.stage !== 'Canceled');
-      const totalSales  = sold.reduce((s,o) => s+(Number(o.estimate)||0), 0);
+      const totalSales  = sold.reduce((s,o) => s+(Number(o.saleAmount) || Number(o.estimate) || 0), 0);
       const gcCount     = sold.filter(o=>o.goldComp==='Yes').length;
       const gcSales     = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||0),0);
       const weightedPipe= active.reduce((s,o)=>s+this.getWeighted(o),0);
@@ -2595,7 +2597,7 @@ www.carolmedrado.com`
     const sold = src.filter(o=>isClosedWon(o));
     return LOOKUP.projectTypes.map(pt => ({
       pt,
-      val: sold.filter(o=>o.projectType===pt).reduce((s,o)=>s+(Number(o.estimate)||0),0)
+      val: sold.filter(o=>o.projectType===pt).reduce((s,o)=>s+(Number(o.saleAmount) || Number(o.estimate) || 0),0)
     })).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
   },
 
@@ -2623,7 +2625,7 @@ www.carolmedrado.com`
     return LOOKUP.months.map((m,i) => {
       const key = `${m} ${new Date().getFullYear()}`;
       const sold = opps.filter(o=>isClosedWon(o) && this.getMonthAuto(o)===key);
-      const yr = new Date().getFullYear(); return { month:m, short:MONTHS_SHORT[i], full:`${m} ${yr}`, revenue:sold.reduce((s,o)=>s+(Number(o.estimate)||0),0), goal:getGoalForMonth(i), count:sold.length };
+      const yr = new Date().getFullYear(); return { month:m, short:MONTHS_SHORT[i], full:`${m} ${yr}`, revenue:sold.reduce((s,o)=>s+(Number(o.saleAmount) || Number(o.estimate) || 0),0), goal:getGoalForMonth(i), count:sold.length };
     });
   },
 
@@ -3866,7 +3868,7 @@ function _refreshGoalContext() {
         const [y,m] = d.split('-').map(Number);
         return y === yr && (m-1) === mo;
       })
-      .reduce((s,o) => s+(Number(o.estimate)||0)+(o.goldComp==='Yes'?Number(o.goldCompValue)||0:0), 0);
+      .reduce((s,o) => s + (Number(o.saleAmount) || ((Number(o.estimate)||0)+(o.goldComp==='Yes'?Number(o.goldCompValue)||0:0))), 0);
     const goal = Number(document.getElementById('goalInput')?.value) || getGoalForMonth(mo, yr);
     const rem  = Math.max(goal - salesNow, 0);
     const sEl = document.getElementById('goalCurrentSales');
@@ -7661,9 +7663,9 @@ async function runAllTests() {
   });
 
   // ── T76-T80: KPI calculations ──
-  test('SIM T76: calcKPIs totalSales = sum of sold estimates', () => {
+  test('SIM T76: calcKPIs totalSales = sum of sold sale amounts (est. fallback)', () => {
     const kpis=BL.calcKPIs(sim);
-    const manual=simSold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+    const manual=simSold.reduce((s,o)=>s+(Number(o.saleAmount)||Number(o.estimate)||0),0);
     return kpis.totalSales===manual || 'KPI:'+kpis.totalSales+' Manual:'+manual;
   });
   test('SIM T77: calcKPIs weightedPipe excludes sold+canceled', () => {
@@ -7764,7 +7766,7 @@ async function runAllTests() {
   });
   test('SIM T100: totalSales does not include goldCompValue separately', () => {
     const kpis=BL.calcKPIs(sim);
-    const manualTotal=simSold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+    const manualTotal=simSold.reduce((s,o)=>s+(Number(o.saleAmount)||Number(o.estimate)||0),0);
     return kpis.totalSales===manualTotal||'Got '+kpis.totalSales+' expected '+manualTotal;
   });
 
@@ -8020,16 +8022,17 @@ async function showKPIDetail(key) {
     sales: {
       label: 'Sales This Period',
       render: () => {
-        const byPT = LOOKUP.projectTypes.map(pt=>({label:pt,val:sold.filter(o=>o.projectType===pt).reduce((s,o)=>s+(Number(o.estimate)||0),0)})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
+        const _saleVal = o => Number(o.saleAmount) || Number(o.estimate) || 0;
+        const byPT = LOOKUP.projectTypes.map(pt=>({label:pt,val:sold.filter(o=>o.projectType===pt).reduce((s,o)=>s+_saleVal(o),0)})).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
         const max = Math.max(...byPT.map(x=>x.val),1);
-        const soldRows = [...sold].sort((a,b)=>(Number(b.estimate)||0)-(Number(a.estimate)||0)).map(o=>`
+        const soldRows = [...sold].sort((a,b)=>_saleVal(b)-_saleVal(a)).map(o=>`
           <tr style="border-bottom:1px solid var(--ink-70);cursor:pointer"
               onmouseover="this.style.background='rgba(196,147,63,.08)'" onmouseout="this.style.background=''"
               onclick="closeKPIAndEdit('${o.id}')">
             <td style="padding:8px 10px;font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</td>
             <td style="padding:8px 10px;color:var(--ink-20);font-size:11px">${esc(o.projectType||'—')}</td>
             <td style="padding:8px 10px;font-size:11px;color:var(--ink-40)">${esc(o.leadSource||'—')}</td>
-            <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--green)">${fmt$(Number(o.estimate))}</td>
+            <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--green)">${fmt$(_saleVal(o))}</td>
             <td style="padding:8px 10px;font-size:11px;color:${o.goldComp==='Yes'?'var(--gold)':'var(--ink-60)'}">${o.goldComp==='Yes'?'⭐ GC':'—'}</td>
             <td style="padding:8px 10px;text-align:right">
               <button onclick="event.stopPropagation();closeKPIAndEdit('${o.id}')"
@@ -8039,8 +8042,8 @@ async function showKPIDetail(key) {
         return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
           <div><div class="label" style="margin-bottom:12px">Revenue by Project Type</div>${barChart(byPT,max,fmt$)}</div>
           <div style="display:flex;flex-direction:column;gap:10px">
-            <div class="kpi-card" style="padding:10px 14px"><span class="label">Total Sales</span><div class="kpi-value gold">${fmt$(sold.reduce((s,o)=>s+(Number(o.estimate)||0),0))}</div></div>
-            <div class="kpi-card" style="padding:10px 14px"><span class="label">GoldComp</span><div class="kpi-value">${fmt$(sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0))}</div></div>
+            <div class="kpi-card" style="padding:10px 14px"><span class="label">Total Sales</span><div class="kpi-value gold">${fmt$(kpis.totalSales)}</div></div>
+            <div class="kpi-card" style="padding:10px 14px"><span class="label">GoldComp</span><div class="kpi-value">${fmt$(kpis.gcSales)}</div></div>
           </div>
         </div>
         <div class="label" style="margin-bottom:10px">All Closed Deals — Click Any Row to Edit</div>
@@ -8153,7 +8156,7 @@ async function showKPIDetail(key) {
       render: () => {
         const byPT = LOOKUP.projectTypes.map(pt=>{
           const ptSold = sold.filter(o=>o.projectType===pt);
-          return { label:pt, val: ptSold.length ? ptSold.reduce((s,o)=>s+(Number(o.estimate)||0),0)/ptSold.length : 0 };
+          return { label:pt, val: ptSold.length ? ptSold.reduce((s,o)=>s+(Number(o.saleAmount) || Number(o.estimate) || 0),0)/ptSold.length : 0 };
         }).filter(x=>x.val>0).sort((a,b)=>b.val-a.val);
         return `<div><div class="label" style="margin-bottom:12px">Average Sale Value by Project Type</div>
           ${barChart(byPT, Math.max(...byPT.map(x=>x.val),1), fmt$)}</div>`;
@@ -10754,9 +10757,9 @@ async function renderAnalytics() {
     return Object.entries(stageDays).map(([s,arr]) => [s, Math.round(arr.reduce((a,b)=>a+b,0)/arr.length)]).sort((a,b)=>b[1]-a[1]).slice(0,6);
   })();
 
-  const totalRev = sold.reduce((s,o)=>s+(Number(o.estimate)||0),0);
+  const totalRev = sold.reduce((s,o)=>s+(Number(o.saleAmount) || Number(o.estimate) || 0),0);
   const weightedPipe = active.filter(o=>o.stage!=='Canceled').reduce((s,o)=>s+Math.floor((Number(o.probability)||0)/100*(Number(o.estimate)||0)),0);
-  const gcSales = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+  const gcSales = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.saleAmount) || Number(o.estimate) || 0),0);
   const gcPct   = totalRev > 0 ? Math.round(gcSales/totalRev*100) : 0;
   const avgOrder = sold.length > 0 ? Math.round(totalRev/sold.length) : 0;
 
@@ -11061,8 +11064,8 @@ async function renderActive() {
   const viewClients = visKeys.flatMap(k => grouped[k] || []);
 
   /* ── Summary KPIs (over all clients, not just visible month) ── */
-  const totalVal  = clients.reduce((s, o) => s + (Number(o.estimate) || 0), 0);
-  const gcVal     = clients.filter(o => o.goldComp === 'Yes').reduce((s, o) => s + (Number(o.estimate) || 0), 0);
+  const totalVal  = clients.reduce((s, o) => s + (Number(o.saleAmount) || Number(o.estimate) || 0), 0);
+  const gcVal     = clients.filter(o => o.goldComp === 'Yes').reduce((s, o) => s + (Number(o.goldCompValue) || 0), 0);
   const openIssues = clients.filter(o => o.issueFlag === 'Yes' && o.issueResult !== 'Done').length;
   const upcoming  = clients.filter(o => o.deliveryDate && daysDiff(today, o.deliveryDate) >= 0 && daysDiff(today, o.deliveryDate) <= 7).length;
   const reviewDue = clients.filter(o => o.linkReviewDate && daysDiff(today, o.linkReviewDate) <= 0).length;
@@ -11084,11 +11087,11 @@ async function renderActive() {
   const monthSections = !clients.length ? '' : visKeys.map((mk, sIdx) => {
     const secId = 'active-sec-' + sIdx;
     const mClients = grouped[mk];
-    const mVal  = mClients.reduce((s,o)=>s+(Number(o.estimate)||0),0);
-    const mGC   = mClients.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.estimate)||0),0);
+    const mVal  = mClients.reduce((s,o)=>s+(Number(o.saleAmount) || Number(o.estimate) || 0),0);
+    const mGC   = mClients.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue) || 0),0);
     const mRows = mClients.map((o, i) => {
       const rowBg = i % 2 === 0 ? 'var(--ink-90)' : 'var(--ink-80)';
-      const gcV = o.goldComp === 'Yes' ? (Number(o.estimate) || 0) : 0;
+      const gcV = o.goldComp === 'Yes' ? (Number(o.goldCompValue) || 0) : 0;
       const twoDaysBefore = o.deliveryDate ? offsetDate(o.deliveryDate, -2) : '';
       const twoFlag = twoDaysBefore && twoDaysBefore <= today && (!o.deliveryDate || today <= o.deliveryDate);
       const dvDiff = o.deliveryDate ? daysDiff(today, o.deliveryDate) : null;
@@ -11109,7 +11112,7 @@ async function renderActive() {
         + TD(o.saleDate ? fmtDate(o.saleDate) : (o.closeDate ? fmtDate(o.closeDate) : ''), 'background:rgba(180,50,50,.08)')
         + TD('<span style="color:var(--ink-20)">' + esc(o.projectType || '') + '</span>', 'background:rgba(180,50,50,.08)')
         + TD(gcV > 0 ? '<span style="color:var(--gold);font-weight:700">' + fmt$(gcV) + '</span>' : '<span style="color:var(--ink-60)">—</span>', 'text-align:right;background:rgba(180,50,50,.08)')
-        + TD(o.estimate ? '<span style="color:var(--green);font-weight:700">' + fmt$(Number(o.estimate)) + '</span>' : '', 'text-align:right;background:rgba(180,50,50,.08)')
+        + TD((Number(o.saleAmount)||Number(o.estimate)) ? '<span style="color:var(--green);font-weight:700">' + fmt$(Number(o.saleAmount) || Number(o.estimate)) + '</span>' : '', 'text-align:right;background:rgba(180,50,50,.08)')
         + TD(twoDaysBefore ? '<span style="color:' + (twoFlag ? 'var(--gold)' : 'var(--ink-40)') + ';font-size:11px">' + (twoFlag ? '🔔 ' : '') + fmtDate(twoDaysBefore) + '</span>' : '', 'text-align:center')
         + TD(o.deliveryDate ? '<span style="color:' + dvColor + ';font-weight:700">' + fmtDate(o.deliveryDate) + (dvDiff !== null && dvDiff >= 0 ? ' <span style="font-size:10px;opacity:.7">(+' + dvDiff + 'd)</span>' : '') + '</span>' : '', 'text-align:center')
         + TD(o.linkReviewDate ? '<span style="color:' + lrColor + '">' + (lrDiff !== null && lrDiff <= 0 ? '⭐ ' : '📋 ') + fmtDate(o.linkReviewDate) + '</span>' : '', 'text-align:center')
@@ -11306,8 +11309,10 @@ async function renderSales() {
 
   /* ── Total stats ── */
   const totalRevenue   = sold.reduce((s,o) => s + (Number(o.saleAmount) || Number(o.estimate) || 0), 0);
-  const gcRevenue      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.saleAmount) || Number(o.estimate) || 0),0);
-  const gcPct          = totalRevenue > 0 ? Math.round(gcRevenue/totalRevenue*100) : 0;
+  // GoldComp = total of the GoldComp Value add-on sold; % = attach rate (GC deals ÷ closed deals).
+  const gcRevenue      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue) || 0),0);
+  const gcDealCount    = sold.filter(o=>o.goldComp==='Yes').length;
+  const gcPct          = sold.length > 0 ? Math.round(gcDealCount/sold.length*100) : 0;
   const avgVal         = sold.length > 0 ? Math.round(totalRevenue/sold.length) : 0;
 
   /* ── Build month sections ── */
@@ -11518,7 +11523,7 @@ async function renderSales() {
           <span class="kpi-icon">⭐</span>
           <span class="label">${T('kpi_gc')}</span>
           <div class="kpi-value gold">${fmt$(gcRevenue)}</div>
-          <div class="kpi-delta">${gcPct}% of revenue</div>
+          <div class="kpi-delta">${gcPct}% of deals</div>
         </div>
         <div class="kpi-card">
           <span class="kpi-icon">📊</span>
