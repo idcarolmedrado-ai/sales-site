@@ -1801,7 +1801,7 @@ const STRINGS = {
     closed_deals: (n) => `${n} closed deal${n!==1?'s':''}`,
     active_opps: (n) => `${n} active opp${n!==1?'s':''}`,
     pct_of_goal: (p) => `${p}% of goal`,
-    pct_of_sales: (p) => `${p}% of sales`,
+    pct_of_sales: (p) => `${p}% of deals`,
     no_sales_data: 'No sales data yet',
     no_pipeline_data: 'No pipeline data',
     no_overdue: 'No overdue follow-ups — great work!',
@@ -1830,7 +1830,7 @@ const STRINGS = {
     sales_active_client:'✅ Active Client',
     sales_th_date:'Close Date', sales_th_client:'Client',
     sales_th_project:'Project Type', sales_th_source:'Lead Source',
-    sales_th_value:'Sale Value', sales_th_gc:'GoldComp',
+    sales_th_value:'Sale Value', sales_th_gc:'GoldComp', sales_gc_sold:'GoldComp sold',
     sales_th_quarter:'Quarter', sales_th_hc:'Home Call',
     sales_th_notes:'Notes',
     sales_chart_title:'Monthly Closed Sales — 2026',
@@ -1986,7 +1986,7 @@ const STRINGS = {
     closed_deals: (n) => `${n} venda${n!==1?'s':''} fechada${n!==1?'s':''}`,
     active_opps: (n) => `${n} oportunidade${n!==1?'s':''} ativa${n!==1?'s':''}`,
     pct_of_goal: (p) => `${p}% da meta`,
-    pct_of_sales: (p) => `${p}% das vendas`,
+    pct_of_sales: (p) => `${p}% das vendas c/ GoldComp`,
     no_sales_data: 'Sem dados de vendas ainda',
     no_pipeline_data: 'Sem dados de pipeline',
     no_overdue: 'Nenhum follow-up em atraso — ótimo trabalho!',
@@ -2016,7 +2016,7 @@ const STRINGS = {
     sales_active_client:'✅ Cliente Ativo',
     sales_th_date:'Data de Fechamento', sales_th_client:'Cliente',
     sales_th_project:'Tipo de Projeto', sales_th_source:'Fonte do Lead',
-    sales_th_value:'Valor da Venda', sales_th_gc:'GoldComp',
+    sales_th_value:'Valor da Venda', sales_th_gc:'GoldComp', sales_gc_sold:'GoldComp vendido',
     sales_th_quarter:'Trimestre', sales_th_hc:'Visita',
     sales_th_notes:'Observações',
     sales_chart_title:'Vendas Fechadas Mensais — 2026',
@@ -2537,13 +2537,17 @@ www.carolmedrado.com`
     const overdueAll = opps.filter(o => this.isOverdue(o));
 
     const totalSales   = sold.reduce((s,o) => s + (Number(o.estimate)||0), 0);
-    const gcSales      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
+    // Total GoldComp sold = sum of the GoldComp Value field only (no estimate fallback,
+    // which used to wrongly count the whole product when the value was left blank).
+    const gcCount      = sold.filter(o=>o.goldComp==='Yes').length;
+    const gcSales      = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||0),0);
     const weightedPipe = active.reduce((s,o)=>s+this.getWeighted(o),0);
     const totalEst     = active.reduce((s,o)=>s+(Number(o.estimate)||0),0);
     const homeCalls    = src.filter(o=>o.homeCall==='Yes').length;
     const avgVal       = sold.length ? totalSales/sold.length : 0;
     const convRate     = src.length ? (sold.length/src.length)*100 : 0;
-    const gcPct        = totalSales ? (gcSales/totalSales)*100 : 0;
+    // GoldComp mix = attach rate: closed deals that included GoldComp ÷ all closed deals (target 50%).
+    const gcPct        = sold.length ? (gcCount/sold.length)*100 : 0;
     const avgProb      = active.length ? active.reduce((s,o)=>s+(Number(o.probability)||0),0)/active.length : 0;
     const lostCount    = src.filter(o => isClosedLost(o)).length;   // month-scoped
     const decidedCount = sold.length + lostCount;                    // won + lost (decided deals)
@@ -2551,7 +2555,7 @@ www.carolmedrado.com`
 
     return {
       opps: src.length, sold: sold.length, active: active.length,
-      totalSales, gcSales, gcPct, weightedPipe, totalEst,
+      totalSales, gcSales, gcPct, gcCount, weightedPipe, totalEst,
       overdue: overdue.length, overdueAll: overdueAll.length, dueToday: dueToday.length,
       homeCalls, avgVal, convRate, avgProb, winRate,
       hotCount: hot.length,
@@ -2568,7 +2572,8 @@ www.carolmedrado.com`
       const sold = src.filter(o => isClosedWon(o));
       const active = src.filter(o => !isClosedWon(o) && o.stage !== 'Canceled');
       const totalSales  = sold.reduce((s,o) => s+(Number(o.estimate)||0), 0);
-      const gcSales     = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
+      const gcCount     = sold.filter(o=>o.goldComp==='Yes').length;
+      const gcSales     = sold.filter(o=>o.goldComp==='Yes').reduce((s,o)=>s+(Number(o.goldCompValue)||0),0);
       const weightedPipe= active.reduce((s,o)=>s+this.getWeighted(o),0);
       const goal        = getGoalForMonth(i, year);
       const convRate    = src.length ? (sold.length/src.length)*100 : 0;
@@ -2576,7 +2581,7 @@ www.carolmedrado.com`
       const homeCalls   = src.filter(o=>o.homeCall==='Yes').length;
       return {
         month:m, short:MONTHS_SHORT[i], idx:i, monthIdx:i, year, goal,
-        totalSales, gcSales, gcPct: totalSales ? (gcSales/totalSales)*100 : 0,
+        totalSales, gcSales, gcCount, gcPct: sold.length ? (gcCount/sold.length)*100 : 0,
         weightedPipe, deals:sold.length, totalOpps:src.length,
         convRate, overdue, homeCalls,
         pctToGoal: goal ? Math.min((totalSales/goal)*100, 999) : 0,
@@ -7674,10 +7679,10 @@ async function runAllTests() {
     });
     return errors.length===0 || 'Errors: '+errors.length;
   });
-  test('SIM T79: gcSales uses goldCompValue not estimate', () => {
+  test('SIM T79: gcSales = sum of goldCompValue only (no estimate fallback)', () => {
     const kpis=BL.calcKPIs(sim);
     const manual=simSold.filter(o=>o.goldComp==='Yes')
-      .reduce((s,o)=>s+(Number(o.goldCompValue)||Number(o.estimate)||0),0);
+      .reduce((s,o)=>s+(Number(o.goldCompValue)||0),0);
     return kpis.gcSales===manual || 'KPI:'+kpis.gcSales+' Manual:'+manual;
   });
   test('SIM T80: convRate = sold/total * 100', () => {
@@ -8159,13 +8164,15 @@ async function showKPIDetail(key) {
       render: () => {
         const pct = Math.round(kpis.gcPct);
         const gcSold = sold.filter(o=>o.goldComp==='Yes');
-        const gcRows = [...gcSold].sort((a,b)=>(Number(b.estimate)||0)-(Number(a.estimate)||0)).map(o=>`
+        const nonGcDeals = sold.length - gcSold.length;
+        const gcRows = [...gcSold].sort((a,b)=>(Number(b.goldCompValue)||0)-(Number(a.goldCompValue)||0)).map(o=>`
           <tr style="border-bottom:1px solid var(--ink-70);cursor:pointer"
               onmouseover="this.style.background='rgba(196,147,63,.08)'" onmouseout="this.style.background=''"
               onclick="closeKPIAndEdit('${o.id}')">
             <td style="padding:8px 10px;font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</td>
             <td style="padding:8px 10px;color:var(--ink-20);font-size:11px">${esc(o.projectType||'—')}</td>
-            <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--gold)">${fmt$(Number(o.estimate))}</td>
+            <td style="padding:8px 10px;text-align:right;color:var(--ink-30);font-size:11px">${fmt$(Number(o.estimate))}</td>
+            <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--gold)">${fmt$(Number(o.goldCompValue)||0)}</td>
             <td style="padding:8px 10px;text-align:right">
               <button onclick="event.stopPropagation();closeKPIAndEdit('${o.id}')"
                 style="background:var(--ink-70);border:1px solid var(--ink-60);color:var(--gold);border-radius:5px;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer">EDIT</button>
@@ -8173,14 +8180,14 @@ async function showKPIDetail(key) {
           </tr>`).join('');
         return `<div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start;margin-bottom:20px">
           <div style="text-align:center">${ring(pct,'var(--gold)',100)}
-            <div style="font-size:12px;color:var(--ink-40);margin-top:6px">${pct}% of sales</div>
+            <div style="font-size:12px;color:var(--ink-40);margin-top:6px">${pct}% of deals</div>
             <div style="font-size:11px;color:var(--gold);margin-top:4px">Target: 50%</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px">
             <div style="display:flex;gap:12px">
-              <div class="kpi-card" style="flex:1;padding:10px 14px"><span class="label">GoldComp $</span><div class="kpi-value gold">${fmt$(kpis.gcSales)}</div></div>
-              <div class="kpi-card" style="flex:1;padding:10px 14px"><span class="label">Regular $</span><div class="kpi-value">${fmt$(kpis.totalSales-kpis.gcSales)}</div></div>
+              <div class="kpi-card" style="flex:1;padding:10px 14px"><span class="label">GoldComp $ sold</span><div class="kpi-value gold">${fmt$(kpis.gcSales)}</div></div>
               <div class="kpi-card" style="flex:1;padding:10px 14px"><span class="label">GC Deals</span><div class="kpi-value">${gcSold.length}</div></div>
+              <div class="kpi-card" style="flex:1;padding:10px 14px"><span class="label">Non-GC Deals</span><div class="kpi-value">${nonGcDeals}</div></div>
             </div>
           </div>
         </div>
@@ -8189,10 +8196,11 @@ async function showKPIDetail(key) {
           <thead><tr style="background:var(--ink-70);border-bottom:2px solid var(--ink-60)">
             <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Client</th>
             <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Project</th>
-            <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Value</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">Sale $</th>
+            <th style="padding:7px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--ink-20);text-transform:uppercase">GoldComp $</th>
             <th style="padding:7px 10px;width:60px"></th>
           </tr></thead>
-          <tbody>${gcRows||'<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--ink-40)">No GoldComp sales yet</td></tr>'}</tbody>
+          <tbody>${gcRows||'<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--ink-40)">No GoldComp sales yet</td></tr>'}</tbody>
         </table></div>`;
       }
     },
@@ -11309,6 +11317,9 @@ async function renderSales() {
     const cancelDeducted = monthCancels.reduce((s,c) => s + c.cancelAmount, 0);
     const grossTotal = recs.reduce((s,o) => s+(Number(o.saleAmount) || Number(o.estimate) || 0), 0);
     const monthTotal = Math.max(0, grossTotal - cancelDeducted);
+    // Sum of the GoldComp Value field for this month (the ⭐ clients) — total GoldComp sold
+    const gcValueTotal = recs.reduce((s,o) => s + (Number(o.goldCompValue) || 0), 0);
+    const gcCount      = recs.filter(o => o.goldComp === 'Yes').length;
     const qLabel = k !== 'unknown' ? (() => {
       const m = parseInt(k.split('-')[1],10);
       const q = m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';
@@ -11368,6 +11379,10 @@ async function renderSales() {
             ${qLabel}
           </div>
           <div style="display:flex;align-items:center;gap:14px">
+            ${gcValueTotal > 0 ? `<div style="text-align:right">
+              <div style="font-weight:700;font-size:15px;color:var(--gold)">⭐ ${fmt$(gcValueTotal)}</div>
+              <div style="font-size:10px;font-weight:400;color:var(--ink-40)">${T('sales_gc_sold')}${gcCount>0?` · ${gcCount}`:''}</div>
+            </div>` : ''}
             <div style="text-align:right">
               <div style="font-weight:700;font-size:16px;color:var(--green)">${fmt$(monthTotal)}
                 <span style="font-size:11px;font-weight:400;color:var(--ink-40);margin-left:6px">${recs.length} deal${recs.length!==1?'s':''}</span>
