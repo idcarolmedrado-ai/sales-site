@@ -4796,7 +4796,7 @@ async function renderPriorities() {
           <div style="flex:1;min-width:0;overflow:hidden">
             ${t.notes?`<span style="font-size:12px;color:var(--ink-30)">${esc(t.notes)}</span>`:'<span style="font-size:12px;color:var(--ink-60)">—</span>'}
           </div>
-          ${t.soNumber?`<span style="font-size:10px;font-weight:700;background:rgba(196,147,63,.15);color:var(--gold);border-radius:4px;padding:2px 7px;flex-shrink:0;white-space:nowrap">SO ${esc(t.soNumber)}</span>`:''}
+          ${t.soNumber?`<span onclick="event.stopPropagation();openSaleOrder('${String(t.soNumber).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" title="Open deal — SO ${esc(t.soNumber)}" style="cursor:pointer;font-size:10px;font-weight:700;background:rgba(196,147,63,.15);color:var(--gold);border:1px solid rgba(196,147,63,.4);border-radius:4px;padding:2px 7px;flex-shrink:0;white-space:nowrap;text-decoration:underline">SO ${esc(t.soNumber)}</span>`:''}
           ${t.dueDate?`<span style="font-size:11px;font-weight:700;color:${isOvr?'var(--red)':isToday?'var(--gold)':'var(--ink-40)'};white-space:nowrap;flex-shrink:0">${fmtDate(t.dueDate)}</span>`:''}
           <span style="font-size:14px;flex-shrink:0" title="${t.priority||'medium'}">${prioIcon[t.priority]||'⚪'}</span>
           <a href="${gc}" target="_blank" rel="noopener" style="flex-shrink:0;background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.4);color:#4285f4;border-radius:6px;font-size:10px;font-weight:700;padding:3px 8px;text-decoration:none;white-space:nowrap">📅</a>
@@ -10496,10 +10496,10 @@ async function renderCalendar() {
     const isToday = ds === todayStr;
     const dayEvents = events.filter(e => e.date === ds);
     const evHTML = dayEvents.slice(0, 3).map(e => {
-      const action = e.type === 'task' ? "navigate('priorities')" : `editLead('${e.id}')`;
+      const action = e.type === 'task' ? `openTaskModal(null,'${e.id}')` : `editLead('${e.id}')`;
       return `<span class="cal-event ${e.type}" onclick="event.stopPropagation();${action}" title="${esc(e.tip)}: ${esc(e.label)}">${esc(e.label.split(' ')[0])}</span>`;
     }).join('') + (dayEvents.length > 3 ? `<span style="font-size:8px;color:var(--ink-40)">+${dayEvents.length-3} more</span>` : '');
-    gridHTML += `<div class="cal-day${isToday?' today':''}" style="cursor:pointer" title="${T('cal_add_hint')}" onclick="addCalendarTask('${ds}')"><div class="cal-day-num">${d}</div>${evHTML}</div>`;
+    gridHTML += `<div class="cal-day${isToday?' today':''}" style="cursor:pointer" title="${T('cal_add_hint')}" onclick="openTaskModal('${ds}')"><div class="cal-day-num">${d}</div>${evHTML}</div>`;
   }
 
   // Pad end
@@ -10526,29 +10526,83 @@ async function renderCalendar() {
         <div class="cal-month-label">${monthNames[_calMonth]} ${_calYear}</div>
         <button onclick="_calMonth++;if(_calMonth>11){_calMonth=0;_calYear++;}renderCalendar()">Next ▶</button>
         <button onclick="_calYear=${today.getFullYear()};_calMonth=${today.getMonth()};renderCalendar()" style="margin-left:auto">Today</button>
-        <button onclick="addCalendarTask()" style="background:var(--gold);color:var(--ink);font-weight:700;border-color:var(--gold-dk)">+ ${T('cal_add_task')}</button>
+        <button onclick="openTaskModal()" style="background:var(--gold);color:var(--ink);font-weight:700;border-color:var(--gold-dk)">+ ${T('cal_add_task')}</button>
       </div>
       <div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${legend}<span style="font-size:11px;color:var(--ink-40);margin-left:4px">— ${T('cal_add_hint')}</span></div>
       <div class="cal-grid">${gridHTML}</div>
     </div>`;
 }
 
-/* Add a personal task straight from the Calendar. Saves to the same 'tasks' store
-   the Priorities tab uses, so it shows in both places (and addTask re-renders both). */
-function addCalendarTask(ds) {
-  let date = ds;
-  if (!date) {
-    date = window.prompt(T('cal_prompt_date'), localDateStr(new Date()));
-    if (!date) return;
-    date = date.trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast(T('cal_bad_date'), 'error'); return; }
+/* ── Full task modal — used from the Calendar (click a day, + Add Task, or a task chip).
+   Saves to the same 'tasks' store the Priorities tab uses, so tasks stay linked both ways. */
+function openTaskModal(dateStr, taskId) {
+  const t = taskId ? _loadTasks().find(x => x.id === taskId) : null;
+  const date = (t && t.dueDate) || dateStr || localDateStr(new Date());
+  const inp = 'width:100%;box-sizing:border-box;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--ink-10);font-family:var(--font-body)';
+  const lbl = 'display:block;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-40);margin-bottom:5px';
+  let modal = document.getElementById('taskModal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'taskModal'; document.body.appendChild(modal); }
+  modal.innerHTML =
+      '<div onclick="closeTaskModal()" style="position:fixed;inset:0;background:rgba(20,17,13,.5);z-index:9998"></div>'
+    + '<div role="dialog" aria-modal="true" style="position:fixed;z-index:9999;top:50%;left:50%;transform:translate(-50%,-50%);width:440px;max-width:92vw;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:14px;padding:22px 24px;box-shadow:0 18px 55px rgba(0,0,0,.35)">'
+    +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+    +     '<span style="font-family:var(--font-display);font-size:18px;color:var(--ink-10)">' + (t ? '✏️ Edit task' : '🗓️ New task') + '</span>'
+    +     '<button onclick="closeTaskModal()" aria-label="Close" style="background:none;border:none;color:var(--ink-40);font-size:22px;line-height:1;cursor:pointer">×</button>'
+    +   '</div>'
+    +   '<div style="margin-bottom:14px"><label style="' + lbl + '">Title</label>'
+    +     '<input id="ctask-title" type="text" maxlength="80" placeholder="e.g. Call supplier about fabric samples" style="' + inp + '"></div>'
+    +   '<div style="display:flex;gap:12px;margin-bottom:14px">'
+    +     '<div style="flex:1"><label style="' + lbl + '">Date</label><input id="ctask-date" type="date" style="' + inp + '"></div>'
+    +     '<div style="flex:1"><label style="' + lbl + '">Priority</label><select id="ctask-prio" style="' + inp + ';cursor:pointer"><option value="high">🔴 High</option><option value="medium">🟡 Medium</option><option value="low">⚪ Low</option></select></div>'
+    +   '</div>'
+    +   '<div style="margin-bottom:14px"><label style="' + lbl + '">Sale order # <span style="text-transform:none;letter-spacing:0;color:var(--ink-50);font-weight:400">(optional)</span></label>'
+    +     '<input id="ctask-so" type="text" maxlength="40" placeholder="e.g. SO-12345" style="' + inp + '"></div>'
+    +   '<div style="margin-bottom:20px"><label style="' + lbl + '">Notes</label>'
+    +     '<textarea id="ctask-notes" rows="2" placeholder="Any context…" style="' + inp + ';resize:none"></textarea></div>'
+    +   '<div style="display:flex;justify-content:flex-end;gap:10px">'
+    +     '<button onclick="closeTaskModal()" style="background:transparent;border:1px solid var(--ink-60);color:var(--ink-30);border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer">Cancel</button>'
+    +     '<button onclick="_saveTaskModal(' + (taskId ? "'" + taskId + "'" : 'null') + ')" style="background:var(--gold);border:1px solid var(--gold-dk);color:var(--bg);border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">' + (t ? '💾 Save' : '+ Add task') + '</button>'
+    +   '</div>'
+    + '</div>';
+  document.getElementById('ctask-title').value = t ? (t.title || '') : '';
+  document.getElementById('ctask-date').value  = date;
+  document.getElementById('ctask-prio').value  = (t && t.priority) || 'medium';
+  document.getElementById('ctask-so').value    = t ? (t.soNumber || '') : '';
+  document.getElementById('ctask-notes').value = t ? (t.notes || '') : '';
+  setTimeout(() => { const el = document.getElementById('ctask-title'); if (el) el.focus(); }, 30);
+}
+function closeTaskModal() { const m = document.getElementById('taskModal'); if (m) m.innerHTML = ''; }
+function _saveTaskModal(taskId) {
+  const title = (document.getElementById('ctask-title')?.value || '').trim();
+  if (!title) { toast('Enter a title', 'warn'); return; }
+  const date  = document.getElementById('ctask-date')?.value || '';
+  const prio  = document.getElementById('ctask-prio')?.value || 'medium';
+  const so    = (document.getElementById('ctask-so')?.value || '').trim();
+  const notes = (document.getElementById('ctask-notes')?.value || '').trim();
+  if (taskId) {
+    const arr = _loadTasks(); const i = arr.findIndex(x => x.id === taskId);
+    if (i >= 0) { arr[i] = { ...arr[i], title, dueDate: date, priority: prio, soNumber: so, notes }; Store.save('tasks', arr); }
+    renderPriorities();
+    try { if (typeof _calYear !== 'undefined') renderCalendar(); } catch(e) {}
+  } else {
+    addTask(title, date, prio, notes, so);   // addTask re-renders Priorities + Calendar
   }
-  const title = window.prompt(T('cal_prompt_title')(fmtDate(date)));
-  if (!title || !title.trim()) return;
-  addTask(title.trim(), date, 'medium', '', '');
+  closeTaskModal();
   toast(T('cal_task_added'), 'success');
 }
-window.addCalendarTask = addCalendarTask;
+/* SO number → open the full opportunity form for that sale order (if a deal matches). */
+async function openSaleOrder(so) {
+  if (!so) return;
+  const norm = s => String(s || '').trim().toLowerCase();
+  const opps = await DB.getAll();
+  const o = opps.find(x => norm(x.saleOrderNumber) === norm(so));
+  if (o) editLead(o.id);
+  else toast('No deal found for SO ' + so, 'info');
+}
+window.openTaskModal = openTaskModal;
+window.closeTaskModal = closeTaskModal;
+window._saveTaskModal = _saveTaskModal;
+window.openSaleOrder = openSaleOrder;
 
 /* ══════════════════════════════════════════════════
    PAGINATION UTILITY
