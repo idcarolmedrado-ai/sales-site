@@ -6299,7 +6299,12 @@ async function editLead(id) {
   document.getElementById('f-followUpDate').value = o.followUpDate || '';
   document.getElementById('f-homeCall').value     = o.homeCall    || '';
   document.getElementById('f-homeCallDate').value = o.homeCallDate || '';
-  document.getElementById('f-saleMade').value     = o.saleMade    || '';
+  // Sale Result reflects an actual decision only: Sold, or a genuine loss.
+  // A genuine loss = a Lost stage OR a recorded lostReason. A still-open pipeline lead
+  // (saleMade 'No', no lostReason) shows the blank "—" so it isn't mistaken for Sale Lost
+  // (which would otherwise demand a Lost Reason every time the form is closed).
+  const _isLostRec = o.stage === 'Sale Lost' || o.stage === 'Closed Lost' || (o.saleMade === 'No' && !!o.lostReason);
+  document.getElementById('f-saleMade').value = isClosedWon(o) ? 'Yes' : (_isLostRec ? 'No' : '');
   document.getElementById('f-goldComp').value     = o.goldComp    || '';
   const _gcvEl=document.getElementById('f-goldCompValue'); if(_gcvEl) _gcvEl.value=o.goldCompValue||'';
   const _gcvFld=document.getElementById('goldCompValueField'); if(_gcvFld) _gcvFld.style.display=o.goldComp==='Yes'?'':'none';
@@ -6332,7 +6337,7 @@ async function editLead(id) {
   _sf('f-cancelNotes',    o.cancelNotes);
   _sf('f-lostReason',     o.lostReason);
   const _lrf = document.getElementById('lostReasonField');
-  if (_lrf) _lrf.style.display = (o.stage === 'Closed Lost') ? '' : 'none';
+  if (_lrf) _lrf.style.display = _isLostRec ? '' : 'none';
   const _acs = document.getElementById('activeClientSection');
   if (_acs) _acs.style.display = (o.saleMade === 'Yes' || o.stage === 'Sale Made' || o.stage === 'Closed Won') ? '' : 'none';
   document.getElementById('deleteBtn').style.display = 'inline-flex';
