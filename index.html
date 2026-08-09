@@ -3144,6 +3144,7 @@ let state = {
   monthFilter: null,
   stageFilter: null,
   mailFilter: null,
+  mailingCadence: 'cm-list',
   editingId: null,
   fyFilter: null,
   _fyStartYr: null,
@@ -5781,136 +5782,112 @@ function sanitizeEmailBody(text) {
 }
 
 async function renderMailing() {
-  const opps = await DB.getAll();
-  const all  = opps.filter(o => o.firstName && o.lastName);
+  const allProspects = await Prospects.getAll();
+  const allOpps      = await DB.getAll();
+  const cadence      = state.mailingCadence || 'cm-list';
+  const sentIds      = new Set(getSentMails().map(s => s.oppId));
+  const mo           = new Date().getMonth();
+  const monthNames   = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-  // Sort by campaign priority: overdue > hot > pending decision > warm > nurture
-  all.sort((a,b) => {
-    const pScore = o => {
-      if (BL.isOverdue(o)) return 100 + BL.getDaysOverdue(o)*10;
-      const p = Number(o.probability)||0;
-      if (p >= 75) return 80;
-      if (p >= 50) return 50;
-      if (o.saleMade === 'Yes') return 30;
-      return 10;
-    };
-    return pScore(b) - pScore(a);
+  document.getElementById('mailFilters').innerHTML = '';
+  const oldWrapper = document.getElementById('contactListWrapper');
+  if (oldWrapper) oldWrapper.remove();
+
+  // Contacts in the active cadence
+  const prospects = allProspects
+    .filter(p => p.persona === cadence)
+    .sort((a,b) => (a.lastName||'').localeCompare(b.lastName||''));
+
+  // Enrich with opp id for markMailSent
+  const enriched = prospects.map(p => {
+    const opp = allOpps.find(o => o.email && p.email && o.email.toLowerCase() === p.email.toLowerCase());
+    return { ...p, oppId: opp?.id || null };
   });
 
-  document.getElementById('mailFilters').innerHTML =
-    `<button class="filter-chip ${!state.mailFilter?'active':''}" onclick="setMailFilter(null)">All (${all.length})</button>
-     <button class="filter-chip ${state.mailFilter==='overdue'?'active':''}" onclick="setMailFilter('overdue')">⚠ Overdue (${all.filter(o=>BL.isOverdue(o)).length})</button>
-     <button class="filter-chip ${state.mailFilter==='high'?'active':''}" onclick="setMailFilter('high')">Hot ≥75% (${all.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)>=75).length})</button>
-     <button class="filter-chip ${state.mailFilter==='sold'?'active':''}" onclick="setMailFilter('sold')">Sold (${all.filter(o=>o.saleMade==='Yes').length})</button>
-     <button class="filter-chip ${state.mailFilter==='nurture'?'active':''}" onclick="setMailFilter('nurture')">Nurture (${all.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)<50).length})</button>`;
+  // Tabs
+  const tabs = PERSONAS.map(pe => {
+    const cnt = allProspects.filter(p => p.persona === pe.id).length;
+    const active = cadence === pe.id;
+    return `<button onclick="setMailingCadence('${pe.id}')"
+      style="padding:9px 22px;border-radius:24px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid ${active?'var(--gold)':'var(--ink-60)'};
+        background:${active?'var(--gold)':'transparent'};color:${active?'#1a1108':'var(--ink-30)'};transition:all .15s">
+      ${pe.label} <span style="opacity:.7">(${cnt})</span></button>`;
+  }).join('');
 
-  const _sentIds = new Set(getSentMails().map(function(s){return s.oppId;}));
-  let list = all.filter(function(o){return !_sentIds.has(o.id);});
-  if (state.mailFilter==='overdue') list = list.filter(o=>BL.isOverdue(o));
-  if (state.mailFilter==='high')    list = list.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)>=75);
-  if (state.mailFilter==='sold')    list = list.filter(o=>o.saleMade==='Yes');
-  if (state.mailFilter==='nurture') list = list.filter(o=>o.saleMade!=='Yes'&&(Number(o.probability)||0)<50);
+  // Template preview card
+  let tplPreview = '';
+  if (cadence === 'cm-list') {
+    const tpl = CM_MONTHLY_TEMPLATES[mo];
+    tplPreview = `<div style="background:var(--ink-80);border:1px solid rgba(196,147,63,.3);border-radius:12px;padding:16px 20px;margin-bottom:18px">
+      <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">📅 ${monthNames[mo]} Template · via id.carolmedrado@gmail.com</div>
+      <div style="font-size:14px;font-weight:700;color:var(--ink-10);margin-bottom:6px">${esc(tpl.subject)}</div>
+      <div style="font-size:11px;color:var(--ink-40);line-height:1.6;white-space:pre-line">${esc(tpl.body.replace(/\{firstName\}/g,'[Name]').slice(0,220))}…</div>
+    </div>`;
+  } else if (cadence === 'ea-list') {
+    tplPreview = `<div style="background:var(--ink-80);border:1px solid rgba(68,114,202,.3);border-radius:12px;padding:16px 20px;margin-bottom:18px">
+      <div style="font-size:10px;font-weight:700;color:#6aa0f5;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">📋 Monthly Template · via carol.medrado@ethanallen.com (Outlook)</div>
+      <div style="font-size:14px;font-weight:700;color:var(--ink-10);margin-bottom:6px">${esc(EA_LIST_TEMPLATE.subject)}</div>
+      <div style="font-size:11px;color:var(--ink-40);line-height:1.6;white-space:pre-line">${esc(EA_LIST_TEMPLATE.body.replace(/\{firstName\}/g,'[Name]').slice(0,220))}…</div>
+    </div>`;
+  } else {
+    tplPreview = `<div style="background:var(--ink-80);border:1px solid rgba(224,80,80,.25);border-radius:12px;padding:16px 20px;margin-bottom:18px">
+      <div style="font-size:10px;font-weight:700;color:var(--red);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">🔄 Re-engagement Template · via id.carolmedrado@gmail.com</div>
+      <div style="font-size:11px;color:var(--ink-50);margin-bottom:8px">Contacts are automatically removed from this list when a sale is made.</div>
+      <div style="font-size:14px;font-weight:700;color:var(--ink-10);margin-bottom:6px">${esc(EA_LOST_SALE_TEMPLATE.subject)}</div>
+      <div style="font-size:11px;color:var(--ink-40);line-height:1.6;white-space:pre-line">${esc(EA_LOST_SALE_TEMPLATE.body.replace(/\{firstName\}/g,'[Name]').slice(0,220))}…</div>
+    </div>`;
+  }
+
+  // Contact rows
+  const isEA = cadence === 'ea-list';
+  const btnLabel = isEA ? '📧 Send via Outlook' : '📧 Send via Gmail';
+  const btnColor = isEA ? 'rgba(68,114,202,.18)' : 'rgba(196,147,63,.12)';
+  const btnTxt   = isEA ? '#6aa0f5' : 'var(--gold)';
+
+  const rows = enriched.length
+    ? enriched.map(p => {
+        const sent    = p.oppId && sentIds.has(p.oppId);
+        const initials= ((p.firstName||'')[0]+(p.lastName||'')[0]).toUpperCase() || '?';
+        const safeFirst = JSON.stringify(p.firstName || '');
+        const safeEmail = JSON.stringify(p.email || '');
+        return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--ink-70)">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--ink-65);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--ink-20);flex-shrink:0">${initials}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:13px;color:var(--ink-10)">${esc(p.firstName)} ${esc(p.lastName)}</div>
+            <div style="font-size:11px;color:var(--ink-40)">${esc(p.email || '— no email on file —')}</div>
+          </div>
+          ${sent ? `<span style="font-size:10px;background:rgba(76,175,125,.18);color:var(--green);border-radius:20px;padding:3px 10px;font-weight:700;flex-shrink:0">✓ Sent</span>` : ''}
+          <button onclick="openCadenceMail(${JSON.stringify(p.oppId||'')},${JSON.stringify(cadence)},${safeFirst},${safeEmail})"
+            ${!p.email?'disabled title="No email on file"':''}
+            style="padding:7px 16px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid ${isEA?'rgba(68,114,202,.3)':'rgba(196,147,63,.3)'};
+              background:${btnColor};color:${btnTxt};flex-shrink:0;opacity:${p.email?1:.4}">
+            ${btnLabel}
+          </button>
+        </div>`;
+      }).join('')
+    : `<div style="padding:40px;text-align:center;color:var(--ink-40);font-size:13px;line-height:2">
+        No contacts in this list yet.<br>
+        <small>Edit any lead → set Cadence to add them here.</small>
+      </div>`;
 
   const grid = document.getElementById('mailingGrid');
-  if (!list.length) { grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon"></div><p>No contacts in this segment</p></div>'; return; }
-
-  grid.innerHTML = list.map(o=>{
-    const email  = BL.generatePersuasionEmail(o);
-    const prio   = BL.getCampaignPriority(o);
-    const wt     = BL.getWinTier(o);
-    const init   = ((o.firstName||'')[0]+(o.lastName||'')[0]).toUpperCase();
-    const prob   = Number(o.probability)||0;
-    const ovr    = BL.isOverdue(o);
-    const cardCls = o.saleMade==='Yes'?'sold':prob>=75?'hot':prob>=50?'warm':'';
-    // Probability ring
-    const r=14, circ=2*Math.PI*r;
-    const dash=circ*(prob/100), gap=circ-dash;
-    const ringColor = prob>=75?'var(--red)':prob>=50?'var(--gold)':'var(--ink-60)';
-
-    return `<div class="mail-card ${cardCls}" onclick="openEmailPreview('${o.id}')">
-      <span class="mail-open-hint">CLICK TO DRAFT →</span>
-      <div class="mail-card-header">
-        <div class="mail-avatar">${init}</div>
-        <div style="flex:1;min-width:0">
-          <div class="mail-name">${esc(o.firstName)} ${esc(o.lastName)}</div>
-          <div class="mail-email">${esc(o.email||'No email on file')}</div>
-          ${ovr?`<div style="font-size:10px;color:var(--red);font-weight:700;margin-top:2px">${BL.getDaysOverdue(o)}d OVERDUE</div>`:''}
-        </div>
-        <svg class="mail-prob-ring" viewBox="0 0 34 34">
-          <circle cx="17" cy="17" r="${r}" fill="none" stroke="var(--ink-60)" stroke-width="2.5"/>
-          <circle cx="17" cy="17" r="${r}" fill="none" stroke="${ringColor}" stroke-width="2.5"
-            stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}"
-            stroke-dashoffset="${(circ/4).toFixed(1)}" stroke-linecap="round"/>
-          <text x="17" y="20" text-anchor="middle" font-size="7" font-weight="700" fill="${ringColor}"
-            font-family="system-ui,sans-serif">${prob}%</text>
-        </svg>
+  if (!grid) return;
+  grid.style.display = 'block';
+  grid.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">${tabs}</div>
+    ${tplPreview}
+    <div style="background:var(--ink-85);border:1px solid var(--ink-65);border-radius:12px;overflow:hidden">
+      <div style="padding:12px 18px;border-bottom:1px solid var(--ink-70);display:flex;align-items:center;gap:10px">
+        <div style="flex:1;font-weight:700;font-size:13px;color:var(--ink-20)">${enriched.length} contact${enriched.length!==1?'s':''} <span style="font-weight:400;color:var(--ink-50)">· ${sentIds.size} sent this month</span></div>
+        <button onclick="clearSentMails()" style="padding:5px 12px;border-radius:8px;background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-50);font-size:11px;cursor:pointer">Reset Sent</button>
+        <button onclick="exportMailingToCSV()" style="padding:5px 12px;border-radius:8px;background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-30);font-size:11px;cursor:pointer">↓ CSV</button>
       </div>
-      <div class="mail-topic">${esc(email.subject)}</div>
-      <div class="mail-meta" style="margin-bottom:0">
-        <span class="badge ${prio.cls}">${prio.label}</span>
-        <span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}" style="font-size:10px">${esc(o.stage||'No Stage')}</span>
-        ${o.estimate>0?`<span style="font-size:11px;color:var(--ink-40)">${fmt$(Number(o.estimate))}</span>`:''}
-        ${o.notes?`<span style="font-size:10px;color:var(--ink-40);font-style:italic;width:100%;display:block;margin-top:4px">${esc(o.notes.slice(0,55))}${o.notes.length>55?'…':''}</span>`:''}
-      </div>
-      <div class="mail-actions" onclick="event.stopPropagation()">
-        <button class="mail-action-btn gmail" onclick="openInGmail('${o.id}')">
-          <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="18" height="14" rx="2"/><path d="M1 4l9 7 9-7"/></svg>
-          Gmail
-        </button>
-        <button class="mail-action-btn outlook" onclick="openInOutlook('${o.id}')">
-          <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="18" height="14" rx="2"/><path d="M1 4l9 7 9-7"/></svg>
-          Outlook
-        </button>
-        <button class="mail-action-btn preview" onclick="openEmailPreview('${o.id}')">
-          Preview Draft
-        </button>
-        <button class="mail-action-btn" onclick="event.stopPropagation();markMailSent('${o.id}')" style="background:rgba(76,175,125,.12);border:1px solid rgba(76,175,125,.35);color:var(--green)">
-          &#10003; Mark Sent
-        </button>
-      </div>
+      ${rows}
     </div>`;
-  }).join('') + _buildSentBox();
 
-  // Contact list at bottom
-  (async function() {
-    var _co=(await DB.getAll()).filter(function(o){return o.firstName||o.lastName;}).sort(function(a,b){return(a.lastName||'').localeCompare(b.lastName||'');});
-    var _si=new Set(getSentMails().map(function(s){return s.oppId;}));
-    var _cr=_co.map(function(o,idx){
-      var sent=_si.has(o.id),sold=o.saleMade==='Yes';
-      return '<tr style="border-bottom:1px solid var(--ink-75)">'   
-        +'<td style="padding:7px 8px;font-size:11px;color:var(--ink-50);text-align:center">'+(idx+1)+'</td>'
-        +'<td style="padding:7px 10px;font-weight:700;font-size:12px">'+esc(o.lastName)+', '+esc(o.firstName)+'</td>'
-        +'<td style="padding:7px 10px;font-size:11px">'+(o.email?'<a href="mailto:'+esc(o.email)+'" style="color:var(--gold)">'+esc(o.email)+'</a>':'—')+'</td>'
-        +'<td style="padding:7px 10px;font-size:11px;color:var(--ink-30)">'+(esc(o.phone)||'—')+'</td>'
-        +'<td style="padding:7px 10px"><span style="font-size:10px;font-weight:700;color:'+(sold?'var(--green)':'var(--gold)')+'">'+(sold?'SOLD':esc(o.stage||'—').toUpperCase())+'</span></td>'
-        +'<td style="padding:7px 8px;text-align:center">'+(sent?'<span style="font-size:10px;background:rgba(76,175,125,.18);color:var(--green);border-radius:4px;padding:2px 5px;font-weight:700">&#10003;</span>':'—')+'</td>'
-        +'</tr>';
-    }).join('');
-    var _lw=document.getElementById('contactListWrapper');
-    if(!_lw){_lw=document.createElement('div');_lw.id='contactListWrapper';
-      var _mg=document.getElementById('mailingGrid');
-      if(_mg&&_mg.parentNode) _mg.parentNode.appendChild(_lw);}
-    _lw.innerHTML='<div style="margin-top:24px;background:var(--ink-85);border:1px solid var(--ink-70);border-radius:12px;overflow:hidden">'
-      +'<div style="padding:12px 16px;border-bottom:1px solid var(--ink-75);display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-      +'<div style="flex:1"><div style="font-family:var(--font-display);font-size:14px;color:var(--gold);font-weight:600">&#128202; CONTACT LIST</div>'
-      +'<div style="font-size:11px;color:var(--ink-50)">'+_co.length+' contacts &nbsp;&middot;&nbsp; <span style="color:var(--green)">'+_si.size+' emailed</span></div></div>'
-      +'<button onclick="exportContactsCSV()" style="padding:6px 13px;background:rgba(196,147,63,.12);border:1px solid rgba(196,147,63,.3);border-radius:7px;color:var(--gold);font-size:11px;font-weight:600;cursor:pointer">&#8595; CSV</button>'
-      +'</div>'
-      +'<div style="padding:8px 14px;border-bottom:1px solid var(--ink-75)"><input id="contactListSearch" type="text" maxlength="100" placeholder="Search name, email, phone…" style="width:100%;background:var(--ink-80);border:1px solid var(--ink-65);border-radius:6px;padding:6px 10px;color:var(--ink-10);font-size:12px;box-sizing:border-box" oninput="filterContactList(this.value)"></div>'
-      +'<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--ink-80);position:sticky;top:0">'
-      +'<th style="padding:8px;font-size:10px;color:var(--ink-50);text-align:center">#</th>'
-      +'<th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">NAME</th>'
-      +'<th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">EMAIL</th>'
-      +'<th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">PHONE</th>'
-      +'<th style="padding:8px 10px;font-size:10px;color:var(--ink-50);text-align:left">STAGE</th>'
-      +'<th style="padding:8px;font-size:10px;color:var(--ink-50);text-align:center">SENT</th>'
-      +'</tr></thead><tbody id="contactListBody">'+_cr+'</tbody></table></div>'
-      +'<div id="contactListCount" style="padding:8px 14px;font-size:11px;color:var(--ink-50);border-top:1px solid var(--ink-75);text-align:right">'+_co.length+' contacts</div>'
-      +'</div>';
-  })();
 }
-
 function setMailFilter(f) { state.mailFilter = f; renderMailing(); }
+
 
 /* ══════════════════════════════════════════════════
    EMAIL DRAFT OPENERS
@@ -5920,21 +5897,49 @@ async function getOppById(id) {
   return opps.find(o => o.id === id);
 }
 
-function buildGmailUrl(opp) {
-  const email = BL.generatePersuasionEmail(opp);
+function _applyTemplate(tpl, opp) {
+  const fn = (opp.firstName || 'there').trim();
+  const pt = (opp.projectType || 'your project').toLowerCase();
+  return {
+    subject: tpl.subject,
+    body: tpl.body.replace(/\{firstName\}/g, fn).replace(/\{projectType\}/g, pt),
+  };
+}
+
+function buildGmailUrl(opp, tpl) {
+  const email = tpl ? _applyTemplate(tpl, opp) : BL.generatePersuasionEmail(opp);
   const to   = encodeURIComponent(opp.email || '');
   const subj = encodeURIComponent(email.subject);
   const body = encodeURIComponent(email.body);
+  // from= sends from the CM personal Gmail
   return `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subj}&body=${body}`;
 }
 
-function buildOutlookUrl(opp) {
-  const email = BL.generatePersuasionEmail(opp);
+function buildOutlookEAUrl(opp, tpl) {
+  const email = tpl ? _applyTemplate(tpl, opp) : BL.generatePersuasionEmail(opp);
   const to   = encodeURIComponent(opp.email || '');
   const subj = encodeURIComponent(email.subject);
   const body = encodeURIComponent(email.body);
-  return `https://outlook.live.com/mail/0/deeplink/compose?to=${to}&subject=${subj}&body=${body}`;
+  // Office 365 compose — uses carol.medrado@ethanallen.com session
+  return `https://outlook.office.com/mail/deeplink/compose?to=${to}&subject=${subj}&body=${body}`;
 }
+
+function buildOutlookUrl(opp) {
+  return buildOutlookEAUrl(opp, null);
+}
+
+function openCadenceMail(oppId, cadence, firstName, email) {
+  if (!email) { toast('No email on file for this contact', 'error'); return; }
+  const opp = { email, firstName: firstName || 'there', projectType: '' };
+  const mo  = new Date().getMonth();
+  let url;
+  if (cadence === 'ea-list')      url = buildOutlookEAUrl(opp, EA_LIST_TEMPLATE);
+  else if (cadence === 'ea-lost-sale') url = buildGmailUrl(opp, EA_LOST_SALE_TEMPLATE);
+  else                            url = buildGmailUrl(opp, CM_MONTHLY_TEMPLATES[mo]);
+  window.open(url, '_blank');
+  if (oppId) markMailSent(oppId);
+}
+function setMailingCadence(c) { state.mailingCadence = c; renderMailing(); }
 
 async function openInGmail(id) {
   const opp = await getOppById(id);
@@ -6972,6 +6977,17 @@ async function saveLead() {
           _logActivity(opp.id, 'edit', 'Enrolled in cadence: ' + _cadenceVal);
         }
       } catch(_cadErr) { console.error('Cadence sync error:', _cadErr); }
+    }
+    // Auto-remove from EA Lost Sale when sale is made
+    if (isSold && opp.email) {
+      try {
+        const _pros2 = await Prospects.getAll();
+        const _lostP = _pros2.find(p => p.email && p.email.toLowerCase() === opp.email.toLowerCase() && p.persona === 'ea-lost-sale');
+        if (_lostP) {
+          await Prospects.save({ ..._lostP, persona: '' });
+          _logActivity(opp.id, 'edit', 'Auto-removed from EA Lost Sale (sale made)');
+        }
+      } catch(_e2) { console.error('EA Lost Sale auto-remove:', _e2); }
     }
     closeModal(true);
     const msg = existingId ? 'Updated ' + firstName + ' ' + lastName : 'Added ' + firstName + ' ' + lastName;
@@ -11858,21 +11874,48 @@ const US_REGIONS = ['Northeast','Midwest','South','West'];
 function _stateRegion(code) { const r = US_STATES.find(s => s[0] === code); return r ? r[2] : ''; }
 
 const PERSONAS = [
-  { id:'builders',       label:'Builders / Contractors' },
-  { id:'realtors',       label:'Realtors' },
-  { id:'sellers',        label:'Home Sellers' },
-  { id:'couples',        label:'Couples 40+' },
-  { id:'landscaping',    label:'Landscaping Companies' },
-  { id:'architects',     label:'Architects' },
-  { id:'home-stagers',   label:'Home Stagers' },
-  { id:'developers',     label:'Luxury Developers' },
-  { id:'property-mgmt',  label:'Property Managers' },
-  { id:'hospitality',    label:'Boutique Hotels & Vacation Rentals' },
-  { id:'homebuyers',     label:'New Homeowners' },
-  { id:'past-customers', label:'Past Customers' },
-  { id:'cold-leads',     label:'Cancelled / Stalled Leads' },
-  { id:'cm-list',        label:'CM List' },
+  { id:'ea-list',      label:'EA List' },
+  { id:'cm-list',      label:'CM List' },
+  { id:'ea-lost-sale', label:'EA Lost Sale' },
 ];
+
+/* ── Monthly CM List email templates (index = month 0–11) ── */
+const CM_MONTHLY_TEMPLATES = [
+  { subject:'A fresh start for your home in the new year ✨',
+    body:`Hi {firstName},\n\nHappy New Year! As we step into a new year, many of us feel that urge to refresh our surroundings — and I believe your home should reflect the energy you want to bring into your life.\n\nWhether it's a simple update to your living room, a bedroom transformation, or finally tackling that space you've been putting off — I'd love to help you make it happen.\n\nIf you're curious about what a refresh could look like for your home, I'd be happy to chat.\n\nWishing you a beautiful year ahead!\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'Make your home feel like a love story 🤍',
+    body:`Hi {firstName},\n\nFebruary is the perfect month to fall in love with your home all over again.\n\nSmall touches — a new throw, updated pillows, a fresh arrangement — can completely change the feeling of a room. And bigger changes? They can change how you live in it.\n\nIf there's a space in your home that hasn't been feeling quite right, let's talk about what we can do.\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'Spring is the perfect time to refresh your space 🌿',
+    body:`Hi {firstName},\n\nSpring is here — and with it comes that natural urge to breathe new life into our homes.\n\nThis is one of my favorite times of year as a designer. Light changes, moods shift, and small updates can make a huge difference.\n\nIf your home has been feeling a little stale, now is a great time to start. I'd love to hear what you're dreaming about.\n\nHappy spring!\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'Is your home ready for spring entertaining? 🌸',
+    body:`Hi {firstName},\n\nApril is here — and with the warmer weather comes the joy of having people over again!\n\nWhether it's family dinners, backyard gatherings, or just making your home feel welcoming and fresh, I love helping people create spaces they're proud to share.\n\nIf you have a room you've been wanting to update, I'd be happy to share some ideas.\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'Celebrating the beautiful spaces in our lives 💐',
+    body:`Hi {firstName},\n\nMay is a month for celebrating the people we love — and the spaces we share with them.\n\nIs there anything in your home that's been on your wish list? A room that needs love, a piece you've been looking for, or a project you've been putting off?\n\nThis is a great time to make those things happen. I'm here whenever you're ready.\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'Summer is here — is your outdoor space ready? ☀️',
+    body:`Hi {firstName},\n\nSummer is officially here, and I've been spending a lot of time thinking about outdoor living spaces lately.\n\nA well-designed patio or garden area can completely transform how you enjoy your home during these warm months. The right pieces — comfortable seating, ambient lighting, a beautiful rug — make all the difference.\n\nIf you've been wanting to update your outdoor space (or any room inside!), I'd love to help.\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'Mid-year check-in: how is your home feeling? 🏡',
+    body:`Hi {firstName},\n\nCan you believe we're already halfway through the year? I wanted to reach out and say hello.\n\nSometimes mid-year is the perfect moment to pause and think about what's working in your home — and what isn't. A space that doesn't feel right can affect everything from your mood to your productivity.\n\nIf anything has been on your mind, I'd love to hear about it.\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'Getting your home ready for the fall season 🍂',
+    body:`Hi {firstName},\n\nIt's hard to believe that fall is just around the corner! August is actually one of the best times to start thinking about updates — before the busy season hits.\n\nI love helping people transition their homes from summer to fall. It's often about layering in warmth, texture, and richness.\n\nIf you're thinking about anything, let's chat soon — my schedule fills up quickly in the fall!\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'Fall is one of my favorite times to transform a space 🍁',
+    body:`Hi {firstName},\n\nFall is here, and honestly — it might be my favorite season for interior design.\n\nThere's something about the change in light and the desire to make our homes feel cozier that makes this the perfect time for updates. Rich fabrics, layered textures, warm tones — I love it all.\n\nIf you've been thinking about refreshing a room or finally tackling a project, I'd love to help.\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'The coziest season deserves a beautiful home 🕯️',
+    body:`Hi {firstName},\n\nOctober is here — and with it comes that irresistible urge to make our homes feel warm, cozy, and beautifully layered.\n\nI've been curating some wonderful pieces lately that I think you'd love. If you'd like some ideas or just want to catch up, I'd love to connect.\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'Is your home ready to host this holiday season? 🦃',
+    body:`Hi {firstName},\n\nThe holidays are almost here — and I always think about how much the spaces we gather in shape those memories.\n\nWhether you're hosting family dinners or just wanting your home to feel its most beautiful during this time of year, I'd love to help.\n\nIf there's anything on your list — a dining room update, better lighting, new seating — now is the time!\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+  { subject:'Wishing you a beautiful holiday season 🎄',
+    body:`Hi {firstName},\n\nAs the year comes to a close, I just wanted to reach out and say thank you.\n\nThank you for being part of my world — whether we've worked together, spoken about a project, or simply crossed paths. It means more than you know.\n\nI hope your home feels warm, beautiful, and full of joy this holiday season. And if there's anything you'd like to do in the new year, I can't wait to help!\n\nWith gratitude,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com` },
+];
+
+const EA_LIST_TEMPLATE = {
+  subject: 'New arrivals & design inspiration — just for you',
+  body: `Hi {firstName},\n\nI hope you're doing well! I'm reaching out as your Ethan Allen interior designer to share some exciting new arrivals and design inspiration that I think you'll love.\n\nWe have some beautiful new pieces in the showroom right now — and I'd love to set up a time for you to come in and see them in person, or I can bring ideas directly to you.\n\nWhether you have a specific project in mind or just want to browse what's new, I'm here to help make your home everything you've imagined.\n\nFeel free to reply or call me — I'd love to hear from you!\n\nWarmly,\nCarol Medrado\nInterior Design Consultant | Ethan Allen\ncarol.medrado@ethanallen.com`,
+};
+
+const EA_LOST_SALE_TEMPLATE = {
+  subject: 'Still thinking about your home project?',
+  body: `Hi {firstName},\n\nI've been thinking about you and wanted to reach out. I know life gets busy and projects sometimes get put on hold — I completely understand.\n\nBut your vision for your home is still worth pursuing, and I'd love to help make it happen when the timing is right.\n\nIf anything has changed or you'd like to revisit ideas, I'm just an email away. No pressure at all — just wanted to say I'm still here!\n\nWarmly,\nCarol Medrado\nInterior Designer\nwww.carolmedrado.com`,
+};
 
 const Prospects = {
   _localLoad() { try { return JSON.parse(localStorage.getItem(PROSPECT_KEY) || '[]'); } catch(e){ return []; } },
