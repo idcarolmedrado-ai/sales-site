@@ -4857,7 +4857,7 @@ async function renderPriorities() {
           { icon:'✨', name:'GoldComp Offer',         sub:'Delivery −20 days',       color:'#8870C8', srcs:['del20'] },
           { icon:'🚚', name:'Delivery Confirmation',  sub:'Delivery −3 days',        color:'#D98324', srcs:['del3'] },
           { icon:'🌱', name:'Leads — Follow-up',      sub:'Not yet sold · by stage', color:'#64748B', srcs:['pipeline','homecall'] },
-          { icon:'🔧', name:'Post-Sale — by Stage',   sub:'Active clients',          color:'#0E9AA7', srcs:['active','nextstep','delivery','issue'] },
+          { icon:'🔧', name:'Post-Sale — by Stage',   sub:'Active clients',          color:'#0E9AA7', srcs:['active','nextstep','delivery','issue','del3post','del30'] },
         ];
         return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">
           ${GROUPS.map(g => {
@@ -6060,6 +6060,46 @@ Your delivery is just a few days away! I wanted to confirm a few details so ever
 • I [will / will not] be present at the delivery to oversee the setup — (edit this line before sending).
 
 If anything has changed on your end, just let me know and we'll adjust. I can't wait for you to enjoy your new pieces!` + sign
+    };
+    case 'del3post': return {
+      label: 'Post-Delivery Check-In',
+      subject: `How did your delivery go, ${first}?`,
+      body:
+`Hi ${first},
+
+I hope the delivery went smoothly! I wanted to check in to make sure everything arrived in perfect condition and that you're happy with how the pieces look in your space.
+
+A quick note: the Ethan Allen delivery team is not able to move or remove existing furniture — only the pieces from your order. If you still need help clearing the space, I'm happy to point you in the right direction.
+
+I [was / was not] able to be present for the delivery — please don't hesitate to reach out with any questions or if anything needs attention.
+
+Looking forward to hearing how you're loving the new look!` + sign
+    };
+    case 'del30': return {
+      label: 'Adaptação — 30-Day Post-Delivery',
+      subject: `How are you loving your new pieces, ${first}?`,
+      body:
+`Hi ${first},
+
+It's been about a month since your delivery — I hope you're absolutely loving your new space!
+
+I just wanted to check in to see how everything is feeling. Have you had a chance to settle in and make it your own? Sometimes a small adjustment or accessory can really complete the look.
+
+If you have any questions, need a styling tip, or are starting to think about your next project, I'd love to help.
+
+And if you've been happy with the experience, sharing a few words with friends or a quick review means the world to me and to a small design practice like mine.` + sign
+    };
+    case 'prospect': return {
+      label: 'Prospecting Follow-Up',
+      subject: `Checking in — your home project, ${first}`,
+      body:
+`Hi ${first},
+
+I've been thinking about your project and wanted to reach out. I know timing isn't always perfect, and I completely understand if things have shifted since we last spoke.
+
+When you're ready to move forward — whether that's now or down the road — I'd love to pick up right where we left off. I have a few ideas in mind that I think you'll really like.
+
+Would you be open to a quick call this week? I'm happy to work around your schedule.` + sign
     };
     default: return { label: 'Email', subject: '', body: '' };
   }
@@ -9136,6 +9176,30 @@ function _buildTasks(opps) {
         dueDate: b3, estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
         stage: 'Pre-Delivery', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
       });
+      // Delivery+3: post-delivery check-in (furniture removal, satisfaction)
+      const c3 = offsetDate(o.deliveryDate, 3), f3 = daysDiff(todayS, c3);
+      if (f3 >= -7 && f3 <= 7) addTask({
+        id: o.id + '_del3post', oppId: o.id, source: 'del3post', category: 'mailing',
+        type: f3 < 0 ? 'overdue' : f3 === 0 ? 'today' : 'upcoming',
+        priority: f3 < 0 ? 21 : f3 === 0 ? 19 : 17, icon: '🏠',
+        label: labelFor(f3), labelColor: f3 < 0 ? 'var(--red)' : 'var(--ink-30)', emailType: 'del3post',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        activity: 'Post-delivery check-in (delivery was: ' + fmtDate(o.deliveryDate) + ')',
+        dueDate: c3, estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
+        stage: 'Post-Sale', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
+      });
+      // Delivery+30: Adaptação — 1-month check-in
+      const c30 = offsetDate(o.deliveryDate, 30), f30 = daysDiff(todayS, c30);
+      if (f30 >= -14 && f30 <= 14) addTask({
+        id: o.id + '_del30', oppId: o.id, source: 'del30', category: 'mailing',
+        type: f30 < 0 ? 'overdue' : f30 === 0 ? 'today' : 'upcoming',
+        priority: f30 < 0 ? 20 : f30 === 0 ? 18 : 16, icon: '🏡',
+        label: labelFor(f30), labelColor: f30 < 0 ? 'var(--red)' : 'var(--ink-30)', emailType: 'del30',
+        firstName: o.firstName || '', lastName: o.lastName || '',
+        activity: 'Adaptação — 30-day post-delivery check-in',
+        dueDate: c30, estimate: Number(o.estimate) || 0, projectType: o.projectType || '',
+        stage: 'Post-Sale', customerNumber: o.customerNumber || '', goldComp: o.goldComp || '',
+      });
     }
   });
 
@@ -9196,6 +9260,7 @@ function _buildTasks(opps) {
         icon: days > 0 ? '⚠️' : due ? '📅' : '📆',
         label: days > 0 ? days + 'd overdue' : due ? 'Due today' : 'In ' + dFU + 'd',
         labelColor: days > 0 ? 'var(--red)' : due ? 'var(--gold)' : 'var(--ink-30)',
+        emailType: 'prospect',
         firstName: o.firstName || '', lastName: o.lastName || '',
         customerNumber: o.customerNumber || '',
         projectType: o.projectType || '—', estimate: Number(o.estimate) || 0,
@@ -9225,12 +9290,13 @@ function _buildTasks(opps) {
       id: o.id + '_pp', oppId: o.id, source: 'pipeline', category: 'crm',
       type: 'postponed', priority: 15, icon: '⏸️',
       label: 'Postponed', labelColor: 'var(--ink-40)',
+      emailType: 'prospect',
       firstName: o.firstName || '', lastName: o.lastName || '',
       customerNumber: o.customerNumber || '',
       projectType: o.projectType || '—', estimate: Number(o.estimate) || 0,
       goldComp: o.goldComp || '', stage: 'Postponed',
       dueDate: o.followUpDate || '',
-      activity: 'Postponed — queued for post-30/60 follow-up',
+      activity: 'Postponed — queued for re-engagement',
     });
   });
 
@@ -9299,7 +9365,7 @@ async function _updateTasksWidget(opps) {
   // Count by type for the summary chips
   const bySource = {};
   tasks.forEach(t => { bySource[t.source] = (bySource[t.source]||0) + 1; });
-  const sourceNames = {sale3:'Thank-You', sale23:'30-Day', del20:'GoldComp', del3:'Delivery Confirm', pipeline:'Follow-up', delivery:'Delivery', review:'Link Review', issue:'Issue', active:'Active', homecall:'Home Call', nextstep:'Next Step'};
+  const sourceNames = {sale3:'Thank-You', sale23:'30-Day', del20:'GoldComp', del3:'Delivery Confirm', del3post:'Post-Delivery', del30:'Adaptação', pipeline:'Follow-up', delivery:'Delivery', review:'Link Review', issue:'Issue', active:'Active', homecall:'Home Call', nextstep:'Next Step', prospect:'Prospect'};
   const chips = Object.entries(bySource).map(([src, cnt]) =>
     `<span style="background:var(--ink-70);color:var(--ink-20);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap">${sourceNames[src]||src}: ${cnt}</span>`
   ).join('');
