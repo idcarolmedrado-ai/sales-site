@@ -5934,7 +5934,7 @@ function openCadenceMail(oppId, cadence, firstName, email) {
   const mo  = new Date().getMonth();
   let url;
   if (cadence === 'ea-list')      url = buildOutlookEAUrl(opp, EA_LIST_TEMPLATE);
-  else if (cadence === 'ea-lost-sale') url = buildGmailUrl(opp, EA_LOST_SALE_TEMPLATE);
+  else if (cadence === 'ea-lost-sale') url = buildOutlookEAUrl(opp, EA_LOST_SALE_TEMPLATE);
   else                            url = buildGmailUrl(opp, CM_MONTHLY_TEMPLATES[mo]);
   window.open(url, '_blank');
   if (oppId) markMailSent(oppId);
