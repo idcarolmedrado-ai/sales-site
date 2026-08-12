@@ -1421,8 +1421,8 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
             <select id="f-projectType" onchange="onFieldChange()"><option value="">Select…</option></select></div>
           <div class="field"><label for="f-leadSource" data-i18n="lbl_source">Lead Source</label>
             <select id="f-leadSource"><option value="">Select…</option></select></div>
-          <div class="field" id="field-cadence"><label for="f-cadence">Cadence <span class="field-tip" data-tip="Assign contact to an email marketing cadence/persona">?</span></label>
-            <select id="f-cadence" onchange="onFieldChange()"><option value="">— None —</option></select></div>
+          <div class="field" id="field-cadence"><label>Cadence <span class="field-tip" data-tip="Add contact to one or more email lists">?</span></label>
+            <div id="f-cadence-checks" style="display:flex;flex-direction:column;gap:5px;margin-top:2px"></div></div>
           <div class="field" id="field-stagewrap"><label for="f-stage" data-i18n="lbl_stage">Stage</label>
             <select id="f-stage" onchange="onFieldChange()"><option value="">Select…</option></select></div>
           <div class="field" id="field-probwrap"><label for="f-probability" data-i18n="lbl_prob">Probability (%)</label>
@@ -6155,11 +6155,14 @@ function initDropdowns() {
   sel('f-leadSource', LOOKUP.leadSources);
   sel('f-lostReason', LOOKUP.lostReasons);
   sel('f-cancelReason', LOOKUP.lostReasons);
-  // f-cadence — populated from PERSONAS
-  const _cadEl = document.getElementById('f-cadence');
+  // f-cadence-checks — checkboxes, one per PERSONA (multi-select)
+  const _cadEl = document.getElementById('f-cadence-checks');
   if (_cadEl) {
-    _cadEl.innerHTML = '<option value="">— None —</option>';
-    PERSONAS.forEach(p => { const o=document.createElement('option'); o.value=p.id; o.textContent=p.label; _cadEl.appendChild(o); });
+    _cadEl.innerHTML = PERSONAS.map(p =>
+      `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--ink-20)">
+        <input type="checkbox" id="f-cad-${p.id}" value="${p.id}" onchange="onFieldChange()" style="accent-color:var(--gold);width:13px;height:13px">
+        ${p.label}</label>`
+    ).join('');
   }
   // f-probability is now a range slider, not a select dropdown
 }
@@ -6284,7 +6287,8 @@ function openNewLead() {
   ['f-firstName','f-lastName','f-email','f-phone','f-address','f-notes'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  ['f-stage','f-projectType','f-probability','f-nextStep','f-leadSource','f-cadence','f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-followUpDate','f-estimate','f-closeDate'].forEach(id => {
+  PERSONAS.forEach(p => { const cb = document.getElementById('f-cad-' + p.id); if (cb) cb.checked = false; });
+  ['f-stage','f-projectType','f-probability','f-nextStep','f-leadSource','f-homeCall','f-homeCallDate','f-saleMade','f-goldComp','f-followUpDate','f-estimate','f-closeDate'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   // Sale Information + outcome fields — these are read by saveLead() regardless of
@@ -6353,15 +6357,12 @@ async function editLead(id) {
   document.getElementById('f-goldComp').value     = o.goldComp    || '';
   const _gcvEl=document.getElementById('f-goldCompValue'); if(_gcvEl) _gcvEl.value=o.goldCompValue||'';
   const _gcvFld=document.getElementById('goldCompValueField'); if(_gcvFld) _gcvFld.style.display=o.goldComp==='Yes'?'':'none';
-  // Pre-fill cadence: look up prospect by email
-  const _cadFld = document.getElementById('f-cadence');
-  if (_cadFld) {
-    _cadFld.value = '';
-    if (o.email) {
-      const _allPros = await Prospects.getAll();
-      const _linked = _allPros.find(p => p.email && p.email.toLowerCase() === o.email.toLowerCase());
-      if (_linked) _cadFld.value = _linked.persona || '';
-    }
+  // Pre-fill cadence checkboxes: look up all prospect records for this email
+  PERSONAS.forEach(p => { const cb = document.getElementById('f-cad-' + p.id); if (cb) cb.checked = false; });
+  if (o.email) {
+    const _allPros = await Prospects.getAll();
+    const _linked = _allPros.filter(p => p.email && p.email.toLowerCase() === o.email.toLowerCase() && p.persona);
+    _linked.forEach(p => { const cb = document.getElementById('f-cad-' + p.persona); if (cb) cb.checked = true; });
   }
   document.getElementById('f-notes').value        = o.notes       || '';
   // Active client fields
@@ -6991,30 +6992,25 @@ async function saveLead() {
     if (linkReviewDate && linkReviewDate !== (existingRec?.linkReviewDate || '')) {
       _scheduleReviewTask(opp, linkReviewDate);
     }
-    // ── Cadence / Prospect sync ──
-    // If a cadence was selected in the form, create or update the prospect record.
-    // Rule: if cadence changes, the contact moves ONLY to the new list (old persona cleared).
-    const _cadenceVal = document.getElementById('f-cadence')?.value || '';
-    if (_cadenceVal && opp.email) {
+    // ── Cadence / Prospect sync (multi-list checkboxes) ──
+    // For each PERSONA: if checked → ensure a Prospect record exists; if unchecked → clear persona.
+    if (opp.email) {
       try {
+        const _checkedLists = PERSONAS.map(p => p.id).filter(pid => document.getElementById('f-cad-' + pid)?.checked);
         const _allPros = await Prospects.getAll();
-        const _existPros = _allPros.find(p => p.email && p.email.toLowerCase() === opp.email.toLowerCase());
-        if (_existPros) {
-          if (_existPros.persona !== _cadenceVal) {
-            // Move to new cadence list only — reset step
-            await Prospects.save({ ..._existPros, persona: _cadenceVal, cadenceStep: 0, cadenceStartedAt: '' });
-            _logActivity(opp.id, 'edit', 'Cadence: ' + (_existPros.persona || 'none') + ' → ' + _cadenceVal);
+        const _emailPros = _allPros.filter(p => p.email && p.email.toLowerCase() === opp.email.toLowerCase());
+        for (const pe of PERSONAS) {
+          const isChecked = _checkedLists.includes(pe.id);
+          const existing  = _emailPros.find(p => p.persona === pe.id);
+          if (isChecked && !existing) {
+            await Prospects.save({ id: uid(), firstName: opp.firstName, lastName: opp.lastName,
+              email: opp.email, phone: opp.phone || '', persona: pe.id,
+              source: opp.leadSource || '', status: 'active', cadenceStep: 0 });
+            _logActivity(opp.id, 'edit', 'Enrolled in: ' + pe.id);
+          } else if (!isChecked && existing) {
+            await Prospects.save({ ...existing, persona: '' });
+            _logActivity(opp.id, 'edit', 'Removed from: ' + pe.id);
           }
-        } else {
-          // Create new prospect from this lead
-          await Prospects.save({
-            id: uid(),
-            firstName: opp.firstName, lastName: opp.lastName,
-            email: opp.email, phone: opp.phone || '',
-            persona: _cadenceVal, source: opp.leadSource || '',
-            status: 'active', cadenceStep: 0,
-          });
-          _logActivity(opp.id, 'edit', 'Enrolled in cadence: ' + _cadenceVal);
         }
       } catch(_cadErr) { console.error('Cadence sync error:', _cadErr); }
     }
