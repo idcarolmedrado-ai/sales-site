@@ -5848,7 +5848,7 @@ async function renderMailing() {
   const rows = enriched.length
     ? enriched.map(p => {
         const sent    = p.oppId && sentIds.has(p.oppId);
-        const initials= ((p.firstName||'')[0]+(p.lastName||'')[0]).toUpperCase() || '?';
+        const initials= ((p.firstName||'').charAt(0)+(p.lastName||'').charAt(0)).toUpperCase() || '?';
         const safeFirst = JSON.stringify(p.firstName || '');
         const safeEmail = JSON.stringify(p.email || '');
         return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--ink-70)">
