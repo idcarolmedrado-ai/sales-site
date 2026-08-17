@@ -5870,11 +5870,33 @@ async function renderMailing() {
         <small>Edit any lead → set Cadence to add them here.</small>
       </div>`;
 
+  // MailerLite panel
+  const mlKey = getMLKey();
+  const mlGroups = getMLGroupIds();
+  const mlConnected = mlKey && mlGroups[cadence];
+  const mlPanel = mlKey
+    ? `<div style="background:var(--ink-80);border:1px solid rgba(76,175,125,.3);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--green)">✓ MailerLite Connected</span>
+        <span style="font-size:11px;color:var(--ink-40);flex:1">Groups synced · ${Object.keys(mlGroups).length}/3 lists mapped</span>
+        <button onclick="mlSync('${cadence}')" style="padding:7px 16px;border-radius:20px;background:rgba(76,175,125,.15);border:1px solid rgba(76,175,125,.4);color:var(--green);font-size:11px;font-weight:700;cursor:pointer">↑ Sync ${PERSONAS.find(p=>p.id===cadence)?.label||''}</button>
+        <button onclick="mlCampaign('${cadence}')" style="padding:7px 16px;border-radius:20px;background:rgba(196,147,63,.15);border:1px solid rgba(196,147,63,.4);color:var(--gold);font-size:11px;font-weight:700;cursor:pointer">📧 Create Campaign</button>
+        <button onclick="saveMLKey('');saveMLGroupIds({});renderMailing()" style="padding:5px 10px;border-radius:8px;background:none;border:1px solid var(--ink-60);color:var(--ink-50);font-size:10px;cursor:pointer">Disconnect</button>
+      </div>`
+    : `<div style="background:var(--ink-80);border:1px solid rgba(196,147,63,.3);border-radius:12px;padding:16px 18px;margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px">🔗 Connect MailerLite to sync contacts and create campaigns</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="ml-key-input" type="password" placeholder="Paste your MailerLite API token…"
+            style="flex:1;min-width:200px;background:var(--ink-70);border:1px solid var(--ink-60);color:var(--ink-10);border-radius:8px;padding:8px 12px;font-size:12px;font-family:var(--font-body)">
+          <button onclick="mlConnect()" style="padding:8px 20px;border-radius:20px;background:var(--gold);border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer">Connect</button>
+        </div>
+      </div>`;
+
   const grid = document.getElementById('mailingGrid');
   if (!grid) return;
   grid.style.display = 'block';
   grid.innerHTML = `
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">${tabs}</div>
+    ${mlPanel}
     ${tplPreview}
     <div style="background:var(--ink-85);border:1px solid var(--ink-65);border-radius:12px;overflow:hidden">
       <div style="padding:12px 18px;border-bottom:1px solid var(--ink-70);display:flex;align-items:center;gap:10px">
@@ -11940,6 +11962,91 @@ const PERSONAS = [
   { id:'cm-list',      label:'CM List' },
   { id:'ea-lost-sale', label:'EA Lost Sale' },
 ];
+
+/* ── MailerLite integration ── */
+const ML_EDGE_URL = 'https://rsoukgpaqsgsdfvwrceu.supabase.co/functions/v1/mailerlite';
+function getMLKey()       { return localStorage.getItem('ml_api_key') || ''; }
+function saveMLKey(k)     { localStorage.setItem('ml_api_key', k.trim()); }
+function getMLGroupIds()  { try { return JSON.parse(localStorage.getItem('ml_group_ids') || '{}'); } catch { return {}; } }
+function saveMLGroupIds(m){ localStorage.setItem('ml_group_ids', JSON.stringify(m)); }
+
+async function mlFetch(action, data = {}) {
+  const apiKey = getMLKey();
+  if (!apiKey) throw new Error('No MailerLite API key — click Connect first');
+  const res = await fetch(ML_EDGE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, data, apiKey })
+  });
+  const json = await res.json();
+  if (!res.ok && json.error) throw new Error(json.error);
+  return json;
+}
+
+async function mlConnect() {
+  const inp = document.getElementById('ml-key-input');
+  const key = inp?.value?.trim();
+  if (!key) { toast('Paste your MailerLite API token first', 'error'); return; }
+  saveMLKey(key);
+  toast('Connecting — creating groups…', 'info');
+  try {
+    const existing = (await mlFetch('get-groups')).data || [];
+    const groupMap = {};
+    const names = { 'ea-list':'EA List', 'cm-list':'CM List', 'ea-lost-sale':'EA Lost Sale' };
+    for (const [pid, pname] of Object.entries(names)) {
+      const found = existing.find(g => g.name === pname);
+      if (found) { groupMap[pid] = found.id; }
+      else {
+        const r = await mlFetch('create-group', { name: pname });
+        if (r.data?.id) groupMap[pid] = r.data.id;
+      }
+    }
+    saveMLGroupIds(groupMap);
+    toast('✓ MailerLite connected! Groups: EA List, CM List, EA Lost Sale', 'success');
+    renderMailing();
+  } catch(e) { toast('MailerLite error: ' + e.message, 'error'); }
+}
+
+async function mlSync(cadence) {
+  const gid = getMLGroupIds()[cadence];
+  if (!gid) { toast('Connect MailerLite first', 'warn'); return; }
+  const contacts = (await Prospects.getAll()).filter(p => p.persona === cadence && p.email);
+  if (!contacts.length) { toast('No contacts with email in this list', 'warn'); return; }
+  toast(`Syncing ${contacts.length} contacts…`, 'info');
+  try {
+    const res = await mlFetch('sync-group', {
+      groupId: gid,
+      subscribers: contacts.map(p => ({ email: p.email, firstName: p.firstName||'', lastName: p.lastName||'' }))
+    });
+    toast(`✓ ${res.synced || contacts.length} contacts synced to MailerLite`, 'success');
+  } catch(e) { toast('Sync error: ' + e.message, 'error'); }
+}
+
+async function mlCampaign(cadence) {
+  const gid = getMLGroupIds()[cadence];
+  if (!gid) { toast('Connect MailerLite first', 'warn'); return; }
+  const mo = new Date().getMonth();
+  const yr = new Date().getFullYear();
+  const mn = ['January','February','March','April','May','June','July','August','September','October','November','December'][mo];
+  const tplMap = { 'cm-list': CM_MONTHLY_TEMPLATES[mo], 'ea-list': EA_LIST_TEMPLATE, 'ea-lost-sale': EA_LOST_SALE_TEMPLATE };
+  const nameMap = { 'cm-list': `CM List — ${mn} ${yr}`, 'ea-list': `EA List — ${mn} ${yr}`, 'ea-lost-sale': `EA Lost Sale — ${mn} ${yr}` };
+  const tpl = tplMap[cadence];
+  toast('Creating campaign draft in MailerLite…', 'info');
+  try {
+    const res = await mlFetch('create-campaign', {
+      name: nameMap[cadence],
+      subject: tpl.subject,
+      body: tpl.body.replace(/\{firstName\}/g, '[Name]'),
+      fromName: 'Carol Medrado',
+      from: 'id.carolmedrado@gmail.com',
+      groupIds: [gid]
+    });
+    if (res.data?.id) {
+      toast('✓ Draft created! Opening MailerLite…', 'success');
+      window.open('https://dashboard.mailerlite.com/campaigns', '_blank');
+    } else { toast('Error: ' + JSON.stringify(res.errors || res), 'error'); }
+  } catch(e) { toast('Campaign error: ' + e.message, 'error'); }
+}
 
 /* ── Monthly CM List email templates (index = month 0–11) ── */
 const CM_MONTHLY_TEMPLATES = [
