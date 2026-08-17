@@ -5789,7 +5789,8 @@ async function renderMailing() {
   const mo           = new Date().getMonth();
   const monthNames   = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-  document.getElementById('mailFilters').innerHTML = '';
+  const _mf = document.getElementById('mailFilters');
+  if (_mf) _mf.innerHTML = '';
   const oldWrapper = document.getElementById('contactListWrapper');
   if (oldWrapper) oldWrapper.remove();
 
