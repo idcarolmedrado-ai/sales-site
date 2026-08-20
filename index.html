@@ -9628,7 +9628,7 @@ async function sendPasswordReset() {
   if (suc) suc.style.display = 'none';
   try {
     const { error } = await window._sbAuthClient.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://idcarolmedrado-ai.github.io/sales-site/'
+      redirectTo: 'https://sales.carolmedrado.com'
     });
     if (error) throw error;
     if (suc) suc.style.display = 'block';
