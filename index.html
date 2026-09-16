@@ -1777,7 +1777,7 @@ const STRINGS = {
     stage_design:'Design in Progress', stage_quote:'Send Quote',
     stage_followup:'Follow-up', stage_pending:'Pending Decision',
     stage_sale:'Sale Made', stage_postponed:'Postpone', stage_canceled:'Canceled',
-    stage_lost:'Closed Lost',
+    stage_lost:'Closed Lost', stage_salelost:'Sale Lost',
 
     // Months
     months: ['January','February','March','April','May','June',
@@ -1965,7 +1965,7 @@ const STRINGS = {
     stage_design:'Design em Andamento', stage_quote:'Proposta Enviada',
     stage_followup:'Follow-up', stage_pending:'Decisão Pendente',
     stage_sale:'Venda Realizada', stage_postponed:'Postergado', stage_canceled:'Cancelado',
-    stage_lost:'Negócio Perdido',
+    stage_lost:'Negócio Perdido', stage_salelost:'Venda Perdida',
 
     // Months
     months: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -2074,7 +2074,7 @@ const STAGE_KEYS = {
   'New Lead':'stage_new','Home Call':'stage_hc','Design in Progress':'stage_design',
   'Quote Sent':'stage_quote','Follow-up':'stage_followup','Pending Decision':'stage_pending',
   'Sale Made':'stage_sale','Postponed':'stage_postponed','Canceled':'stage_canceled',
-  'Closed Lost':'stage_lost','Closed Won':'stage_sale',
+  'Closed Lost':'stage_lost','Closed Won':'stage_sale','Sale Lost':'stage_salelost',
 };
 function stageLabel(stage) { return T(STAGE_KEYS[stage]) || stage || ''; }
 
@@ -2118,7 +2118,7 @@ const LOOKUP = {
     'New Lead':'badge-stage-new','Home Call':'badge-stage-homecall',
     'Design in Progress':'badge-stage-design','Quote Sent':'badge-stage-quote',
     'Follow-up':'badge-stage-followup','Pending Decision':'badge-stage-pending',
-    'Closed Won':'badge-stage-sale','Closed Lost':'badge-stage-canceled',
+    'Closed Won':'badge-stage-sale','Closed Lost':'badge-stage-canceled','Sale Lost':'badge-stage-canceled',
     'Postponed':'badge-stage-postponed',
     // Legacy aliases
     'Sale Made':'badge-stage-sale','Canceled':'badge-stage-canceled'
@@ -2138,6 +2138,14 @@ function isClosedLost(opp) {
   if (!opp) return false;
   return opp.stage === 'Closed Lost' || opp.stage === 'Canceled';
 }
+/* Pipeline display: a genuine loss (Lost stage, or Sale Result = Sale Lost with a
+   reason) shows "Sale Lost" as its Stage, even if the stored stage is still the
+   last working stage (e.g. Pending Decision). Display-only — stored stage untouched. */
+function isLostDeal(opp) {
+  if (!opp || isClosedWon(opp)) return false;
+  return opp.stage === 'Sale Lost' || opp.stage === 'Closed Lost' || (opp.saleMade === 'No' && !!opp.lostReason);
+}
+function pipelineStage(opp) { return isLostDeal(opp) ? 'Sale Lost' : (opp?.stage || ''); }
 function isClosed(opp)    { return isClosedWon(opp) || isClosedLost(opp); }
 function isInPipeline(opp){ return !isClosed(opp); }
 
@@ -4180,7 +4188,7 @@ async function renderPipeline() {
   document.getElementById('stageFilters').innerHTML =
     `<button class="filter-chip ${!state.stageFilter?'active':''}" onclick="setStageFilter(null)">All</button>` +
     LOOKUP.stages.map(s=>{
-      const cnt = opps.filter(o=>o.stage===s&&o.saleMade!=='Yes').length;
+      const cnt = opps.filter(o=>pipelineStage(o)===s&&o.saleMade!=='Yes').length;
       return cnt ? `<button class="filter-chip ${state.stageFilter===s?'active':''}" onclick="setStageFilter('${s}')">${s} <span style="opacity:.5">(${cnt})</span></button>` : '';
     }).join('');
 
@@ -4196,8 +4204,8 @@ async function renderPipeline() {
 
   // Pipeline table: exclude Sale Made=YES (those are in Actives)
   let list = opps.filter(o => o.saleMade !== 'Yes');
-  if (state.stageFilter) list = list.filter(o=>o.stage===state.stageFilter);
-  if (search) list = list.filter(o=>`${o.firstName} ${o.lastName} ${o.projectType} ${o.stage} ${o.email} ${o.leadSource} ${o.notes}`.toLowerCase().includes(search));
+  if (state.stageFilter) list = list.filter(o=>pipelineStage(o)===state.stageFilter);
+  if (search) list = list.filter(o=>`${o.firstName} ${o.lastName} ${o.projectType} ${pipelineStage(o)} ${o.email} ${o.leadSource} ${o.notes}`.toLowerCase().includes(search));
 
   const wrap  = document.getElementById('pipelineTableWrap');
   const empty = document.getElementById('pipelineEmpty');
@@ -4216,7 +4224,7 @@ async function renderPipeline() {
   // ── Group by close-date month (YYYY-MM), no-date at end ──
   const monthGroups = {};
   list.forEach(o => {
-    const _isLost = o.stage === 'Sale Lost' || o.stage === 'Closed Lost';
+    const _isLost = isLostDeal(o);
     const key = (o.closeDate || (_isLost ? (o.followUpDate || o.createdAt) : '') || '').substring(0,7) || 'no-date';
     if (!monthGroups[key]) monthGroups[key] = [];
     monthGroups[key].push(o);
@@ -4260,8 +4268,8 @@ async function renderPipeline() {
     const leads  = monthGroups[k];
 
     // Lost leads always at bottom; others sorted by urgency desc
-    const active = leads.filter(o => o.stage !== 'Closed Lost' && o.stage !== 'Sale Lost');
-    const lost   = leads.filter(o => o.stage === 'Closed Lost' || o.stage === 'Sale Lost');
+    const active = leads.filter(o => !isLostDeal(o));
+    const lost   = leads.filter(o => isLostDeal(o));
     active.sort((a,b) => BL.getUrgencyScore(b) - BL.getUrgencyScore(a));
     lost.sort((a,b)   => (b.closeDate||'').localeCompare(a.closeDate||''));
     const allInMonth = [...active, ...lost];
@@ -4283,7 +4291,7 @@ async function renderPipeline() {
       const urg = BL.getUrgencyScore(o);
       const ovr = BL.isOverdue(o);
       const w   = BL.getWeighted(o);
-      const isLost = o.stage === 'Closed Lost';
+      const isLost = isLostDeal(o);
       const rowBg  = isLost
         ? 'background:rgba(180,60,60,.06)'
         : (ovr ? 'background:rgba(224,80,80,.04)' : '');
@@ -4296,7 +4304,7 @@ async function renderPipeline() {
       return `<tr style="cursor:pointer;${rowBg}" onclick="editLead('${o.id}')">
         ${PT(`<span style="font-weight:500">${esc(o.firstName)} ${esc(o.lastName)}</span>`)}
         ${PT(esc(o.projectType||''))}
-        ${PTC(`<span class="badge ${LOOKUP.stageBadgeClass[o.stage]||'badge-stage-new'}" style="font-size:10px">${stageLabel(o.stage)||'—'}</span>`)}
+        ${PTC(`<span class="badge ${LOOKUP.stageBadgeClass[pipelineStage(o)]||'badge-stage-new'}" style="font-size:10px">${stageLabel(pipelineStage(o))||'—'}</span>`)}
         ${PTR(probTxt)}
         ${PTR(o.estimate ? fmt$(Number(o.estimate)) : '')}
         ${PTR(w > 0 ? `<span style="color:var(--gold)">${fmt$(w)}</span>` : '')}
@@ -4453,7 +4461,7 @@ async function _renderKanban() {
   const opps = await DB.getAll();
   const search = (document.getElementById('searchInput')?.value||'').toLowerCase().trim();
   let list = opps.filter(o => o.saleMade !== 'Yes');
-  if (state.stageFilter) list = list.filter(o=>o.stage===state.stageFilter);
+  if (state.stageFilter) list = list.filter(o=>pipelineStage(o)===state.stageFilter);
   if (search) list = list.filter(o=>`${o.firstName} ${o.lastName} ${o.projectType} ${o.stage}`.toLowerCase().includes(search));
 
   const kanbanStages = LOOKUP.stages.filter(s => s !== 'Sale Made' && s !== 'Canceled');
@@ -6677,7 +6685,7 @@ function _renderPipelineCards(list) {
       <div class="pipe-card-grid">
         <div><div class="pipe-card-lbl">Project</div><div class="pipe-card-val">${esc(o.projectType||'—')}</div></div>
         <div><div class="pipe-card-lbl">Estimate</div><div class="pipe-card-val">${o.estimate?fmt$(Number(o.estimate)):'—'}</div></div>
-        <div><div class="pipe-card-lbl">Stage</div><div class="pipe-card-val"><span class="badge ${LOOKUP.stageBadgeClass[o.stage]||''}" style="font-size:9px">${stageLabel(o.stage)||'—'}</span></div></div>
+        <div><div class="pipe-card-lbl">Stage</div><div class="pipe-card-val"><span class="badge ${LOOKUP.stageBadgeClass[pipelineStage(o)]||''}" style="font-size:9px">${stageLabel(pipelineStage(o))||'—'}</span></div></div>
         <div><div class="pipe-card-lbl">Follow-up</div><div class="pipe-card-val" style="${ovr?'color:var(--red);font-weight:600':''}">${fmtDate(o.followUpDate)||'—'}</div></div>
         <div><div class="pipe-card-lbl">Score</div><div class="pipe-card-val">${urg}</div></div>
         <div><div class="pipe-card-lbl">Prob</div><div class="pipe-card-val" style="color:${probColor(Number(o.probability))}">${o.probability?o.probability+'%':'—'}</div></div>
