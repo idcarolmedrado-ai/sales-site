@@ -1518,6 +1518,7 @@ tbody td { padding: 12px 14px; font-size: 14px; font-weight: 500; }
               <option>Home Call</option>
               <option>Design Review</option>
               <option>CPU</option>
+              <option>Drop Ship</option>
               <option>Installation</option>
               <option>Balance Due</option>
               <option>GoldComp</option>
@@ -1777,7 +1778,7 @@ const STRINGS = {
     stage_design:'Design in Progress', stage_quote:'Send Quote',
     stage_followup:'Follow-up', stage_pending:'Pending Decision',
     stage_sale:'Sale Made', stage_postponed:'Postpone', stage_canceled:'Canceled',
-    stage_lost:'Closed Lost', stage_salelost:'Sale Lost',
+    stage_lost:'Closed Lost', stage_salelost:'Sale Lost', stage_takewith:'Take-with/As-Is',
 
     // Months
     months: ['January','February','March','April','May','June',
@@ -1965,7 +1966,7 @@ const STRINGS = {
     stage_design:'Design em Andamento', stage_quote:'Proposta Enviada',
     stage_followup:'Follow-up', stage_pending:'Decisão Pendente',
     stage_sale:'Venda Realizada', stage_postponed:'Postergado', stage_canceled:'Cancelado',
-    stage_lost:'Negócio Perdido', stage_salelost:'Venda Perdida',
+    stage_lost:'Negócio Perdido', stage_salelost:'Venda Perdida', stage_takewith:'Take-with/As-Is',
 
     // Months
     months: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -2075,6 +2076,7 @@ const STAGE_KEYS = {
   'Quote Sent':'stage_quote','Follow-up':'stage_followup','Pending Decision':'stage_pending',
   'Sale Made':'stage_sale','Postponed':'stage_postponed','Canceled':'stage_canceled',
   'Closed Lost':'stage_lost','Closed Won':'stage_sale','Sale Lost':'stage_salelost',
+  'Take-with/As-Is':'stage_takewith',
 };
 function stageLabel(stage) { return T(STAGE_KEYS[stage]) || stage || ''; }
 
@@ -2110,7 +2112,7 @@ const LOOKUP = {
   stageColors: {
     'New Lead':'#888','Home Call':'#C4933F','Design in Progress':'#4472CA',
     'Quote Sent':'#E8A030','Follow-up':'#FFA500','Pending Decision':'#FF8844',
-    'Closed Won':'#4CAF7D','Closed Lost':'#E05252','Postponed':'#A088E0',
+    'Closed Won':'#4CAF7D','Take-with/As-Is':'#4CAF7D','Closed Lost':'#E05252','Postponed':'#A088E0',
     // Legacy aliases (in case rendering encounters old data)
     'Sale Made':'#4CAF7D','Canceled':'#E05252'
   },
@@ -2118,7 +2120,7 @@ const LOOKUP = {
     'New Lead':'badge-stage-new','Home Call':'badge-stage-homecall',
     'Design in Progress':'badge-stage-design','Quote Sent':'badge-stage-quote',
     'Follow-up':'badge-stage-followup','Pending Decision':'badge-stage-pending',
-    'Closed Won':'badge-stage-sale','Closed Lost':'badge-stage-canceled','Sale Lost':'badge-stage-canceled',
+    'Closed Won':'badge-stage-sale','Take-with/As-Is':'badge-stage-sale','Closed Lost':'badge-stage-canceled','Sale Lost':'badge-stage-canceled',
     'Postponed':'badge-stage-postponed',
     // Legacy aliases
     'Sale Made':'badge-stage-sale','Canceled':'badge-stage-canceled'
@@ -2132,7 +2134,7 @@ function isClosedWon(opp) {
   if (!opp) return false;
   // 'Sale Made' = legacy stage name. saleMade === 'Yes' covers records that were marked
   // sold without the stage being updated (import/migration artefacts).
-  return opp.stage === 'Closed Won' || opp.stage === 'Sale Made' || opp.saleMade === 'Yes';
+  return opp.stage === 'Closed Won' || opp.stage === 'Sale Made' || opp.stage === 'Take-with/As-Is' || opp.saleMade === 'Yes';
 }
 function isClosedLost(opp) {
   if (!opp) return false;
@@ -6203,7 +6205,10 @@ function initDropdowns() {
    board and existing deals never break — only the visible label is remapped
    via stageLabel() ('Send Quote' / 'Postpone'). On edit, any legacy/other stage
    is appended so an old deal's stage is never dropped. */
-const FORM_STAGES = ['Home Call','Design in Progress','Quote Sent','Pending Decision','Postponed'];
+const FORM_STAGES = ['Home Call','Design in Progress','Quote Sent','Pending Decision','Postponed','Closed Won','Take-with/As-Is'];
+/* Stages that ARE a sale: picking one auto-sets Sale Result = Sale Made.
+   'Closed Won' is shown as "Sale Made" (canonical value, see isClosedWon). */
+const SALE_STAGES = ['Closed Won','Sale Made','Take-with/As-Is'];
 function fillStageSelect(extraVal) {
   const el = document.getElementById('f-stage');
   if (!el || !el.options) return;
@@ -6296,6 +6301,7 @@ function rcPull() {
   setIf('f-phone', m.phone);
   setIf('f-address', m.address);
   const ls = document.getElementById('f-leadSource'); if (ls && !ls.value) ls.value = 'Repeat Client';
+  rcFillCustomerNumber();
   validateFieldLive('email');
   onFieldChange();
   const banner = document.getElementById('returningClientBanner');
@@ -6308,6 +6314,22 @@ function rcPull() {
     + '<span style="font-size:18px">✅</span>'
     + '<div><div style="font-weight:700;font-size:13px;color:var(--gold-dk)">Loaded ' + nm + "'s details</div>"
     + '<div style="font-size:11px;color:var(--ink-40)">' + deals + ' project' + (deals > 1 ? 's' : '') + ' · ' + fmt$(total) + ' · marked as Repeat Client</div></div></div>';
+}
+
+/* Returning client who already bought: reuse their existing Customer #.
+   Takes the most recent sold record for this client that has one; never
+   overwrites a Customer # already typed in the form. */
+function rcCustomerNumber() {
+  const list = _rcMatches().filter(o => o.id !== state.editingId && isClosedWon(o) && String(o.customerNumber || '').trim());
+  if (!list.length) return '';
+  list.sort((a, b) => String(b.saleDate || b.createdAt || '').localeCompare(String(a.saleDate || a.createdAt || '')));
+  return String(list[0].customerNumber).trim();
+}
+function rcFillCustomerNumber() {
+  const el = document.getElementById('f-customerNumber');
+  if (!el || el.value.trim()) return;
+  const cn = rcCustomerNumber();
+  if (cn) el.value = cn;
 }
 
 function openNewLead() {
@@ -6355,6 +6377,7 @@ async function editLead(id) {
   const o = opps.find(x => x.id === id);
   if (!o) { toast('Lead not found', 'error'); return; }
   state.editingId = id;
+  rcLoadCache();   // lets Sale Made reuse a repeat client's existing Customer #
 
   document.getElementById('modalTitle').textContent = `EDIT — ${o.firstName} ${o.lastName}`;
   document.getElementById('leadId').value         = o.id;
@@ -6697,11 +6720,17 @@ function _renderPipelineCards(list) {
 // Auto-probability by stage (only sets if user hasn't manually changed it)
 const _STAGE_PROB = {
   'New Lead': 10, 'Home Call': 30, 'Design in Progress': 50,
-  'Quote Sent': 65, 'Follow-up': 50, 'Pending Decision': 85, 'Postponed': 20, 'Sale Lost': 0
+  'Quote Sent': 65, 'Follow-up': 50, 'Pending Decision': 85, 'Postponed': 20, 'Sale Lost': 0,
+  'Closed Won': 100, 'Take-with/As-Is': 100
 };
 
 function onFieldChange() {
   updateAutoFields();
+
+  // A sale stage (Sale Made / Take-with/As-Is) means the deal is won
+  const _stSel = document.getElementById('f-stage')?.value || '';
+  const _smSel = document.getElementById('f-saleMade');
+  if (SALE_STAGES.includes(_stSel) && _smSel && _smSel.value !== 'Yes') _smSel.value = 'Yes';
 
   // Auto-fill probability when stage changes (skip if Sale Result is set)
   const stageForProb = document.getElementById('f-stage')?.value || '';
@@ -6728,6 +6757,7 @@ function onFieldChange() {
     if (sd && !sd.value) sd.value = todayStr();
     if (cd && !cd.value) cd.value = todayStr();
     onSaleDateChange();   // keep Link Review Date = Sale Date + 3
+    rcFillCustomerNumber();
   }
   if (isLost) {
     if (psr && Number(psr.value) > 0) { psr.value = 0; const pv = document.getElementById('probVal'); if (pv) { pv.textContent = '0%'; pv.style.color = 'var(--red)'; } }
