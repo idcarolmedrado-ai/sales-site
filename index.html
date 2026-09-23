@@ -60,6 +60,7 @@ async function _ensureXLSX() {
   --font-body: 'DM Sans', sans-serif;
   --r: 12px; --r-lg: 20px;
   --shadow: 0 2px 16px rgba(0,0,0,.1);
+  --surface-2: #FFFFFF;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; }
@@ -4623,7 +4624,7 @@ function toggleTaskDone(id) {
   const t = arr.find(x => x.id === id);
   if (!t) return;
   t.done = !t.done;
-  Store.save('tasks', arr);
+  Store.upsert('tasks', t);
   renderPriorities();
   try { if (typeof _calYear !== 'undefined') renderCalendar(); } catch(e){}
 }
@@ -4706,8 +4707,7 @@ function _updateTask(id) {
   const arr = _loadTasks();
   const idx = arr.findIndex(x => x.id === id);
   if (idx >= 0) {
-    arr[idx] = { ...arr[idx], title: t, notes: n, soNumber: so, dueDate: d, priority: p };
-    Store.save('tasks', arr);
+    Store.upsert('tasks', { ...arr[idx], title: t, notes: n, soNumber: so, dueDate: d, priority: p });
   }
   // Reset form back to Add mode
   ['task-title-inp','task-notes-inp','task-so-inp','task-date-inp'].forEach(el => { const e = document.getElementById(el); if(e) e.value=''; });
@@ -4980,10 +4980,12 @@ const Store = {
    Maps localStorage namespaces to Supabase tables:
      mileage → mileage_records
      post30  → post_delivery_records (Phase 4)
+     tasks   → tasks (personal tasks — also feed the Google Calendar subscription)
 */
 const _CLOUD_TABLES = {
   mileage: 'mileage_records',
   post30:  'post_delivery_records',
+  tasks:   'tasks',
 };
 /* Per-table identifier field (default 'id') */
 const _CLOUD_ID_FIELDS = {
@@ -5022,6 +5024,19 @@ async function _hydrateStore(name) {
       Store.save(name, merged);
     }
   } catch(e) { console.warn(`[hydrate ${name}]:`, e.message); }
+}
+
+/* Tasks used to live only in localStorage — push this browser's copy up so they
+   survive across devices and appear in the Google Calendar feed. Idempotent. */
+async function _pushLocalTasks() {
+  if (!_isCloudMode()) return;
+  const rows = Store.load('tasks').filter(t => t && t.id).map(t => ({
+    id: t.id, title: t.title || '', dueDate: t.dueDate || '', priority: t.priority || 'medium',
+    notes: t.notes || '', soNumber: t.soNumber || '', done: !!t.done, createdAt: t.createdAt || '',
+  }));
+  if (!rows.length) return;
+  const { error } = await DB.client.from('tasks').upsert(rows, { onConflict: 'id' });
+  if (error) console.warn('[push tasks]:', error.message);
 }
 
 /* ═══ POST30 helpers ═══ */
@@ -10670,6 +10685,7 @@ async function renderCalendar() {
         <div class="cal-month-label">${monthNames[_calMonth]} ${_calYear}</div>
         <button onclick="_calMonth++;if(_calMonth>11){_calMonth=0;_calYear++;}renderCalendar()">Next ▶</button>
         <button onclick="_calYear=${today.getFullYear()};_calMonth=${today.getMonth()};renderCalendar()" style="margin-left:auto">Today</button>
+        <button onclick="openGcalSyncModal()" title="Subscribe to this calendar in Google Calendar">📅 Google Calendar</button>
         <button onclick="openTaskModal()" style="background:var(--gold);color:var(--ink);font-weight:700;border-color:var(--gold-dk)">+ ${T('cal_add_task')}</button>
       </div>
       <div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${legend}<span style="font-size:11px;color:var(--ink-40);margin-left:4px">— ${T('cal_add_hint')}</span></div>
@@ -10725,7 +10741,7 @@ function _saveTaskModal(taskId) {
   const notes = (document.getElementById('ctask-notes')?.value || '').trim();
   if (taskId) {
     const arr = _loadTasks(); const i = arr.findIndex(x => x.id === taskId);
-    if (i >= 0) { arr[i] = { ...arr[i], title, dueDate: date, priority: prio, soNumber: so, notes }; Store.save('tasks', arr); }
+    if (i >= 0) Store.upsert('tasks', { ...arr[i], title, dueDate: date, priority: prio, soNumber: so, notes });
     renderPriorities();
     try { if (typeof _calYear !== 'undefined') renderCalendar(); } catch(e) {}
   } else {
@@ -10749,6 +10765,50 @@ async function openSaleOrder(so) {
     toast('Nova venda iniciada — SO ' + so + ' já preenchido', 'info');
   }
 }
+/* ── Google Calendar subscription (one-way: dashboard → Google) ──
+   The calendar-feed Edge Function serves these same events as an iCal feed,
+   protected by the secret token in calendar_feed_tokens. Google re-fetches
+   subscribed calendars every few hours, so changes are not instant. */
+const CAL_FEED_URL = 'https://rsoukgpaqsgsdfvwrceu.supabase.co/functions/v1/calendar-feed';
+async function openGcalSyncModal() {
+  if (!_isCloudMode()) { toast('Connect to Supabase first', 'warn'); return; }
+  const { data, error } = await DB.client.from('calendar_feed_tokens').select('token').limit(1).maybeSingle();
+  if (error || !data) { toast('Could not load the calendar link', 'error'); return; }
+  const url = CAL_FEED_URL + '?token=' + data.token;
+  let modal = document.getElementById('gcalModal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'gcalModal'; document.body.appendChild(modal); }
+  const step = 'margin:0 0 8px;font-size:13px;color:var(--ink-20);line-height:1.5';
+  modal.innerHTML =
+      '<div onclick="closeGcalSyncModal()" style="position:fixed;inset:0;background:rgba(20,17,13,.5);z-index:9998"></div>'
+    + '<div role="dialog" aria-modal="true" style="position:fixed;z-index:9999;top:50%;left:50%;transform:translate(-50%,-50%);width:520px;max-width:92vw;background:var(--surface-2);border:1px solid var(--ink-60);border-radius:14px;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
+    +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+    +     '<span style="font-family:var(--font-display);font-size:18px;color:var(--ink-10)">📅 Sync with Google Calendar</span>'
+    +     '<button onclick="closeGcalSyncModal()" aria-label="Close" style="background:none;border:none;color:var(--ink-40);font-size:22px;line-height:1;cursor:pointer">×</button>'
+    +   '</div>'
+    +   '<p style="' + step + '">Follow-ups, home calls, deliveries, link reviews and tasks will show up in Google Calendar as a separate <b>Sales Dashboard</b> calendar.</p>'
+    +   '<div style="display:flex;gap:8px;margin:14px 0">'
+    +     '<input id="gcal-feed-url" readonly style="flex:1;min-width:0;background:var(--ink-80);border:1px solid var(--ink-60);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--ink-10);font-family:monospace">'
+    +     '<button onclick="copyGcalFeedUrl()" style="background:var(--gold);border:1px solid var(--gold-dk);color:var(--bg);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Copy link</button>'
+    +   '</div>'
+    +   '<ol style="padding-left:20px;margin:0 0 12px">'
+    +     '<li style="' + step + '">Copy the link above.</li>'
+    +     '<li style="' + step + '">Open <a href="https://calendar.google.com/calendar/r/settings/addbyurl" target="_blank" rel="noopener" style="color:var(--gold)">Google Calendar → Add calendar → From URL</a>.</li>'
+    +     '<li style="' + step + '">Paste the link and click <b>Add calendar</b>. Done — it stays in sync on its own.</li>'
+    +   '</ol>'
+    +   '<p style="margin:0;font-size:11px;color:var(--ink-40);line-height:1.5">Google refreshes subscribed calendars every few hours, so new changes can take a while to appear. Keep this link private — anyone with it can see these events.</p>'
+    + '</div>';
+  document.getElementById('gcal-feed-url').value = url;
+}
+function copyGcalFeedUrl() {
+  const el = document.getElementById('gcal-feed-url'); if (!el) return;
+  navigator.clipboard.writeText(el.value).then(
+    () => toast('Link copied', 'success'),
+    () => { el.select(); toast('Select the link and copy it (Ctrl+C)', 'info'); });
+}
+function closeGcalSyncModal() { const m = document.getElementById('gcalModal'); if (m) m.innerHTML = ''; }
+window.openGcalSyncModal = openGcalSyncModal;
+window.copyGcalFeedUrl = copyGcalFeedUrl;
+window.closeGcalSyncModal = closeGcalSyncModal;
 window.openTaskModal = openTaskModal;
 window.closeTaskModal = closeTaskModal;
 window._saveTaskModal = _saveTaskModal;
@@ -11941,6 +12001,8 @@ async function launchApp(fromSupabase) {
     await _hydrateSettings();
     await _hydrateStore('mileage');
     await _hydrateStore('post30');
+    await _hydrateStore('tasks');
+    _pushLocalTasks();
   }
   const _startPage = (location.hash||'').replace('#','') || 'dashboard';
   await navigate(_startPage);
