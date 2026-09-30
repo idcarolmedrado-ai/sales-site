@@ -3524,7 +3524,7 @@ async function exportMileageExcel() {
   if (typeof XLSX==='undefined') { toast('Excel library not loaded','error'); return; }
   const { recs: allRecs, label: periodLabel } = _getExportMileageRecords();
   if (!allRecs.length) { toast('No mileage records','error'); return; }
-  const RATE = 0.725;
+  const RATE = 0.76;
 
   const hdr = ['Date','Client Name','Address','Home','DC','Client','Home','DC',
     'Total Miles Driven','Commute Deduct','Net Miles','Tolls / Parking','Total Reimb.','Design Partner','Purpose'];
@@ -3562,7 +3562,7 @@ async function exportMileageExcel() {
 function exportMileagePDF() {
   const { recs: allRecs, label: periodLabel } = _getExportMileageRecords();
   if (!allRecs.length) { toast('No mileage records for ' + periodLabel, 'error'); return; }
-  const RATE = 0.725;
+  const RATE = 0.76;
 
   let totalMiles = 0, totalNet = 0, totalReimb = 0, totalTolls = 0;
   const rowsHTML = allRecs.map((r, i) => {
@@ -5314,11 +5314,11 @@ function dismissPost60(oppId) {
 /* ════════════════════════════════════════════════════
    RENDER: MILEAGE
    Auto-populate from home calls; manual entries allowed
-   Rate: $0.725/mile (2026 IRS)
+   Rate: $0.76/mile (2026 IRS)
 ════════════════════════════════════════════════════ */
 async function renderMileage() {
   const today   = new Date();
-  const RATE    = 0.725;
+  const RATE    = 0.76;
 
   /* ── State: selected year/month (null = current) ── */
   if (!window._mileState) window._mileState = {
@@ -5686,7 +5686,7 @@ function recalcLegSum(id) {
 }
 
 function recalcMileRow(id) {
-  const RATE = 0.725;
+  const RATE = 0.76;
   const recs = getMileageRecords();
   const r    = recs.find(x => x.id === id);
   if (!r) return;
@@ -5707,7 +5707,7 @@ function recalcMileRow(id) {
 }
 
 function recalcMileSubtotals() {
-  const RATE = 0.725;
+  const RATE = 0.76;
   const allRecs  = getMileageRecords();
   const MS       = window._mileState || {year: new Date().getFullYear(), month: new Date().getMonth()};
   const curKey   = `${MS.year}-${String(MS.month+1).padStart(2,'0')}`;
@@ -8967,7 +8967,7 @@ async function exportToExcel() {
   XLSX.utils.book_append_sheet(wb, wsPrio, 'Priorities');
 
   /* ── Sheet 5: Mileage ── */
-  const RATE = 0.725;
+  const RATE = 0.76;
   const mileHdr = ['Date','Client Name','Address','Home→DC','DC→Client',
     'Client→Home','Home→DC2','DC→Home','Total Miles','Commute Deduct',
     'Net Miles','Tolls/Parking','Total Reimbursement ($)','Design Partner','Purpose'];
