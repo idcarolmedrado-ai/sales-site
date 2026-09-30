@@ -9455,7 +9455,8 @@ let _calYear, _calMonth;
 ══════════════════════════════════════════════════ */
 const ATTACH_KEY = 'ea_attachments';            // localStorage fallback (Demo mode)
 const ATTACH_MAX_SIZE = 10 * 1024 * 1024;       // 10MB — aligned with Supabase bucket limit
-const ATTACH_BUCKET = 'attachments';
+const ATTACH_BUCKET = 'attachments';            // PRIVATE bucket — files are served via short-lived signed URLs
+const ATTACH_URL_TTL = 60 * 60;                  // signed link lifetime (seconds); list is re-signed on every render
 
 function _isCloudMode() { return DB.mode === 'supabase' && DB.client; }
 
@@ -9468,13 +9469,22 @@ async function _getAttachments(oppId) {
         .eq('opp_id', oppId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []).map(r => ({
+      const rows = data || [];
+      // One batch call signs every file; links expire after ATTACH_URL_TTL
+      const urls = {};
+      if (rows.length) {
+        const { data: signed, error: sErr } = await DB.client.storage
+          .from(ATTACH_BUCKET).createSignedUrls(rows.map(r => r.file_path), ATTACH_URL_TTL);
+        if (sErr) console.warn('sign attachments:', sErr.message);
+        (signed || []).forEach(x => { if (x.path && x.signedUrl) urls[x.path] = x.signedUrl; });
+      }
+      return rows.map(r => ({
         id: r.id,
         name: r.file_name,
         path: r.file_path,
         size: r.file_size || 0,
         type: r.file_type || '',
-        url: DB.client.storage.from(ATTACH_BUCKET).getPublicUrl(r.file_path).data.publicUrl,
+        url: urls[r.file_path] || '',
         cloud: true,
       }));
     } catch(e) {
@@ -9499,7 +9509,7 @@ async function _renderAttachList(oppId) {
       <span class="name" title="${esc(f.name)}">${esc(f.name)}</span>
       <span class="size">${((f.size||0)/1024).toFixed(0)}KB</span>
       ${f.cloud ? '<span style="color:var(--green);font-size:9px" title="Stored in cloud">☁</span>' : '<span style="color:var(--gold);font-size:9px" title="Local only">⚠</span>'}
-      <a href="${esc(f.url)}" download="${esc(f.name)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Download">⬇</a>
+      ${f.url ? `<a href="${esc(f.url)}" download="${esc(f.name)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Download">⬇</a>` : '<span title="Link unavailable — reopen the lead" style="color:var(--ink-50)">⬇</span>'}
       <button class="remove" onclick="removeAttachment('${oppId}','${f.cloud ? f.id : i}',${f.cloud})" title="Remove">×</button>
     </div>`).join('');
 }
